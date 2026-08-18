@@ -2,6 +2,7 @@ use super::*;
 use super::spec::{
     collaboration_audio_relative_path, collaboration_engine_relative_path,
     collaboration_program_relative_path, collaboration_route_relative_path,
+    collaboration_bundle_relative_path,
 };
 use crate::api::collab::{
     build_collaboration_runtime_response_for_host, fetch_active_collaboration_session_for_broadcast,
@@ -289,11 +290,19 @@ async fn inspect_live_runtime_collaboration_artifacts(
     let runtime =
         build_collaboration_runtime_response_for_host(&state.pool, collaboration_session).await?;
     let engine_relative_path = collaboration_engine_relative_path(session);
+    let bundle_relative_path = collaboration_bundle_relative_path(session);
     let mut issues = Vec::new();
 
     validate_execution_plan_consistency(&runtime.topology.engine, &mut issues);
     validate_required_artifact_path(state, &engine_relative_path, "collaboration engine", &mut issues)
         .await?;
+    validate_required_artifact_path(
+        state,
+        &bundle_relative_path,
+        "collaboration runtime bundle",
+        &mut issues,
+    )
+    .await?;
 
     for program in &runtime.topology.programs {
         let relative_path = collaboration_program_relative_path(session, program);
@@ -339,7 +348,7 @@ async fn inspect_live_runtime_collaboration_artifacts(
     Ok(CollaborationArtifactInspection {
         present: true,
         valid: issues.is_empty(),
-        engine_relative_path: Some(engine_relative_path),
+        engine_relative_path: Some(bundle_relative_path),
         issues,
     })
 }

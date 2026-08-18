@@ -766,6 +766,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         "runtime/{}/{}/{}/collaboration/engine.json",
         connected.session.creator_id, connected.session.broadcast_id, connected.session.id
     );
+    let expected_bundle = format!(
+        "runtime/{}/{}/{}/collaboration/runtime.json",
+        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
+    );
     assert_eq!(
         ready_spec["archive"]["outputRelativePath"],
         expected_host_route_archive.clone()
@@ -866,6 +870,13 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .len()
             > 0
     );
+    assert!(
+        tokio::fs::metadata(media_path_for_relative(&state, &expected_bundle))
+            .await
+            .map_err(AppError::Io)?
+            .len()
+            > 0
+    );
     assert_eq!(
         ready_spec["collaboration"]["engine"]["executionMode"],
         "topology_graph_v1"
@@ -912,6 +923,41 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .expect("execution operations array")
             .iter()
             .any(|operation| operation["operationKind"] == "return_audio")
+    );
+    assert_eq!(
+        ready_spec["collaboration"]["bundle"]["bundleMode"],
+        "media_runtime_v1"
+    );
+    assert!(
+        ready_spec["collaboration"]["bundle"]["attachments"]
+            .as_array()
+            .expect("runtime bundle attachments array")
+            .iter()
+            .any(|attachment| attachment["transportClass"] == "collaboration_socket")
+    );
+    assert!(
+        ready_spec["collaboration"]["bundle"]["mixers"]
+            .as_array()
+            .expect("runtime bundle mixers array")
+            .iter()
+            .any(|mixer| mixer["programKind"] == "host_program")
+    );
+    assert!(
+        ready_spec["collaboration"]["bundle"]["fanouts"]
+            .as_array()
+            .expect("runtime bundle fanouts array")
+            .iter()
+            .any(|fanout| {
+                fanout["outputKind"] == "mirror_channel"
+                    && fanout["relativePath"] == expected_mirror_playlist
+            })
+    );
+    assert!(
+        ready_spec["collaboration"]["bundle"]["returns"]
+            .as_array()
+            .expect("runtime bundle returns array")
+            .iter()
+            .any(|item| item["participantId"] == collaboration_participant.id)
     );
     assert!(
         ready_spec["collaboration"]["engine"]["edges"]

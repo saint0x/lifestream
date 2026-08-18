@@ -4,6 +4,9 @@ use super::manifest::{
     render_routed_variant_playlist,
 };
 use super::*;
+use crate::api::control::artifacts::spec::{
+    build_collaboration_runtime_bundle, collaboration_bundle_relative_path,
+};
 
 pub(super) async fn emit_collaboration_route_artifacts(
     state: &SharedState,
@@ -28,6 +31,13 @@ pub(super) async fn emit_collaboration_route_artifacts(
         emit_collaboration_audio_artifact(state, session, route).await?;
     }
     emit_collaboration_engine_artifact(state, session, &runtime.topology.engine).await?;
+    let runtime_bundle = build_collaboration_runtime_bundle(session, &runtime.topology)?;
+    emit_collaboration_runtime_bundle_artifact(
+        state,
+        session,
+        &runtime_bundle,
+    )
+    .await?;
     Ok(())
 }
 
@@ -209,6 +219,23 @@ async fn emit_collaboration_engine_artifact(
     tokio::fs::write(
         &path,
         serde_json::to_vec_pretty(engine).map_err(|error| AppError::Internal(error.to_string()))?,
+    )
+    .await
+    .map_err(AppError::Io)?;
+    Ok(())
+}
+
+async fn emit_collaboration_runtime_bundle_artifact(
+    state: &SharedState,
+    session: &LiveIngestSession,
+    bundle: &crate::models::CollaborationRuntimeBundle,
+) -> AppResult<()> {
+    let relative_path = collaboration_bundle_relative_path(session);
+    let path = media_path_for_relative(state, &relative_path);
+    ensure_parent_dir(&path).await?;
+    tokio::fs::write(
+        &path,
+        serde_json::to_vec_pretty(bundle).map_err(|error| AppError::Internal(error.to_string()))?,
     )
     .await
     .map_err(AppError::Io)?;
