@@ -3,7 +3,6 @@ mod auth;
 mod config;
 mod error;
 mod models;
-mod seed;
 mod state;
 
 use std::sync::Arc;
@@ -24,7 +23,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_env()?;
     match command {
         RuntimeCommand::Serve => serve(config).await?,
-        RuntimeCommand::Seed => seed_database(config).await?,
     }
 
     Ok(())
@@ -32,7 +30,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 enum RuntimeCommand {
     Serve,
-    Seed,
 }
 
 impl RuntimeCommand {
@@ -41,9 +38,8 @@ impl RuntimeCommand {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         match args.next().as_deref() {
             None | Some("serve") => Ok(Self::Serve),
-            Some("seed") => Ok(Self::Seed),
             Some(flag) => {
-                Err(format!("unknown command `{flag}`; supported commands: `serve`, `seed`").into())
+                Err(format!("unknown command `{flag}`; supported commands: `serve`").into())
             }
         }
     }
@@ -104,12 +100,5 @@ async fn serve(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind(config.bind_addr).await?;
     info!("listening on {}", config.bind_addr);
     axum::serve(listener, app).await?;
-    Ok(())
-}
-
-async fn seed_database(config: Config) -> Result<(), Box<dyn std::error::Error>> {
-    let pool = connect_pool(&config).await?;
-    seed::seed_if_empty(&pool, &config).await?;
-    info!("seed command completed against {}", config.database_url);
     Ok(())
 }

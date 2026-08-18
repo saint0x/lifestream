@@ -4,7 +4,6 @@ use std::{env, net::SocketAddr, path::PathBuf};
 pub struct Config {
     pub bind_addr: SocketAddr,
     pub database_url: String,
-    pub local_seed_token: String,
     pub max_db_connections: u32,
     pub media_root: PathBuf,
     pub allowed_origins: Vec<String>,
@@ -27,8 +26,6 @@ impl Config {
         Ok(Self {
             bind_addr,
             database_url,
-            local_seed_token: env::var("LIFESTREAM_LOCAL_SEED_TOKEN")
-                .unwrap_or_else(|_| "lifestream-local-dev-token".to_string()),
             max_db_connections,
             media_root: env::var("LIFESTREAM_MEDIA_ROOT")
                 .map(PathBuf::from)
