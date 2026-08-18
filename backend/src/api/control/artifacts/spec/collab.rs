@@ -3,6 +3,7 @@ use super::*;
 use crate::api::collab::{
     build_collaboration_runtime_response_for_host, fetch_active_collaboration_session_for_broadcast,
 };
+use crate::api::media::build_collaboration_media_runtime;
 use crate::api::mirror::sync_active_collaboration_mirror_pickups_for_session_and_publish;
 use crate::models::{
     CollaborationAudioRoute, CollaborationOutputRoute, CollaborationProgramRoute,
@@ -42,6 +43,7 @@ pub(super) async fn build_live_runtime_collaboration_spec(
         build_collaboration_runtime_response_for_host(&state.pool, collaboration_session).await?;
     let topology = runtime.topology;
     let bundle = build_collaboration_runtime_bundle(session, &topology)?;
+    let media = build_collaboration_media_runtime(&bundle)?;
 
     Ok(Some(LiveRuntimeCollaborationSpec {
         session_id: runtime.session.id,
@@ -66,6 +68,7 @@ pub(super) async fn build_live_runtime_collaboration_spec(
         audio: topology.audio,
         engine: topology.engine,
         bundle,
+        media,
         members: topology.members,
     }))
 }
@@ -281,6 +284,15 @@ pub(in crate::api::control::artifacts) fn collaboration_bundle_relative_path(
 ) -> String {
     format!(
         "runtime/{}/{}/{}/collaboration/runtime.json",
+        session.creator_id, session.broadcast_id, session.id
+    )
+}
+
+pub(in crate::api::control::artifacts) fn collaboration_media_relative_path(
+    session: &LiveIngestSession,
+) -> String {
+    format!(
+        "runtime/{}/{}/{}/collaboration/media.json",
         session.creator_id, session.broadcast_id, session.id
     )
 }

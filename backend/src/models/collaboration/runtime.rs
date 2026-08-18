@@ -170,6 +170,41 @@ pub struct CollaborationRuntimeBundle {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CollaborationMediaStage {
+    pub stage_kind: String,
+    pub operation_ids: Vec<Id>,
+    pub bus_ids: Vec<Id>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationMediaTarget {
+    pub output_id: Id,
+    pub output_kind: String,
+    pub relative_path: Option<String>,
+    pub route_state: String,
+    pub playback_enabled: bool,
+    pub recording_enabled: bool,
+    pub mix_minus_required: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationMediaRuntime {
+    pub runtime_mode: String,
+    pub bundle_mode: String,
+    pub engine_execution_mode: String,
+    pub fanout_mode: String,
+    pub audio_mode: String,
+    pub stage_count: i64,
+    pub stages: Vec<CollaborationMediaStage>,
+    pub output_targets: Vec<CollaborationMediaTarget>,
+    pub input_participant_ids: Vec<Id>,
+    pub mix_minus_participant_ids: Vec<Id>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CollaborationExecutionPlan {
     pub execution_mode: String,
     pub fanout_mode: String,

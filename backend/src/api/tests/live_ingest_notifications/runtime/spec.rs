@@ -770,6 +770,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         "runtime/{}/{}/{}/collaboration/runtime.json",
         connected.session.creator_id, connected.session.broadcast_id, connected.session.id
     );
+    let expected_media = format!(
+        "runtime/{}/{}/{}/collaboration/media.json",
+        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
+    );
     assert_eq!(
         ready_spec["archive"]["outputRelativePath"],
         expected_host_route_archive.clone()
@@ -877,6 +881,13 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .len()
             > 0
     );
+    assert!(
+        tokio::fs::metadata(media_path_for_relative(&state, &expected_media))
+            .await
+            .map_err(AppError::Io)?
+            .len()
+            > 0
+    );
     assert_eq!(
         ready_spec["collaboration"]["engine"]["executionMode"],
         "topology_graph_v1"
@@ -958,6 +969,34 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .expect("runtime bundle returns array")
             .iter()
             .any(|item| item["participantId"] == collaboration_participant.id)
+    );
+    assert_eq!(
+        ready_spec["collaboration"]["media"]["runtimeMode"],
+        "media_schedule_v1"
+    );
+    assert!(
+        ready_spec["collaboration"]["media"]["stages"]
+            .as_array()
+            .expect("media runtime stages array")
+            .iter()
+            .any(|stage| stage["stageKind"] == "fanout")
+    );
+    assert!(
+        ready_spec["collaboration"]["media"]["outputTargets"]
+            .as_array()
+            .expect("media runtime targets array")
+            .iter()
+            .any(|target| {
+                target["outputKind"] == "mirror_channel"
+                    && target["relativePath"] == expected_mirror_playlist
+            })
+    );
+    assert!(
+        ready_spec["collaboration"]["media"]["mixMinusParticipantIds"]
+            .as_array()
+            .expect("mix minus participant ids")
+            .iter()
+            .any(|id| id == &Value::String(collaboration_participant.id.clone()))
     );
     assert!(
         ready_spec["collaboration"]["engine"]["edges"]
