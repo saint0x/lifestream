@@ -7,6 +7,8 @@ mod purchase;
 mod sessions;
 
 pub(crate) use admin::{get_admin_playback_session, reconcile_admin_playback_session};
+#[cfg(test)]
+pub(crate) use grants::rotate_playback_session_token_for_refresh;
 pub(crate) use grants::{get_playback_manifest, get_playback_session, refresh_playback_session};
 pub(crate) use sessions::{create_content_playback_session, create_live_playback_session};
 

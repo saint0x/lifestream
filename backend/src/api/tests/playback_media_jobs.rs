@@ -352,6 +352,37 @@ async fn refreshing_playback_session_rotates_token_and_invalidates_old_token() -
 }
 
 #[tokio::test]
+async fn refreshing_playback_session_fails_closed_if_token_was_rotated_concurrently()
+-> AppResult<()> {
+    let (state, _creator) = setup_test_state().await?;
+    let (session_id, playback_token, _asset) =
+        insert_playback_session_for_upload(&state.pool, "flm-afterglow", None, None, "free")
+            .await?;
+    let validated =
+        validate_playback_session_record(&state.pool, &session_id, &playback_token).await?;
+
+    sqlx::query("UPDATE playback_sessions SET token_hash = ? WHERE id = ?")
+        .bind(hash_token("test-concurrent-rotation"))
+        .bind(&session_id)
+        .execute(&state.pool)
+        .await?;
+
+    let result = super::super::playback::rotate_playback_session_token_for_refresh(
+        &state.pool,
+        validated,
+        &playback_token,
+    )
+    .await;
+    match result {
+        Err(AppError::Unauthorized) => {}
+        Err(other) => panic!("unexpected refresh error: {other:?}"),
+        Ok(_) => panic!("refresh should fail if the persisted token changed after validation"),
+    }
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn stale_media_worker_cannot_overwrite_newer_processing_attempt() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
     let row = sqlx::query(
