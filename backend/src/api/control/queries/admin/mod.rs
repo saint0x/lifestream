@@ -2,6 +2,8 @@ use super::*;
 use crate::models::{AdminLiveIngestCreatorOverview, AdminLiveIngestOverview};
 
 mod overview;
+mod overview_creators;
+mod overview_metrics;
 mod record;
 
 pub(crate) use overview::fetch_admin_live_ingest_overview;
