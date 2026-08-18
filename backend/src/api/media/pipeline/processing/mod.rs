@@ -46,7 +46,7 @@ pub(crate) async fn process_media_job(
     let generated =
         generate_derivatives_and_package(&state, creator_id, job_id, &attempt, &probed).await?;
 
-    if !job_control::media_processing_lease_is_active(
+    if !jobs::media_processing_lease_is_active(
         &state.pool,
         creator_id,
         job_id,

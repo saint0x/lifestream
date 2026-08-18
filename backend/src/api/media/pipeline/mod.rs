@@ -1,7 +1,7 @@
 use super::*;
 
 mod assets;
-mod job_control;
+mod jobs;
 mod packaging;
 mod probe;
 mod processing;
@@ -13,7 +13,7 @@ pub(crate) use assets::{
     fetch_media_preview_track_rows, fetch_media_processing_runs, finish_media_processing_run,
     replace_media_preview_tracks, replace_media_variants, start_media_processing_run,
 };
-pub(crate) use job_control::{
+pub(crate) use jobs::{
     fetch_admin_media_job_record, fetch_admin_media_jobs, fetch_pending_media_jobs,
     fetch_upload_ingest_session,
     fetch_upload_ingest_sessions, fetch_upload_job_by_id, fetch_upload_job_by_id_global,
@@ -23,7 +23,7 @@ pub(crate) use job_control::{
     schedule_media_processing,
 };
 #[cfg(test)]
-pub(crate) use job_control::{MAX_MEDIA_PROCESSING_ATTEMPTS, fail_media_job_for_lease};
+pub(crate) use jobs::{MAX_MEDIA_PROCESSING_ATTEMPTS, fail_media_job_for_lease};
 pub(crate) use packaging::{
     GeneratedHlsPackage, GeneratedHlsSubtitleTrack, HlsVariantPlan, build_image_derivative_plans,
     extract_subtitle_stream_to_webvtt, generate_hls, generate_poster, generate_thumbnail,
