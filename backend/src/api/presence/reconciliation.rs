@@ -102,7 +102,7 @@ pub(crate) async fn reconcile_single_creator_live_socket_session(
     let socket_session =
         fetch_creator_live_socket_presence_by_id_raw(&state.pool, creator_id, socket_id).await?;
     if !actions.is_empty() {
-        publish_creator_live_state(&state, creator_id).await?;
+        publish_current_creator_live_state(&state, creator_id).await?;
     }
     Ok(CreatorLiveSocketPresenceReconciliationReport {
         creator_id: creator_id.to_string(),

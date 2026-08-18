@@ -35,6 +35,7 @@ pub(crate) async fn publish_authoritative_creator_live_state(
     Ok(())
 }
 
+#[cfg(test)]
 pub(crate) async fn publish_creator_live_state(
     state: &SharedState,
     creator_id: &str,

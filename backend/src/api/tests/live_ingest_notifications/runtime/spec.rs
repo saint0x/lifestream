@@ -1,8 +1,24 @@
 use super::*;
 use serde_json::json;
 
-#[tokio::test]
-async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> AppResult<()> {
+#[test]
+fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> AppResult<()> {
+    std::thread::Builder::new()
+        .name("runtime-spec-transitions".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime")
+                .block_on(runtime_spec_is_provisioned_and_tracks_live_runtime_transitions_async())
+        })
+        .expect("runtime spec thread")
+        .join()
+        .expect("runtime spec join")
+}
+
+async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions_async() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
     let auth_token = insert_creator_auth_session(&state.pool, &creator).await?;
     let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
@@ -435,7 +451,16 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         .filter(|target| {
             matches!(
                 target.target_kind.as_str(),
-                "host_channel" | "mirror_channel" | "archive" | "program" | "audio"
+                "host_channel"
+                    | "mirror_channel"
+                    | "archive"
+                    | "program"
+                    | "audio"
+                    | "return"
+                    | "engine"
+                    | "bundle"
+                    | "media"
+                    | "launch"
             )
         })
         .count() as i64;
@@ -932,7 +957,7 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             && target.target_key == format!("col-out-mirror-{}", collaboration_participant.id)
             && target.target_creator_id.as_deref()
                 == collaboration_participant.creator_id.as_deref()
-            && target.relative_path.as_deref() == Some(expected_mirror_playlist.as_str())
+            && target.relative_path.is_none()
             && target.mix_minus_required
     }));
     assert!(runtime.active_runtime_targets.iter().any(|target| {
@@ -946,10 +971,9 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             && target.relative_path.as_deref() == Some(expected_host_program.as_str())
             && target.mix_minus_required
     }));
-    assert!(runtime.active_runtime_targets.iter().any(|target| {
+    assert!(!runtime.active_runtime_targets.iter().any(|target| {
         target.target_kind == "program"
             && target.target_key == format!("col-program-{}", collaboration_participant.id)
-            && target.relative_path.as_deref() == Some(expected_guest_program.as_str())
     }));
     assert!(runtime.active_runtime_targets.iter().any(|target| {
         target.target_kind == "audio"
@@ -970,11 +994,7 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .any(|target| { target.target_kind == "archive" && target.target_key == "primary" })
     );
     assert!(
-        tokio::fs::metadata(media_path_for_relative(&state, &expected_mirror_playlist))
-            .await
-            .map_err(AppError::Io)?
-            .len()
-            > 0
+        !tokio::fs::try_exists(media_path_for_relative(&state, &expected_mirror_playlist)).await?
     );
     assert!(
         tokio::fs::metadata(media_path_for_relative(&state, &expected_host_program))
@@ -984,11 +1004,7 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             > 0
     );
     assert!(
-        tokio::fs::metadata(media_path_for_relative(&state, &expected_guest_program))
-            .await
-            .map_err(AppError::Io)?
-            .len()
-            > 0
+        !tokio::fs::try_exists(media_path_for_relative(&state, &expected_guest_program)).await?
     );
     assert!(
         tokio::fs::metadata(media_path_for_relative(&state, &expected_guest_audio))
@@ -1084,14 +1100,11 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .any(|mixer| mixer["programKind"] == "host_program")
     );
     assert!(
-        ready_spec["collaboration"]["bundle"]["fanouts"]
+        !ready_spec["collaboration"]["bundle"]["fanouts"]
             .as_array()
             .expect("runtime bundle fanouts array")
             .iter()
-            .any(|fanout| {
-                fanout["outputKind"] == "mirror_channel"
-                    && fanout["relativePath"] == expected_mirror_playlist
-            })
+            .any(|fanout| fanout["outputKind"] == "mirror_channel")
     );
     assert!(
         ready_spec["collaboration"]["bundle"]["returns"]
@@ -1112,14 +1125,11 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .any(|stage| stage["stageKind"] == "fanout")
     );
     assert!(
-        ready_spec["collaboration"]["media"]["outputTargets"]
+        !ready_spec["collaboration"]["media"]["outputTargets"]
             .as_array()
             .expect("media runtime targets array")
             .iter()
-            .any(|target| {
-                target["outputKind"] == "mirror_channel"
-                    && target["relativePath"] == expected_mirror_playlist
-            })
+            .any(|target| target["outputKind"] == "mirror_channel")
     );
     assert!(
         ready_spec["collaboration"]["media"]["returnTargets"]
@@ -1143,32 +1153,31 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         ready_spec["collaboration"]["launch"]["launchMode"],
         "ffmpeg_plan_v1"
     );
+    assert_eq!(ready_spec["collaboration"]["launch"]["ready"], false);
+    assert!(
+        ready_spec["collaboration"]["launch"]["unresolvedParticipantIds"]
+            .as_array()
+            .expect("launch unresolved participant ids")
+            .iter()
+            .any(|id| id == &Value::String(collaboration_participant.id.clone()))
+    );
     assert!(
         ready_spec["collaboration"]["launch"]["inputs"]
             .as_array()
             .expect("launch inputs array")
-            .iter()
-            .any(|input| {
-                input["participantId"] == collaboration_participant.id
-                    && input["mediaTransport"] == "srt"
-            })
+            .is_empty()
     );
     assert!(
         ready_spec["collaboration"]["launch"]["returns"]
             .as_array()
             .expect("launch returns array")
-            .iter()
-            .any(|target| {
-                target["participantId"] == collaboration_participant.id
-                    && target["mixMinusRequired"] == true
-            })
+            .is_empty()
     );
     assert!(
         ready_spec["collaboration"]["launch"]["steps"]
             .as_array()
             .expect("launch steps array")
-            .iter()
-            .any(|step| step["command"] == "ffmpeg")
+            .is_empty()
     );
     assert!(
         ready_spec["collaboration"]["engine"]["edges"]

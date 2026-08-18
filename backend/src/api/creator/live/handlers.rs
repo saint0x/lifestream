@@ -170,7 +170,7 @@ async fn update_creator_live_settings(
     .await?;
 
     let settings = fetch_creator_live_settings(&state.pool, creator_id).await?;
-    publish_creator_live_state(&state, creator_id).await?;
+    publish_current_creator_live_state(&state, creator_id).await?;
     Ok(Json(settings))
 }
 

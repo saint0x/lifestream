@@ -272,6 +272,6 @@ pub(crate) async fn close_live_ingest_session(
         )
         .await?;
     }
-    publish_creator_live_state(state, &session.creator_id).await?;
+    publish_current_creator_live_state(state, &session.creator_id).await?;
     Ok(())
 }

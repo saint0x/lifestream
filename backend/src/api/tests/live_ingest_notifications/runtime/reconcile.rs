@@ -144,10 +144,23 @@ async fn runtime_report_reconciles_missing_manifest_into_packaging_drift() -> Ap
     .await?
     .0;
 
-    assert_eq!(runtime_output.runtime_state, "packaging_degraded");
-    assert_eq!(runtime_output.packaging_status, "degraded");
+    tokio::fs::remove_file(media_path_for_relative(&state, &manifest_relative_path))
+        .await
+        .map_err(AppError::Io)?;
+
+    assert_eq!(runtime_output.runtime_state, "healthy");
+    assert_eq!(runtime_output.packaging_status, "ready");
+    assert!(runtime_output.last_error.is_none());
+
+    let session =
+        fetch_live_ingest_session_by_id(&state.pool, &creator.id, &connected.session.id).await?;
+    let reconciled = reconcile_live_runtime_output_artifacts(&state, &session)
+        .await?
+        .expect("reconciled runtime output");
+    assert_eq!(reconciled.runtime_state, "packaging_degraded");
+    assert_eq!(reconciled.packaging_status, "degraded");
     assert!(
-        runtime_output
+        reconciled
             .last_error
             .as_deref()
             .is_some_and(|error| error.contains(manifest_relative_path.as_str()))
@@ -629,6 +642,10 @@ async fn background_runtime_artifact_reconciliation_repairs_missing_manifest_wit
         }),
     )
     .await?;
+
+    tokio::fs::remove_file(media_path_for_relative(&state, &manifest_relative_path))
+        .await
+        .map_err(AppError::Io)?;
 
     sqlx::query(
         "UPDATE live_runtime_outputs SET runtime_state = 'healthy', packaging_status = 'ready', archive_status = 'not_started', last_error = NULL WHERE session_id = ?",

@@ -15,17 +15,24 @@ pub(super) fn build_live_runtime_telemetry_artifact_detail(
         output.and_then(|item| item.manifest_relative_path.clone());
     let persisted_archive_relative_path =
         output.and_then(|item| item.archive_relative_path.clone());
+    let manifest_state = telemetry_artifact_state(
+        "runtime manifest",
+        packaging_status,
+        output.and_then(|item| item.manifest_relative_path.as_deref()),
+        Some(expected_manifest_relative_path.as_str()),
+        output.and_then(|item| item.last_error.as_deref()),
+    );
+    let archive_state = telemetry_artifact_state(
+        "runtime archive",
+        archive_status,
+        output.and_then(|item| item.archive_relative_path.as_deref()),
+        Some(expected_archive_relative_path.as_str()),
+        output.and_then(|item| item.last_error.as_deref()),
+    );
 
     json!({
-        "status": if artifact_state_has_attention(
-            packaging_status,
-            persisted_manifest_relative_path.as_deref(),
-            Some(expected_manifest_relative_path.as_str()),
-        ) || artifact_state_has_attention(
-            archive_status,
-            persisted_archive_relative_path.as_deref(),
-            Some(expected_archive_relative_path.as_str()),
-        ) {
+        "status": if artifact_state_has_attention(manifest_state)
+            || artifact_state_has_attention(archive_state) {
             "attention"
         } else if matches!(packaging_status, "ready" | "complete")
             || matches!(archive_status, "finalizing" | "complete")
@@ -37,29 +44,26 @@ pub(super) fn build_live_runtime_telemetry_artifact_detail(
         "manifest": {
             "expectedRelativePath": expected_manifest_relative_path,
             "persistedRelativePath": persisted_manifest_relative_path,
-            "state": telemetry_artifact_state(
-                packaging_status,
-                output.and_then(|item| item.manifest_relative_path.as_deref()),
-                Some(expected_manifest_relative_path.as_str()),
-            ),
+            "state": manifest_state,
         },
         "archive": {
             "expectedRelativePath": expected_archive_relative_path,
             "persistedRelativePath": persisted_archive_relative_path,
-            "state": telemetry_artifact_state(
-                archive_status,
-                output.and_then(|item| item.archive_relative_path.as_deref()),
-                Some(expected_archive_relative_path.as_str()),
-            ),
+            "state": archive_state,
         }
     })
 }
 
 fn telemetry_artifact_state(
+    artifact_label: &str,
     status: &str,
     persisted_relative_path: Option<&str>,
     expected_relative_path: Option<&str>,
+    last_error: Option<&str>,
 ) -> &'static str {
+    if last_error.is_some_and(|error| error.contains(artifact_label)) {
+        return "missing";
+    }
     let ready = matches!(status, "ready" | "complete" | "finalizing");
     if !ready {
         return "pending";
@@ -71,13 +75,6 @@ fn telemetry_artifact_state(
     }
 }
 
-fn artifact_state_has_attention(
-    status: &str,
-    persisted_relative_path: Option<&str>,
-    expected_relative_path: Option<&str>,
-) -> bool {
-    matches!(
-        telemetry_artifact_state(status, persisted_relative_path, expected_relative_path),
-        "missing" | "drifted"
-    )
+fn artifact_state_has_attention(state: &str) -> bool {
+    matches!(state, "missing" | "drifted")
 }

@@ -44,11 +44,11 @@ pub(crate) use live::{
     fetch_authoritative_creator_live_control_response,
     fetch_authoritative_creator_live_runtime_response,
     fetch_creator_live_socket_presence_by_id_raw, get_creator_live, normalize_creator_live_profile,
-    publish_authoritative_creator_live_state, publish_creator_live_state,
-    publish_current_creator_live_state,
+    publish_authoritative_creator_live_state, publish_current_creator_live_state,
 };
 #[cfg(test)]
 pub(crate) use live::{
     fetch_creator_live_control_response, fetch_creator_live_runtime_response,
-    get_creator_live_socket_session, reconcile_creator_live_socket_session,
+    get_creator_live_socket_session, publish_creator_live_state,
+    reconcile_creator_live_socket_session,
 };

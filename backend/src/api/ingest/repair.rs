@@ -56,7 +56,7 @@ pub(super) async fn repair_runtime_output_authoritatively(
     .await?;
     sync_live_runtime_output_artifacts(&state, &session, &output).await?;
     persist_live_runtime_spec(&state, &session).await?;
-    publish_creator_live_state(&state, &session.creator_id).await?;
+    publish_current_creator_live_state(&state, &session.creator_id).await?;
 
     let mut record = fetch_admin_live_ingest_session_record(&state.pool, &session.id).await?;
     if let Some(output) = record.runtime_output.as_ref() {

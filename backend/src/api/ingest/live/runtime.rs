@@ -100,6 +100,6 @@ pub(crate) async fn report_live_runtime(
         }),
     )
     .await?;
-    publish_creator_live_state(&state, &session.creator_id).await?;
+    publish_current_creator_live_state(&state, &session.creator_id).await?;
     Ok(Json(output))
 }

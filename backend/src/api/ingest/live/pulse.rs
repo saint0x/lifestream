@@ -211,6 +211,6 @@ pub(crate) async fn heartbeat_live_ingest(
         }),
     )
     .await?;
-    publish_creator_live_state(&state, &session.creator_id).await?;
+    publish_current_creator_live_state(&state, &session.creator_id).await?;
     Ok(Json(refreshed_session))
 }

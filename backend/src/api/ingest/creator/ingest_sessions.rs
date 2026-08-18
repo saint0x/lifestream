@@ -93,7 +93,7 @@ pub(crate) async fn terminate_creator_live_ingest(
     )
     .await?;
 
-    publish_creator_live_state(&state, creator_id).await?;
+    publish_current_creator_live_state(&state, creator_id).await?;
     Ok(Json(
         fetch_live_ingest_session_by_id(&state.pool, creator_id, &session_id).await?,
     ))

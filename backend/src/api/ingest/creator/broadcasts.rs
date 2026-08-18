@@ -85,7 +85,7 @@ pub(crate) async fn start_broadcast(
     .execute(&state.pool)
     .await?;
 
-    publish_creator_live_state(&state, creator_id).await?;
+    publish_current_creator_live_state(&state, creator_id).await?;
     Ok(Json(broadcast))
 }
 
@@ -215,7 +215,7 @@ pub(crate) async fn end_broadcast(
         .await?;
     }
 
-    publish_creator_live_state(&state, creator_id).await?;
+    publish_current_creator_live_state(&state, creator_id).await?;
     Ok(Json(
         fetch_broadcast_by_id(&state.pool, creator_id, &id).await?,
     ))
@@ -261,7 +261,7 @@ pub(crate) async fn rotate_stream_key(
         .await?;
     }
 
-    publish_creator_live_state(&state, creator_id).await?;
+    publish_current_creator_live_state(&state, creator_id).await?;
     Ok(Json(contract_creator_profile(
         fetch_creator_profile(&state.pool, creator_id).await?,
     )))

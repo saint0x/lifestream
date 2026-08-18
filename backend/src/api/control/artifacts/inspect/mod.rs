@@ -234,6 +234,8 @@ pub(crate) fn describe_declared_live_runtime_artifact_health(
     let checked_at = Utc::now().to_rfc3339();
     let expected_manifest_relative_path = canonical_live_runtime_manifest_relative_path(session);
     let expected_archive_relative_path = canonical_live_runtime_archive_relative_path(session);
+    let collaboration_expected_relative_path =
+        declared_collaboration_expected_relative_path(session, output);
     let manifest = LiveRuntimeArtifactState {
         expected_relative_path: Some(expected_manifest_relative_path.clone()),
         persisted_relative_path: output.manifest_relative_path.clone(),
@@ -268,11 +270,32 @@ pub(crate) fn describe_declared_live_runtime_artifact_health(
             "archive",
         ),
     };
-    let collaboration = None;
-    let issues = [manifest.issue.clone(), archive.issue.clone()]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
+    let collaboration =
+        collaboration_expected_relative_path
+            .clone()
+            .map(|expected_relative_path| {
+                let issue = declared_collaboration_artifact_issue(output.last_error.as_deref());
+                LiveRuntimeArtifactState {
+                    expected_relative_path: Some(expected_relative_path.clone()),
+                    persisted_relative_path: Some(expected_relative_path),
+                    state: if issue.is_some() {
+                        "invalid".to_string()
+                    } else {
+                        "declared".to_string()
+                    },
+                    ready: true,
+                    valid: false,
+                    issue,
+                }
+            });
+    let issues = [
+        manifest.issue.clone(),
+        archive.issue.clone(),
+        collaboration.as_ref().and_then(|state| state.issue.clone()),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>();
 
     LiveRuntimeArtifactHealth {
         status: if issues.is_empty() {
@@ -290,4 +313,25 @@ pub(crate) fn describe_declared_live_runtime_artifact_health(
         collaboration,
         issues,
     }
+}
+
+fn declared_collaboration_expected_relative_path(
+    session: &LiveIngestSession,
+    output: &LiveRuntimeOutput,
+) -> Option<String> {
+    let collaboration_artifacts_expected = matches!(
+        output.packaging_status.as_str(),
+        "ready" | "complete" | "degraded" | "failed"
+    ) || matches!(
+        output.archive_status.as_str(),
+        "finalizing" | "complete" | "failed"
+    );
+    collaboration_artifacts_expected.then(|| collaboration_engine_relative_path(session))
+}
+
+fn declared_collaboration_artifact_issue(last_error: Option<&str>) -> Option<String> {
+    let last_error = last_error?;
+    last_error
+        .contains("collaboration")
+        .then(|| last_error.to_string())
 }

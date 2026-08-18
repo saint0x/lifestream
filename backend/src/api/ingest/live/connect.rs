@@ -148,7 +148,7 @@ pub(crate) async fn connect_live_ingest(
         )
         .await;
     }
-    publish_creator_live_state(&state, &creator.id).await?;
+    publish_current_creator_live_state(&state, &creator.id).await?;
     Ok(Json(IngestConnectResponse {
         session,
         ingest_token,

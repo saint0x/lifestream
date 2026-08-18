@@ -181,14 +181,15 @@ use control::{
     update_live_runtime_output, validate_live_ingest_session,
     validate_live_ingest_session_any_status, write_live_ingest_event,
 };
+#[cfg(test)]
+use creator::publish_creator_live_state;
 pub(crate) use creator::{
     build_creator_live_snapshot, contract_broadcast, contract_broadcasts, contract_creator_profile,
     contract_live_status, creator_live_channel_id,
     fetch_authoritative_creator_live_control_response,
     fetch_authoritative_creator_live_runtime_response,
     fetch_creator_live_socket_presence_by_id_raw, normalize_creator_live_profile,
-    publish_authoritative_creator_live_state, publish_creator_live_state,
-    publish_current_creator_live_state,
+    publish_authoritative_creator_live_state, publish_current_creator_live_state,
 };
 pub(crate) use creator::{
     fetch_content_purchase_by_id, fetch_creator_catalog_film_by_id,

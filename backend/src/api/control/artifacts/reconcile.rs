@@ -28,7 +28,7 @@ pub(crate) async fn reconcile_live_runtime_output_artifacts_background(
         let before = fetch_live_runtime_output_for_session(&state.pool, &session_id).await?;
         let after = reconcile_live_runtime_output_artifacts(&state, &session).await?;
         if runtime_output_changed(before.as_ref(), after.as_ref()) {
-            publish_creator_live_state(&state, &session.creator_id).await?;
+            publish_current_creator_live_state(&state, &session.creator_id).await?;
             reconciled += 1;
         }
     }

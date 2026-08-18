@@ -2,9 +2,10 @@ use super::*;
 use crate::api::collab::{
     build_collaboration_runtime_response_for_host, fetch_active_collaboration_session_for_broadcast,
 };
-use crate::api::control::fetch_terminalizable_live_ingest_sessions_for_broadcast;
 use crate::api::control::{
     build_collaboration_runtime_bundle, collaboration_transport_gap_from_topology,
+    fetch_active_live_ingest_session_unreconciled,
+    fetch_terminalizable_live_ingest_sessions_for_broadcast,
 };
 use crate::api::media::build_collaboration_media_runtime;
 
@@ -60,11 +61,15 @@ pub(super) async fn build_live_runtime_telemetry_collaboration(
     .await?
     .into_iter()
     .next()
-    .ok_or_else(|| {
-        AppError::Internal(
-            "active collaboration session missing corresponding live ingest session".to_string(),
-        )
-    })?;
+    .or(
+        match fetch_active_live_ingest_session_unreconciled(pool, &session.host_creator_id).await? {
+            Some(active) if active.broadcast_id == session.source_broadcast_id => Some(active),
+            _ => None,
+        },
+    );
+    let Some(live_session) = live_session else {
+        return Ok(None);
+    };
     let runtime = build_collaboration_runtime_response_for_host(pool, session.clone()).await?;
     let topology = runtime.topology;
     let bundle = build_collaboration_runtime_bundle(&live_session, &topology)?;
