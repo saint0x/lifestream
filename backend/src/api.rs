@@ -40,7 +40,7 @@ use crate::{
         CollaborationEventsQuery, CollaborationHostSummary, CollaborationInvite,
         CollaborationMirrorGrant, CollaborationMirrorPickup, CollaborationParticipant,
         CollaborationReconciliationAction, CollaborationReconciliationReport,
-        CollaborationRuntimeResponse, CollaborationRuntimeTopology, CollaborationSession,
+        CollaborationRuntimeResponse, CollaborationSession,
         CollaborationSessionView, CollaborationSocketPresence,
         CollaborationSocketPresenceReconciliationAction,
         CollaborationSocketPresenceReconciliationReport, CollaborationTopologyMember,
@@ -104,7 +104,7 @@ mod creator;
 mod dashboard;
 mod discovery;
 mod ingest;
-mod ingestctl;
+mod control;
 mod me;
 mod media;
 mod moderation;
@@ -224,10 +224,10 @@ use ingest::{
     terminate_live_ingest,
 };
 #[cfg(test)]
-use ingestctl::{
+use control::{
     canonical_live_runtime_archive_relative_path, canonical_live_runtime_manifest_relative_path,
 };
-use ingestctl::{
+use control::{
     close_live_ingest_session, count_live_ingest_sessions_for_broadcast,
     enqueue_creator_broadcast_ended_notification, ensure_live_stream_row,
     fetch_active_live_ingest_session, fetch_active_live_ingest_session_unreconciled,

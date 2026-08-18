@@ -1,5 +1,5 @@
 use super::*;
-use crate::api::ingestctl::reconcile_live_runtime_output_artifacts_background;
+use crate::api::control::reconcile_live_runtime_output_artifacts_background;
 
 pub(super) fn start_background_workers(state: SharedState) {
     tokio::spawn(async move {

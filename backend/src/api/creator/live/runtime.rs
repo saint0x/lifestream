@@ -1,5 +1,5 @@
 use super::*;
-use crate::api::ingestctl::{
+use crate::api::control::{
     build_live_runtime_advisory, describe_declared_live_runtime_artifact_health,
     describe_live_runtime_artifact_health,
     fetch_current_live_runtime_targets,

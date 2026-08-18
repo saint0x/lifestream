@@ -1,5 +1,5 @@
 use super::*;
-use crate::api::ingestctl::{
+use crate::api::control::{
     describe_live_runtime_artifact_health, reconcile_live_runtime_output_artifacts,
 };
 use crate::models::{

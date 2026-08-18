@@ -1,5 +1,5 @@
 use super::*;
-use crate::api::ingestctl::{
+use crate::api::control::{
     fetch_live_runtime_output_for_session, persist_live_runtime_spec, record_live_runtime_telemetry,
 };
 

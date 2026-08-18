@@ -1,5 +1,5 @@
 use super::*;
-use crate::api::ingestctl::fetch_live_runtime_targets_for_session;
+use crate::api::control::fetch_live_runtime_targets_for_session;
 
 async fn fetch_source_pickup_viewer_count(
     pool: &SqlitePool,

@@ -1,5 +1,5 @@
 use super::*;
-use crate::api::ingestctl::fetch_live_runtime_targets_for_session;
+use crate::api::control::fetch_live_runtime_targets_for_session;
 
 #[tokio::test]
 async fn collaboration_invite_read_self_heals_expired_pending_invite() -> AppResult<()> {

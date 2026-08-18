@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::CollaborationOutputRoute;
+use crate::models::{CollaborationOutputRoute, CollaborationParticipant};
 
 pub(super) fn mirror_output_is_authorized(
     active_grant: Option<&CollaborationMirrorGrant>,
@@ -134,4 +134,26 @@ pub(super) fn build_topology_outputs(
     }
 
     outputs
+}
+
+pub(super) fn planned_output_ids_for_participant(
+    session: &CollaborationSessionView,
+    participant: &CollaborationParticipant,
+    outputs: &[CollaborationOutputRoute],
+    host_output_participant_ids: &[String],
+) -> Vec<String> {
+    outputs
+        .iter()
+        .filter(|output| {
+            if participant.role == "host" || participant.publish_to_host {
+                output.id == format!("col-out-host-{}", session.id)
+                    || output.id == format!("col-out-archive-host-{}", session.id)
+                    || output.source_participant_ids == host_output_participant_ids
+            } else {
+                output.id == format!("col-out-mirror-{}", participant.id)
+                    || output.id == format!("col-out-archive-{}", participant.id)
+            }
+        })
+        .map(|output| output.id.clone())
+        .collect()
 }

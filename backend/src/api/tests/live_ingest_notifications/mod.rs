@@ -1,7 +1,7 @@
 use super::*;
-use crate::api::ingestctl::canonical_live_runtime_archive_staging_relative_path;
-use crate::api::ingestctl::canonical_live_runtime_spec_relative_path;
-use crate::api::ingestctl::reconcile_live_runtime_output_artifacts_background;
+use crate::api::control::canonical_live_runtime_archive_staging_relative_path;
+use crate::api::control::canonical_live_runtime_spec_relative_path;
+use crate::api::control::reconcile_live_runtime_output_artifacts_background;
 
 mod notify;
 mod runtime;

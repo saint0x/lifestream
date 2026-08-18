@@ -1,6 +1,6 @@
 use super::grants::{build_live_playback_grant, build_upload_playback_grant};
 use super::*;
-use crate::api::ingestctl::ensure_live_runtime_output_ready_for_playback;
+use crate::api::control::ensure_live_runtime_output_ready_for_playback;
 
 pub(crate) async fn create_upload_playback_session(
     State(state): State<SharedState>,

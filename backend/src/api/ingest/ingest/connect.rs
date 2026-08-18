@@ -1,5 +1,5 @@
 use super::*;
-use crate::api::ingestctl::record_live_runtime_telemetry;
+use crate::api::control::record_live_runtime_telemetry;
 
 pub(crate) async fn connect_live_ingest(
     State(state): State<SharedState>,
