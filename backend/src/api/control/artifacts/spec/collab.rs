@@ -3,7 +3,9 @@ use super::*;
 use crate::api::collab::{
     build_collaboration_runtime_response_for_host, fetch_active_collaboration_session_for_broadcast,
 };
-use crate::api::media::build_collaboration_media_runtime;
+use crate::api::media::{
+    build_collaboration_media_launch_runtime, build_collaboration_media_runtime,
+};
 use crate::api::mirror::sync_active_collaboration_mirror_pickups_for_session_and_publish;
 use crate::models::{
     CollaborationAudioRoute, CollaborationOutputRoute, CollaborationProgramRoute,
@@ -44,6 +46,13 @@ pub(super) async fn build_live_runtime_collaboration_spec(
     let topology = runtime.topology;
     let bundle = build_collaboration_runtime_bundle(session, &topology)?;
     let media = build_collaboration_media_runtime(&bundle)?;
+    let launch = build_collaboration_media_launch_runtime(
+        session,
+        &topology.contributions,
+        &topology.outputs,
+        topology.mix_minus_required,
+        &media,
+    )?;
 
     Ok(Some(LiveRuntimeCollaborationSpec {
         session_id: runtime.session.id,
@@ -69,6 +78,7 @@ pub(super) async fn build_live_runtime_collaboration_spec(
         engine: topology.engine,
         bundle,
         media,
+        launch,
         members: topology.members,
     }))
 }
@@ -126,18 +136,22 @@ pub(crate) fn build_collaboration_runtime_bundle(
                 .outputs
                 .iter()
                 .filter(move |output| program.output_ids.contains(&output.id))
-                .map(move |output| CollaborationRuntimeFanout {
-                    output_id: output.id.clone(),
-                    output_kind: output.output_kind.clone(),
-                    input_bus_id: format!("bus-program-{}", program.id),
-                    output_bus_id: format!("bus-output-{}", output.id),
-                    relative_path: collaboration_route_relative_path(session, output),
-                    target_creator_id: output.target_creator_id.clone(),
-                    target_broadcast_id: output.target_broadcast_id.clone(),
-                    route_state: output.route_state.clone(),
-                    playback_enabled: output.playback_enabled,
-                    recording_enabled: output.recording_enabled,
-                    mix_minus_required: output.mix_minus_required,
+                .filter_map(move |output| {
+                    collaboration_route_relative_path(session, output).map(|relative_path| {
+                        CollaborationRuntimeFanout {
+                            output_id: output.id.clone(),
+                            output_kind: output.output_kind.clone(),
+                            input_bus_id: format!("bus-program-{}", program.id),
+                            output_bus_id: format!("bus-output-{}", output.id),
+                            relative_path: Some(relative_path),
+                            target_creator_id: output.target_creator_id.clone(),
+                            target_broadcast_id: output.target_broadcast_id.clone(),
+                            route_state: output.route_state.clone(),
+                            playback_enabled: output.playback_enabled,
+                            recording_enabled: output.recording_enabled,
+                            mix_minus_required: output.mix_minus_required,
+                        }
+                    })
                 })
         })
         .collect::<Vec<_>>();
@@ -163,7 +177,7 @@ pub(crate) fn build_collaboration_runtime_bundle(
         })
         .collect::<Vec<_>>();
 
-    validate_runtime_bundle(topology, &attachments, &mixers, &fanouts, &returns)?;
+    validate_runtime_bundle(session, topology, &attachments, &mixers, &fanouts, &returns)?;
 
     Ok(CollaborationRuntimeBundle {
         bundle_mode: "media_runtime_v1".to_string(),
@@ -178,6 +192,7 @@ pub(crate) fn build_collaboration_runtime_bundle(
 }
 
 fn validate_runtime_bundle(
+    session: &LiveIngestSession,
     topology: &crate::models::CollaborationRuntimeTopology,
     attachments: &[CollaborationRuntimeAttachment],
     mixers: &[CollaborationRuntimeMixer],
@@ -201,6 +216,7 @@ fn validate_runtime_bundle(
     if topology
         .outputs
         .iter()
+        .filter(|output| collaboration_route_relative_path(session, output).is_some())
         .any(|output| !fanouts.iter().any(|fanout| fanout.output_id == output.id))
     {
         return Err(AppError::Internal(
@@ -221,7 +237,7 @@ fn validate_runtime_bundle(
     Ok(())
 }
 
-pub(in crate::api::control::artifacts) fn collaboration_route_relative_path(
+pub(crate) fn collaboration_route_relative_path(
     session: &LiveIngestSession,
     route: &CollaborationOutputRoute,
 ) -> Option<String> {
@@ -304,6 +320,13 @@ pub(in crate::api::control::artifacts) fn collaboration_media_relative_path(
 ) -> String {
     format!(
         "runtime/{}/{}/{}/collaboration/media.json",
+        session.creator_id, session.broadcast_id, session.id
+    )
+}
+
+pub(crate) fn collaboration_launch_relative_path(session: &LiveIngestSession) -> String {
+    format!(
+        "runtime/{}/{}/{}/collaboration/launch.json",
         session.creator_id, session.broadcast_id, session.id
     )
 }

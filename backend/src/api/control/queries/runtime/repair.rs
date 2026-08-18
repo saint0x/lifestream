@@ -88,6 +88,18 @@ pub(crate) async fn repair_live_runtime_output(
     } else {
         current.manifest_relative_path.clone()
     };
+    let manifest_relative_path = backfill_manifest_relative_path_if_required(
+        session,
+        input
+            .runtime_state
+            .as_deref()
+            .unwrap_or(current.runtime_state.as_str()),
+        input
+            .packaging_status
+            .as_deref()
+            .unwrap_or(current.packaging_status.as_str()),
+        manifest_relative_path,
+    );
     let archive_relative_path = if input.clear_archive_relative_path {
         None
     } else if let Some(value) = input.archive_relative_path.as_deref() {
@@ -186,6 +198,25 @@ pub(crate) async fn repair_live_runtime_output(
     )
     .await?;
     Ok((output, actions))
+}
+
+fn backfill_manifest_relative_path_if_required(
+    session: &LiveIngestSession,
+    runtime_state: &str,
+    packaging_status: &str,
+    manifest_relative_path: Option<String>,
+) -> Option<String> {
+    if manifest_relative_path.is_some() {
+        return manifest_relative_path;
+    }
+    if matches!(
+        runtime_state,
+        "packaging_active" | "packaging_degraded" | "archive_finalizing" | "archive_complete"
+    ) || matches!(packaging_status, "ready" | "complete" | "degraded")
+    {
+        return Some(canonical_live_runtime_manifest_relative_path(session));
+    }
+    None
 }
 
 pub(crate) async fn set_live_runtime_output_session_state(

@@ -1,6 +1,10 @@
 use super::*;
-use crate::api::control::artifacts::spec::collaboration_return_relative_path;
-use crate::api::media::build_collaboration_media_runtime;
+use crate::api::control::artifacts::spec::{
+    collaboration_launch_relative_path, collaboration_return_relative_path,
+};
+use crate::api::media::{
+    build_collaboration_media_launch_runtime, build_collaboration_media_runtime,
+};
 use std::collections::HashSet;
 
 #[derive(Clone, Debug, Default)]
@@ -26,9 +30,17 @@ pub(super) async fn inspect_live_runtime_collaboration_artifacts(
     let engine_relative_path = collaboration_engine_relative_path(session);
     let bundle_relative_path = collaboration_bundle_relative_path(session);
     let media_relative_path = collaboration_media_relative_path(session);
+    let launch_relative_path = collaboration_launch_relative_path(session);
     let runtime_output = fetch_live_runtime_output_for_session(&state.pool, &session.id).await?;
     let runtime_bundle = build_collaboration_runtime_bundle(session, &runtime.topology)?;
     let media_runtime = build_collaboration_media_runtime(&runtime_bundle)?;
+    let _launch_runtime = build_collaboration_media_launch_runtime(
+        session,
+        &runtime.topology.contributions,
+        &runtime.topology.outputs,
+        runtime.topology.mix_minus_required,
+        &media_runtime,
+    )?;
     let mut issues = Vec::new();
 
     validate_execution_plan_consistency(&runtime.topology.engine, &mut issues);
@@ -50,6 +62,13 @@ pub(super) async fn inspect_live_runtime_collaboration_artifacts(
         state,
         &media_relative_path,
         "collaboration media runtime",
+        &mut issues,
+    )
+    .await?;
+    validate_required_artifact_path(
+        state,
+        &launch_relative_path,
+        "collaboration launch runtime",
         &mut issues,
     )
     .await?;

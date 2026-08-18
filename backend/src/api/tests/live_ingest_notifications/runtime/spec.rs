@@ -1139,6 +1139,37 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .iter()
             .any(|id| id == &Value::String(collaboration_participant.id.clone()))
     );
+    assert_eq!(
+        ready_spec["collaboration"]["launch"]["launchMode"],
+        "ffmpeg_plan_v1"
+    );
+    assert!(
+        ready_spec["collaboration"]["launch"]["inputs"]
+            .as_array()
+            .expect("launch inputs array")
+            .iter()
+            .any(|input| {
+                input["participantId"] == collaboration_participant.id
+                    && input["mediaTransport"] == "srt"
+            })
+    );
+    assert!(
+        ready_spec["collaboration"]["launch"]["returns"]
+            .as_array()
+            .expect("launch returns array")
+            .iter()
+            .any(|target| {
+                target["participantId"] == collaboration_participant.id
+                    && target["mixMinusRequired"] == true
+            })
+    );
+    assert!(
+        ready_spec["collaboration"]["launch"]["steps"]
+            .as_array()
+            .expect("launch steps array")
+            .iter()
+            .any(|step| step["command"] == "ffmpeg")
+    );
     assert!(
         ready_spec["collaboration"]["engine"]["edges"]
             .as_array()

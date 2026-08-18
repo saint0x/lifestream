@@ -13,6 +13,7 @@ pub(super) fn build_target_detail(targets: &[LiveRuntimeTarget]) -> Value {
         "engineCount": targets.iter().filter(|target| target.target_kind == "engine").count(),
         "bundleCount": targets.iter().filter(|target| target.target_kind == "bundle").count(),
         "mediaCount": targets.iter().filter(|target| target.target_kind == "media").count(),
+        "launchCount": targets.iter().filter(|target| target.target_kind == "launch").count(),
         "hostChannelCount": targets.iter().filter(|target| target.target_kind == "host_channel").count(),
         "mirrorChannelCount": targets.iter().filter(|target| target.target_kind == "mirror_channel").count(),
         "sharedProgramMirrorChannelCount": targets
@@ -33,7 +34,7 @@ pub(super) fn build_target_detail(targets: &[LiveRuntimeTarget]) -> Value {
         "archiveCount": targets.iter().filter(|target| target.target_kind == "archive").count(),
         "collaborationCount": targets
             .iter()
-            .filter(|target| matches!(target.target_kind.as_str(), "host_channel" | "mirror_channel" | "archive" | "program" | "audio" | "return" | "engine" | "bundle" | "media"))
+            .filter(|target| matches!(target.target_kind.as_str(), "host_channel" | "mirror_channel" | "archive" | "program" | "audio" | "return" | "engine" | "bundle" | "media" | "launch"))
             .count(),
         "activeCount": targets.iter().filter(|target| target.route_state == "active").count(),
         "degradedCount": targets.iter().filter(|target| target.route_state == "degraded").count(),
@@ -43,7 +44,7 @@ pub(super) fn build_target_detail(targets: &[LiveRuntimeTarget]) -> Value {
         "states": targets.iter().map(|target| target.route_state.clone()).collect::<Vec<_>>(),
         "routes": targets
             .iter()
-            .filter(|target| matches!(target.target_kind.as_str(), "host_channel" | "mirror_channel" | "archive" | "program" | "audio" | "return" | "engine" | "bundle" | "media"))
+            .filter(|target| matches!(target.target_kind.as_str(), "host_channel" | "mirror_channel" | "archive" | "program" | "audio" | "return" | "engine" | "bundle" | "media" | "launch"))
             .map(|target| {
                 json!({
                     "kind": target.target_kind,

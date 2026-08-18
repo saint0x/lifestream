@@ -15,4 +15,7 @@ pub(crate) use playback::ensure_live_runtime_output_ready_for_playback;
 pub(crate) use reconcile::{
     reconcile_live_runtime_output_artifacts, reconcile_live_runtime_output_artifacts_background,
 };
-pub(crate) use spec::{build_collaboration_runtime_bundle, persist_live_runtime_spec};
+pub(crate) use spec::{
+    build_collaboration_runtime_bundle, collaboration_launch_relative_path,
+    collaboration_route_relative_path, persist_live_runtime_spec,
+};

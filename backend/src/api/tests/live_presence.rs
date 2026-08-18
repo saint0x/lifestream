@@ -81,6 +81,9 @@ async fn creator_live_authoritative_reads_reconcile_expired_collaboration_truth(
             publish_to_host: Some(true),
             mirror_to_guest_channel: Some(true),
             can_speak_in_chat: Some(true),
+            media_transport: None,
+            contribution_endpoint_url: None,
+            return_endpoint_url: None,
         }),
     )
     .await?

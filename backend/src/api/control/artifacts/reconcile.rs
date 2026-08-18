@@ -203,6 +203,9 @@ fn next_runtime_state_for_artifact_issues(
         };
     }
     if inspection.manifest_invalid || inspection.collaboration_invalid {
+        if matches!(current.packaging_status.as_str(), "pending" | "attached") {
+            return current.runtime_state.clone();
+        }
         return match current.runtime_state.as_str() {
             "disconnected" | "stale" | "failed" => current.runtime_state.clone(),
             _ => "packaging_degraded".to_string(),

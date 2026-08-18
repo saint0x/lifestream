@@ -48,6 +48,11 @@ pub(super) fn build_live_runtime_targets(
             collaboration,
             &now,
         ));
+        targets.push(build_collaboration_launch_target(
+            session,
+            collaboration,
+            &now,
+        ));
     }
 
     targets
@@ -326,6 +331,37 @@ fn build_collaboration_media_target(
     }
 }
 
+fn build_collaboration_launch_target(
+    session: &LiveIngestSession,
+    collaboration: &LiveRuntimeCollaborationSpec,
+    now: &str,
+) -> LiveRuntimeTarget {
+    LiveRuntimeTarget {
+        id: format!("lrt-launch-{}", session.id),
+        session_id: session.id.clone(),
+        creator_id: session.creator_id.clone(),
+        broadcast_id: session.broadcast_id.clone(),
+        target_kind: "launch".to_string(),
+        target_key: collaboration.launch.launch_mode.clone(),
+        target_label: "collaboration launch plan".to_string(),
+        route_state: launch_runtime_state(collaboration),
+        target_creator_id: Some(session.creator_id.clone()),
+        target_broadcast_id: Some(session.broadcast_id.clone()),
+        playback_enabled: false,
+        recording_enabled: false,
+        mix_minus_required: collaboration.mix_minus_required,
+        relative_path: Some(collaboration_launch_relative_path(session)),
+        source_participant_ids: collaboration
+            .launch
+            .inputs
+            .iter()
+            .map(|item| item.participant_id.clone())
+            .collect(),
+        created_at: now.to_string(),
+        updated_at: now.to_string(),
+    }
+}
+
 fn collaboration_engine_state(collaboration: &LiveRuntimeCollaborationSpec) -> String {
     if collaboration.engine.edges.is_empty() {
         "inactive".to_string()
@@ -380,6 +416,18 @@ fn media_runtime_state(collaboration: &LiveRuntimeCollaborationSpec) -> String {
                     .map(|item| item.route_state.as_str()),
             ),
     )
+}
+
+fn launch_runtime_state(collaboration: &LiveRuntimeCollaborationSpec) -> String {
+    if collaboration.launch.ready && !collaboration.launch.steps.is_empty() {
+        "active".to_string()
+    } else if !collaboration.launch.unresolved_participant_ids.is_empty() {
+        "pending_source".to_string()
+    } else if !collaboration.launch.inputs.is_empty() {
+        "armed".to_string()
+    } else {
+        "inactive".to_string()
+    }
 }
 
 fn route_state_from_iter<'a>(states: impl Iterator<Item = &'a str>) -> String {

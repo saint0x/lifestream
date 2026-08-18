@@ -6,7 +6,8 @@ mod queries;
 mod reconciliation;
 
 pub(crate) use artifacts::{
-    build_collaboration_runtime_bundle, describe_declared_live_runtime_artifact_health,
+    build_collaboration_runtime_bundle, collaboration_launch_relative_path,
+    collaboration_route_relative_path, describe_declared_live_runtime_artifact_health,
     describe_live_runtime_artifact_health, ensure_live_runtime_output_ready_for_playback,
     persist_live_runtime_spec, reconcile_live_runtime_output_artifacts,
     reconcile_live_runtime_output_artifacts_background, sync_live_runtime_output_artifacts,

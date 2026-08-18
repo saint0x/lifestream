@@ -221,6 +221,67 @@ pub struct CollaborationMediaRuntime {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CollaborationMediaLaunchInput {
+    pub participant_id: Id,
+    pub user_id: Id,
+    pub creator_id: Option<Id>,
+    pub media_transport: String,
+    pub input_url: String,
+    pub input_index: i64,
+    pub mix_minus_required: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationMediaLaunchReturn {
+    pub participant_id: Id,
+    pub media_transport: String,
+    pub output_url: String,
+    pub source_participant_ids: Vec<Id>,
+    pub mix_minus_required: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationMediaLaunchArtifactOutput {
+    pub output_id: Id,
+    pub output_kind: String,
+    pub relative_path: String,
+    pub route_state: String,
+    pub source_participant_ids: Vec<Id>,
+    pub playback_enabled: bool,
+    pub recording_enabled: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationMediaLaunchStep {
+    pub step_kind: String,
+    pub command: String,
+    pub args: Vec<String>,
+    pub filter_complex: Option<String>,
+    pub input_participant_ids: Vec<Id>,
+    pub return_participant_ids: Vec<Id>,
+    pub artifact_output_ids: Vec<Id>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationMediaLaunchRuntime {
+    pub launch_mode: String,
+    pub worker_family: String,
+    pub audio_codec: String,
+    pub ready: bool,
+    pub unresolved_participant_ids: Vec<Id>,
+    pub unresolved_reasons: Vec<String>,
+    pub inputs: Vec<CollaborationMediaLaunchInput>,
+    pub returns: Vec<CollaborationMediaLaunchReturn>,
+    pub artifact_outputs: Vec<CollaborationMediaLaunchArtifactOutput>,
+    pub steps: Vec<CollaborationMediaLaunchStep>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CollaborationExecutionPlan {
     pub execution_mode: String,
     pub fanout_mode: String,
