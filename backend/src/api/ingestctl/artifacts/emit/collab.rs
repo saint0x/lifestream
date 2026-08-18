@@ -27,6 +27,7 @@ pub(super) async fn emit_collaboration_route_artifacts(
     for route in &runtime.topology.audio {
         emit_collaboration_audio_artifact(state, session, route).await?;
     }
+    emit_collaboration_engine_artifact(state, session, &runtime.topology.engine).await?;
     Ok(())
 }
 
@@ -191,6 +192,23 @@ async fn emit_collaboration_audio_artifact(
     tokio::fs::write(
         &path,
         serde_json::to_vec_pretty(route).map_err(|error| AppError::Internal(error.to_string()))?,
+    )
+    .await
+    .map_err(AppError::Io)?;
+    Ok(())
+}
+
+async fn emit_collaboration_engine_artifact(
+    state: &SharedState,
+    session: &LiveIngestSession,
+    engine: &CollaborationExecutionPlan,
+) -> AppResult<()> {
+    let relative_path = collaboration_engine_relative_path(session);
+    let path = media_path_for_relative(state, &relative_path);
+    ensure_parent_dir(&path).await?;
+    tokio::fs::write(
+        &path,
+        serde_json::to_vec_pretty(engine).map_err(|error| AppError::Internal(error.to_string()))?,
     )
     .await
     .map_err(AppError::Io)?;

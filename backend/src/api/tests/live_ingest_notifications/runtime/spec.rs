@@ -439,6 +439,11 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         .iter()
         .filter(|target| target.target_kind == "audio")
         .count() as i64;
+    let engine_targets = runtime
+        .active_runtime_targets
+        .iter()
+        .filter(|target| target.target_kind == "engine")
+        .count() as i64;
     let host_channel_targets = runtime
         .active_runtime_targets
         .iter()
@@ -520,6 +525,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         audio_targets
     );
     assert_eq!(
+        runtime.telemetry_summary.peak_engine_target_count,
+        engine_targets
+    );
+    assert_eq!(
         runtime.telemetry_summary.peak_host_channel_count,
         host_channel_targets
     );
@@ -588,6 +597,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         Some(audio_targets)
     );
     assert_eq!(
+        runtime.telemetry_summary.last_engine_target_count,
+        Some(engine_targets)
+    );
+    assert_eq!(
         runtime.telemetry_summary.last_host_channel_count,
         Some(host_channel_targets)
     );
@@ -642,6 +655,7 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             && sample.detail["targets"]["collaborationCount"] == collaboration_targets
             && sample.detail["targets"]["programCount"] == program_targets
             && sample.detail["targets"]["audioCount"] == audio_targets
+            && sample.detail["targets"]["engineCount"] == engine_targets
             && sample.detail["targets"]["hostChannelCount"] == host_channel_targets
             && sample.detail["targets"]["mirrorChannelCount"] == mirror_channel_targets
             && sample.detail["targets"]["sharedProgramMirrorChannelCount"]
@@ -692,6 +706,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         connected.session.id,
         collaboration_participant.id
     );
+    let expected_engine = format!(
+        "runtime/{}/{}/{}/collaboration/engine.json",
+        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
+    );
     assert_eq!(
         ready_spec["archive"]["outputRelativePath"],
         expected_host_route_archive.clone()
@@ -741,6 +759,12 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             && target.relative_path.as_deref() == Some(expected_guest_audio.as_str())
             && target.mix_minus_required
     }));
+    assert!(runtime.active_runtime_targets.iter().any(|target| {
+        target.target_kind == "engine"
+            && target.target_key == "topology_graph_v1"
+            && target.relative_path.as_deref() == Some(expected_engine.as_str())
+            && target.mix_minus_required
+    }));
     assert!(!runtime.active_runtime_targets.iter().any(|target| {
         target.target_kind == "archive" && target.target_key == "primary"
     }));
@@ -778,6 +802,32 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .map_err(AppError::Io)?
             .len()
             > 0
+    );
+    assert!(
+        tokio::fs::metadata(media_path_for_relative(&state, &expected_engine))
+            .await
+            .map_err(AppError::Io)?
+            .len()
+            > 0
+    );
+    assert_eq!(
+        ready_spec["collaboration"]["engine"]["executionMode"],
+        "topology_graph_v1"
+    );
+    assert_eq!(
+        ready_spec["collaboration"]["engine"]["fanoutMode"],
+        "mirrored_collaboration"
+    );
+    assert_eq!(
+        ready_spec["collaboration"]["engine"]["audioMode"],
+        "mix_minus"
+    );
+    assert!(
+        ready_spec["collaboration"]["engine"]["edges"]
+            .as_array()
+            .expect("execution edges array")
+            .iter()
+            .any(|edge| edge["edgeKind"] == "program_to_audio_return")
     );
     let record =
         fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)

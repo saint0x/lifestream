@@ -126,6 +126,8 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
                 AS peak_program_target_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.audioCount') AS INTEGER), 0))
                 AS peak_audio_target_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.engineCount') AS INTEGER), 0))
+                AS peak_engine_target_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.hostChannelCount') AS INTEGER), 0))
                 AS peak_host_channel_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.mirrorChannelCount') AS INTEGER), 0))
@@ -255,6 +257,9 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         peak_audio_target_count: total_row
             .get::<Option<i64>, _>("peak_audio_target_count")
             .unwrap_or(0),
+        peak_engine_target_count: total_row
+            .get::<Option<i64>, _>("peak_engine_target_count")
+            .unwrap_or(0),
         peak_host_channel_count: total_row
             .get::<Option<i64>, _>("peak_host_channel_count")
             .unwrap_or(0),
@@ -348,6 +353,9 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         last_audio_target_count: latest_row
             .as_ref()
             .and_then(|row| row.get("audio_target_count")),
+        last_engine_target_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("engine_target_count")),
         last_host_channel_count: latest_row
             .as_ref()
             .and_then(|row| row.get("host_channel_count")),
@@ -416,6 +424,7 @@ async fn fetch_latest_telemetry_row(
             CAST(json_extract(detail_json, '$.targets.collaborationCount') AS INTEGER) AS collaboration_target_count,
             CAST(json_extract(detail_json, '$.targets.programCount') AS INTEGER) AS program_target_count,
             CAST(json_extract(detail_json, '$.targets.audioCount') AS INTEGER) AS audio_target_count,
+            CAST(json_extract(detail_json, '$.targets.engineCount') AS INTEGER) AS engine_target_count,
             CAST(json_extract(detail_json, '$.targets.hostChannelCount') AS INTEGER) AS host_channel_count,
             CAST(json_extract(detail_json, '$.targets.mirrorChannelCount') AS INTEGER) AS mirror_channel_count,
             CAST(json_extract(detail_json, '$.targets.sharedProgramMirrorChannelCount') AS INTEGER)

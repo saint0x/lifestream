@@ -18,8 +18,8 @@ use doc::{
 };
 use health::build_live_runtime_health_spec;
 pub(in crate::api::ingestctl::artifacts) use collab::{
-    collaboration_audio_relative_path, collaboration_program_relative_path,
-    collaboration_route_relative_path,
+    collaboration_audio_relative_path, collaboration_engine_relative_path,
+    collaboration_program_relative_path, collaboration_route_relative_path,
 };
 pub(in crate::api::ingestctl::artifacts) use variant::{
     LiveRuntimeVariantSpec, build_live_runtime_variant_specs,
@@ -357,6 +357,47 @@ fn build_live_runtime_targets(
                 updated_at: now.clone(),
             });
         }
+        targets.push(LiveRuntimeTarget {
+            id: format!("lrt-engine-{}", session.id),
+            session_id: session.id.clone(),
+            creator_id: session.creator_id.clone(),
+            broadcast_id: session.broadcast_id.clone(),
+            target_kind: "engine".to_string(),
+            target_key: collaboration.engine.execution_mode.clone(),
+            target_label: "collaboration engine".to_string(),
+            route_state: if collaboration.engine.edges.is_empty() {
+                "inactive".to_string()
+            } else if collaboration
+                .engine
+                .nodes
+                .iter()
+                .any(|node| node.route_state == "degraded")
+            {
+                "degraded".to_string()
+            } else if collaboration
+                .engine
+                .nodes
+                .iter()
+                .any(|node| matches!(node.route_state.as_str(), "active" | "live" | "attached"))
+            {
+                "active".to_string()
+            } else {
+                "armed".to_string()
+            },
+            target_creator_id: Some(session.creator_id.clone()),
+            target_broadcast_id: Some(session.broadcast_id.clone()),
+            playback_enabled: false,
+            recording_enabled: false,
+            mix_minus_required: collaboration.mix_minus_required,
+            relative_path: Some(collaboration_engine_relative_path(session)),
+            source_participant_ids: collaboration
+                .contributions
+                .iter()
+                .map(|item| item.participant_id.clone())
+                .collect(),
+            created_at: now.clone(),
+            updated_at: now.clone(),
+        });
     }
 
     targets

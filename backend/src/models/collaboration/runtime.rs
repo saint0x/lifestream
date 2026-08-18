@@ -60,6 +60,39 @@ pub struct CollaborationAudioRoute {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CollaborationExecutionNode {
+    pub id: Id,
+    pub node_kind: String,
+    pub route_state: String,
+    pub participant_id: Option<Id>,
+    pub target_creator_id: Option<Id>,
+    pub target_broadcast_id: Option<Id>,
+    pub mix_minus_required: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationExecutionEdge {
+    pub id: Id,
+    pub edge_kind: String,
+    pub from_node_id: Id,
+    pub to_node_id: Id,
+    pub route_state: String,
+    pub excluded_participant_ids: Vec<Id>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationExecutionPlan {
+    pub execution_mode: String,
+    pub fanout_mode: String,
+    pub audio_mode: String,
+    pub nodes: Vec<CollaborationExecutionNode>,
+    pub edges: Vec<CollaborationExecutionEdge>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CollaborationTopologyMember {
     pub participant_id: Id,
     pub user_id: Id,
@@ -94,6 +127,7 @@ pub struct CollaborationRuntimeTopology {
     pub outputs: Vec<CollaborationOutputRoute>,
     pub programs: Vec<CollaborationProgramRoute>,
     pub audio: Vec<CollaborationAudioRoute>,
+    pub engine: CollaborationExecutionPlan,
     pub members: Vec<CollaborationTopologyMember>,
 }
 

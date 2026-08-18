@@ -1,8 +1,8 @@
 use super::*;
 use crate::models::{
-    CollaborationAudioRoute, CollaborationContributionAttachment, CollaborationOutputRoute,
-    CollaborationProgramRoute, CollaborationTopologyMember, LiveRuntimeAdvisory,
-    LiveRuntimeArtifactHealth, LiveSourceProbe, LiveSourceValidationReport,
+    CollaborationAudioRoute, CollaborationContributionAttachment, CollaborationExecutionPlan,
+    CollaborationOutputRoute, CollaborationProgramRoute, CollaborationTopologyMember,
+    LiveRuntimeAdvisory, LiveRuntimeArtifactHealth, LiveSourceProbe, LiveSourceValidationReport,
 };
 use serde::Serialize;
 
@@ -132,6 +132,7 @@ pub(super) struct LiveRuntimeCollaborationSpec {
     pub(super) outputs: Vec<CollaborationOutputRoute>,
     pub(super) programs: Vec<CollaborationProgramRoute>,
     pub(super) audio: Vec<CollaborationAudioRoute>,
+    pub(super) engine: CollaborationExecutionPlan,
     pub(super) members: Vec<CollaborationTopologyMember>,
 }
 

@@ -59,6 +59,7 @@ pub(super) async fn build_live_runtime_collaboration_spec(
         outputs: topology.outputs,
         programs: topology.programs,
         audio: topology.audio,
+        engine: topology.engine,
         members: topology.members,
     }))
 }
@@ -110,5 +111,14 @@ pub(in crate::api::ingestctl::artifacts) fn collaboration_audio_relative_path(
     format!(
         "runtime/{}/{}/{}/collaboration/audio/{}.json",
         session.creator_id, session.broadcast_id, session.id, route.participant_id
+    )
+}
+
+pub(in crate::api::ingestctl::artifacts) fn collaboration_engine_relative_path(
+    session: &LiveIngestSession,
+) -> String {
+    format!(
+        "runtime/{}/{}/{}/collaboration/engine.json",
+        session.creator_id, session.broadcast_id, session.id
     )
 }
