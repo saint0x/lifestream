@@ -19,4 +19,4 @@ Lifestream is a streaming platform that combines creator-led live broadcasting w
 
 ## Status
 
-The control plane is live and under active hardening. Remaining work is concentrated in the deeper media runtime path, especially collaboration routing, mirrored output wiring, and final live-runtime closure.
+Core platform flows are in place and actively being hardened for launch. The remaining work is concentrated in the live media path, especially collaborative stream orchestration, mirrored co-stream output, and final runtime completion.
