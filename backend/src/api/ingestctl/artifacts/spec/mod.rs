@@ -17,7 +17,10 @@ use doc::{
     LiveRuntimeSpecRuntime, LiveRuntimeSpecSession, LiveRuntimeTelemetrySpec,
 };
 use health::build_live_runtime_health_spec;
-pub(in crate::api::ingestctl::artifacts) use collab::collaboration_route_relative_path;
+pub(in crate::api::ingestctl::artifacts) use collab::{
+    collaboration_audio_relative_path, collaboration_program_relative_path,
+    collaboration_route_relative_path,
+};
 pub(in crate::api::ingestctl::artifacts) use variant::{
     LiveRuntimeVariantSpec, build_live_runtime_variant_specs,
 };
@@ -308,6 +311,48 @@ fn build_live_runtime_targets(
                 mix_minus_required: route.mix_minus_required,
                 relative_path: collaboration_route_relative_path(session, route),
                 source_participant_ids: route.source_participant_ids.clone(),
+                created_at: now.clone(),
+                updated_at: now.clone(),
+            });
+        }
+        for program in &collaboration.programs {
+            targets.push(LiveRuntimeTarget {
+                id: format!("lrt-program-{}", program.id),
+                session_id: session.id.clone(),
+                creator_id: session.creator_id.clone(),
+                broadcast_id: session.broadcast_id.clone(),
+                target_kind: "program".to_string(),
+                target_key: program.id.clone(),
+                target_label: program.program_kind.replace('_', " "),
+                route_state: program.route_state.clone(),
+                target_creator_id: program.target_creator_id.clone(),
+                target_broadcast_id: program.target_broadcast_id.clone(),
+                playback_enabled: program.playback_enabled,
+                recording_enabled: program.recording_enabled,
+                mix_minus_required: program.mix_minus_required,
+                relative_path: Some(collaboration_program_relative_path(session, program)),
+                source_participant_ids: program.source_participant_ids.clone(),
+                created_at: now.clone(),
+                updated_at: now.clone(),
+            });
+        }
+        for audio in &collaboration.audio {
+            targets.push(LiveRuntimeTarget {
+                id: format!("lrt-audio-{}-{}", session.id, audio.participant_id),
+                session_id: session.id.clone(),
+                creator_id: session.creator_id.clone(),
+                broadcast_id: session.broadcast_id.clone(),
+                target_kind: "audio".to_string(),
+                target_key: audio.participant_id.clone(),
+                target_label: format!("audio {}", audio.route_kind.replace('_', " ")),
+                route_state: audio.route_state.clone(),
+                target_creator_id: audio.creator_id.clone(),
+                target_broadcast_id: Some(session.broadcast_id.clone()),
+                playback_enabled: audio.receive_program_audio,
+                recording_enabled: false,
+                mix_minus_required: audio.mix_minus_required,
+                relative_path: Some(collaboration_audio_relative_path(session, audio)),
+                source_participant_ids: audio.upstream_participant_ids.clone(),
                 created_at: now.clone(),
                 updated_at: now.clone(),
             });

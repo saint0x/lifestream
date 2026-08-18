@@ -21,6 +21,12 @@ pub(super) async fn emit_collaboration_route_artifacts(
     for route in &runtime.topology.outputs {
         emit_collaboration_route_artifact(state, session, route, &variants, output).await?;
     }
+    for program in &runtime.topology.programs {
+        emit_collaboration_program_artifact(state, session, program).await?;
+    }
+    for route in &runtime.topology.audio {
+        emit_collaboration_audio_artifact(state, session, route).await?;
+    }
     Ok(())
 }
 
@@ -154,5 +160,39 @@ async fn emit_routed_variant_media_placeholders(
             .await
             .map_err(AppError::Io)?;
     }
+    Ok(())
+}
+
+async fn emit_collaboration_program_artifact(
+    state: &SharedState,
+    session: &LiveIngestSession,
+    program: &CollaborationProgramRoute,
+) -> AppResult<()> {
+    let relative_path = collaboration_program_relative_path(session, program);
+    let path = media_path_for_relative(state, &relative_path);
+    ensure_parent_dir(&path).await?;
+    tokio::fs::write(
+        &path,
+        serde_json::to_vec_pretty(program).map_err(|error| AppError::Internal(error.to_string()))?,
+    )
+    .await
+    .map_err(AppError::Io)?;
+    Ok(())
+}
+
+async fn emit_collaboration_audio_artifact(
+    state: &SharedState,
+    session: &LiveIngestSession,
+    route: &CollaborationAudioRoute,
+) -> AppResult<()> {
+    let relative_path = collaboration_audio_relative_path(session, route);
+    let path = media_path_for_relative(state, &relative_path);
+    ensure_parent_dir(&path).await?;
+    tokio::fs::write(
+        &path,
+        serde_json::to_vec_pretty(route).map_err(|error| AppError::Internal(error.to_string()))?,
+    )
+    .await
+    .map_err(AppError::Io)?;
     Ok(())
 }

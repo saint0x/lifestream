@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) async fn setup_test_state() -> AppResult<(SharedState, CreatorProfile)> {
+pub(crate) async fn setup_test_state() -> AppResult<(SharedState, CreatorProfile)> {
     let test_id = Uuid::new_v4().to_string();
     let db_path = std::env::temp_dir().join(format!("lifestream-test-{test_id}.db"));
     let media_root = std::env::temp_dir().join(format!("lifestream-media-{test_id}"));

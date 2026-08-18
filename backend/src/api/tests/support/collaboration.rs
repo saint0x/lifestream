@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) async fn insert_ready_collaboration_broadcast(
+pub(crate) async fn insert_ready_collaboration_broadcast(
     pool: &SqlitePool,
     creator: &CreatorProfile,
 ) -> AppResult<Broadcast> {
@@ -60,7 +60,7 @@ pub(super) async fn insert_ready_collaboration_broadcast(
     Ok(broadcast)
 }
 
-pub(super) async fn insert_shared_chat_collaboration_for_current_broadcast(
+pub(crate) async fn insert_shared_chat_collaboration_for_current_broadcast(
     pool: &SqlitePool,
     host_creator: &CreatorProfile,
     guest_creator_id: &str,
@@ -147,7 +147,7 @@ pub(super) async fn insert_shared_chat_collaboration_for_current_broadcast(
     ))
 }
 
-pub(super) async fn insert_active_collaboration_session(
+pub(crate) async fn insert_active_collaboration_session(
     pool: &SqlitePool,
     host_creator: &CreatorProfile,
     guest_creator_id: &str,
@@ -264,7 +264,7 @@ pub(super) async fn insert_active_collaboration_session(
     ))
 }
 
-pub(super) async fn insert_mirror_grant(
+pub(crate) async fn insert_mirror_grant(
     pool: &SqlitePool,
     session: &CollaborationSession,
     participant: &CollaborationParticipant,
@@ -295,7 +295,7 @@ pub(super) async fn insert_mirror_grant(
     fetch_collaboration_mirror_grant_by_id(pool, &grant_id).await
 }
 
-pub(super) async fn insert_collaboration_participant(
+pub(crate) async fn insert_collaboration_participant(
     pool: &SqlitePool,
     session_id: &str,
     user_id: &str,
@@ -344,7 +344,7 @@ pub(super) async fn insert_collaboration_participant(
     fetch_collaboration_participant_by_id(pool, &participant_id).await
 }
 
-pub(super) async fn insert_test_user_with_creator_profile(
+pub(crate) async fn insert_test_user_with_creator_profile(
     pool: &SqlitePool,
     user_id: &str,
     handle: &str,
@@ -403,7 +403,7 @@ pub(super) async fn insert_test_user_with_creator_profile(
     Ok(())
 }
 
-pub(super) async fn insert_collaboration_socket_session(
+pub(crate) async fn insert_collaboration_socket_session(
     pool: &SqlitePool,
     session_id: &str,
     user_id: &str,
@@ -435,7 +435,7 @@ pub(super) async fn insert_collaboration_socket_session(
     Ok(())
 }
 
-pub(super) async fn publish_test_collaboration_event(
+pub(crate) async fn publish_test_collaboration_event(
     state: &SharedState,
     session_id: &str,
     participant_id: &str,

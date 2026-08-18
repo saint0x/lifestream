@@ -340,6 +340,8 @@ fn build_live_runtime_telemetry_detail(
             "playbackEnabledCount": targets.iter().filter(|target| target.playback_enabled).count(),
             "recordingEnabledCount": targets.iter().filter(|target| target.recording_enabled).count(),
             "variantCount": targets.iter().filter(|target| target.target_kind == "variant").count(),
+            "programCount": targets.iter().filter(|target| target.target_kind == "program").count(),
+            "audioCount": targets.iter().filter(|target| target.target_kind == "audio").count(),
             "hostChannelCount": targets.iter().filter(|target| target.target_kind == "host_channel").count(),
             "mirrorChannelCount": targets.iter().filter(|target| target.target_kind == "mirror_channel").count(),
             "sharedProgramMirrorChannelCount": targets
@@ -360,7 +362,7 @@ fn build_live_runtime_telemetry_detail(
             "archiveCount": targets.iter().filter(|target| target.target_kind == "archive").count(),
             "collaborationCount": targets
                 .iter()
-                .filter(|target| matches!(target.target_kind.as_str(), "host_channel" | "mirror_channel" | "archive"))
+                .filter(|target| matches!(target.target_kind.as_str(), "host_channel" | "mirror_channel" | "archive" | "program" | "audio"))
                 .count(),
             "activeCount": targets.iter().filter(|target| target.route_state == "active").count(),
             "degradedCount": targets.iter().filter(|target| target.route_state == "degraded").count(),
@@ -373,7 +375,7 @@ fn build_live_runtime_telemetry_detail(
             "states": targets.iter().map(|target| target.route_state.clone()).collect::<Vec<_>>(),
             "routes": targets
                 .iter()
-                .filter(|target| matches!(target.target_kind.as_str(), "host_channel" | "mirror_channel" | "archive"))
+                .filter(|target| matches!(target.target_kind.as_str(), "host_channel" | "mirror_channel" | "archive" | "program" | "audio"))
                 .map(|target| {
                     json!({
                         "kind": target.target_kind,

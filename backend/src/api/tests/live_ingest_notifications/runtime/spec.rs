@@ -1,4 +1,5 @@
 use super::*;
+use serde_json::json;
 
 #[tokio::test]
 async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> AppResult<()> {
@@ -424,9 +425,19 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         .filter(|target| {
             matches!(
                 target.target_kind.as_str(),
-                "host_channel" | "mirror_channel" | "archive"
+                "host_channel" | "mirror_channel" | "archive" | "program" | "audio"
             )
         })
+        .count() as i64;
+    let program_targets = runtime
+        .active_runtime_targets
+        .iter()
+        .filter(|target| target.target_kind == "program")
+        .count() as i64;
+    let audio_targets = runtime
+        .active_runtime_targets
+        .iter()
+        .filter(|target| target.target_kind == "audio")
         .count() as i64;
     let host_channel_targets = runtime
         .active_runtime_targets
@@ -501,6 +512,14 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         collaboration_targets
     );
     assert_eq!(
+        runtime.telemetry_summary.peak_program_target_count,
+        program_targets
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_audio_target_count,
+        audio_targets
+    );
+    assert_eq!(
         runtime.telemetry_summary.peak_host_channel_count,
         host_channel_targets
     );
@@ -561,6 +580,14 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         Some(collaboration_targets)
     );
     assert_eq!(
+        runtime.telemetry_summary.last_program_target_count,
+        Some(program_targets)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_audio_target_count,
+        Some(audio_targets)
+    );
+    assert_eq!(
         runtime.telemetry_summary.last_host_channel_count,
         Some(host_channel_targets)
     );
@@ -613,6 +640,8 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             && sample.detail["targets"]["playbackEnabledCount"] == playback_enabled_targets
             && sample.detail["targets"]["recordingEnabledCount"] == recording_enabled_targets
             && sample.detail["targets"]["collaborationCount"] == collaboration_targets
+            && sample.detail["targets"]["programCount"] == program_targets
+            && sample.detail["targets"]["audioCount"] == audio_targets
             && sample.detail["targets"]["hostChannelCount"] == host_channel_targets
             && sample.detail["targets"]["mirrorChannelCount"] == mirror_channel_targets
             && sample.detail["targets"]["sharedProgramMirrorChannelCount"]
@@ -641,6 +670,27 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
     let expected_host_route_archive = format!(
         "archive/{}/{}/col-out-archive-host-{}/final.mp4",
         creator.id, collaboration_session.source_broadcast_id, collaboration_session.id
+    );
+    let expected_host_program = format!(
+        "runtime/{}/{}/{}/collaboration/programs/col-program-host-{}.json",
+        connected.session.creator_id,
+        connected.session.broadcast_id,
+        connected.session.id,
+        collaboration_session.id
+    );
+    let expected_guest_program = format!(
+        "runtime/{}/{}/{}/collaboration/programs/col-program-{}.json",
+        connected.session.creator_id,
+        connected.session.broadcast_id,
+        connected.session.id,
+        collaboration_participant.id
+    );
+    let expected_guest_audio = format!(
+        "runtime/{}/{}/{}/collaboration/audio/{}.json",
+        connected.session.creator_id,
+        connected.session.broadcast_id,
+        connected.session.id,
+        collaboration_participant.id
     );
     assert_eq!(
         ready_spec["archive"]["outputRelativePath"],
@@ -674,6 +724,23 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             && target.target_key == format!("col-out-archive-host-{}", collaboration_session.id)
             && target.relative_path.as_deref() == Some(expected_host_route_archive.as_str())
     }));
+    assert!(runtime.active_runtime_targets.iter().any(|target| {
+        target.target_kind == "program"
+            && target.target_key == format!("col-program-host-{}", collaboration_session.id)
+            && target.relative_path.as_deref() == Some(expected_host_program.as_str())
+            && target.mix_minus_required
+    }));
+    assert!(runtime.active_runtime_targets.iter().any(|target| {
+        target.target_kind == "program"
+            && target.target_key == format!("col-program-{}", collaboration_participant.id)
+            && target.relative_path.as_deref() == Some(expected_guest_program.as_str())
+    }));
+    assert!(runtime.active_runtime_targets.iter().any(|target| {
+        target.target_kind == "audio"
+            && target.target_key == collaboration_participant.id
+            && target.relative_path.as_deref() == Some(expected_guest_audio.as_str())
+            && target.mix_minus_required
+    }));
     assert!(!runtime.active_runtime_targets.iter().any(|target| {
         target.target_kind == "archive" && target.target_key == "primary"
     }));
@@ -686,6 +753,27 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
     );
     assert!(
         tokio::fs::metadata(media_path_for_relative(&state, &expected_host_route_archive))
+            .await
+            .map_err(AppError::Io)?
+            .len()
+            > 0
+    );
+    assert!(
+        tokio::fs::metadata(media_path_for_relative(&state, &expected_host_program))
+            .await
+            .map_err(AppError::Io)?
+            .len()
+            > 0
+    );
+    assert!(
+        tokio::fs::metadata(media_path_for_relative(&state, &expected_guest_program))
+            .await
+            .map_err(AppError::Io)?
+            .len()
+            > 0
+    );
+    assert!(
+        tokio::fs::metadata(media_path_for_relative(&state, &expected_guest_audio))
             .await
             .map_err(AppError::Io)?
             .len()
@@ -766,4 +854,3 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
 
     Ok(())
 }
-

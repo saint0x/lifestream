@@ -4,7 +4,7 @@ use crate::api::collab::{
     build_collaboration_runtime_response_for_host, fetch_active_collaboration_session_for_broadcast,
 };
 use crate::api::mirror::sync_active_collaboration_mirror_pickups_for_session_and_publish;
-use crate::models::CollaborationOutputRoute;
+use crate::models::{CollaborationAudioRoute, CollaborationOutputRoute, CollaborationProgramRoute};
 
 pub(super) async fn sync_runtime_target_dependents(
     state: &SharedState,
@@ -91,4 +91,24 @@ pub(in crate::api::ingestctl::artifacts) fn collaboration_route_relative_path(
                 format!("runtime/{creator_id}/{broadcast_id}/{}/target", route.id)
             }),
     }
+}
+
+pub(in crate::api::ingestctl::artifacts) fn collaboration_program_relative_path(
+    session: &LiveIngestSession,
+    program: &CollaborationProgramRoute,
+) -> String {
+    format!(
+        "runtime/{}/{}/{}/collaboration/programs/{}.json",
+        session.creator_id, session.broadcast_id, session.id, program.id
+    )
+}
+
+pub(in crate::api::ingestctl::artifacts) fn collaboration_audio_relative_path(
+    session: &LiveIngestSession,
+    route: &CollaborationAudioRoute,
+) -> String {
+    format!(
+        "runtime/{}/{}/{}/collaboration/audio/{}.json",
+        session.creator_id, session.broadcast_id, session.id, route.participant_id
+    )
 }

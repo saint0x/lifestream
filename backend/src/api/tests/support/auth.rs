@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn auth_headers(token: &str) -> HeaderMap {
+pub(crate) fn auth_headers(token: &str) -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert(
         header::AUTHORIZATION,
@@ -9,7 +9,7 @@ pub(super) fn auth_headers(token: &str) -> HeaderMap {
     headers
 }
 
-pub(super) async fn insert_creator_auth_session(
+pub(crate) async fn insert_creator_auth_session(
     pool: &SqlitePool,
     creator: &CreatorProfile,
 ) -> AppResult<String> {
@@ -38,7 +38,7 @@ pub(super) async fn insert_creator_auth_session(
     Ok(token)
 }
 
-pub(super) async fn insert_user_auth_session(
+pub(crate) async fn insert_user_auth_session(
     pool: &SqlitePool,
     user_id: &str,
     scopes: &[&str],

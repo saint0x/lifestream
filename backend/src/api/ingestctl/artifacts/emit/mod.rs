@@ -1,11 +1,12 @@
 use super::spec::{
-    LiveRuntimeVariantSpec, build_live_runtime_variant_specs, collaboration_route_relative_path,
+    LiveRuntimeVariantSpec, build_live_runtime_variant_specs, collaboration_audio_relative_path,
+    collaboration_program_relative_path, collaboration_route_relative_path,
 };
 use super::*;
 use crate::api::collab::{
     build_collaboration_runtime_response_for_host, fetch_active_collaboration_session_for_broadcast,
 };
-use crate::models::CollaborationOutputRoute;
+use crate::models::{CollaborationAudioRoute, CollaborationOutputRoute, CollaborationProgramRoute};
 
 mod collab;
 mod live;

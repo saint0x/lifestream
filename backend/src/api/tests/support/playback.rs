@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) async fn insert_playback_session_for_upload(
+pub(crate) async fn insert_playback_session_for_upload(
     pool: &SqlitePool,
     upload_id: &str,
     user_id: Option<&str>,
@@ -38,7 +38,7 @@ pub(super) async fn insert_playback_session_for_upload(
     Ok((session_id, playback_token, target.asset))
 }
 
-pub(super) async fn seed_content_purchase_for_user(
+pub(crate) async fn seed_content_purchase_for_user(
     pool: &SqlitePool,
     user_id: &str,
     creator_id: &str,

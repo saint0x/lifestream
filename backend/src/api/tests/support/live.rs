@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) async fn insert_live_stream_for_creator(
+pub(crate) async fn insert_live_stream_for_creator(
     pool: &SqlitePool,
     creator: &CreatorProfile,
 ) -> AppResult<String> {
@@ -59,7 +59,7 @@ pub(super) async fn insert_live_stream_for_creator(
     Ok(format!("lv-{}-live", creator.handle))
 }
 
-pub(super) async fn copy_sqlite_fixture(source_db: PathBuf, target_db: &Path) -> AppResult<()> {
+pub(crate) async fn copy_sqlite_fixture(source_db: PathBuf, target_db: &Path) -> AppResult<()> {
     tokio::fs::copy(&source_db, target_db).await?;
     for suffix in ["-wal", "-shm"] {
         let source_sidecar = PathBuf::from(format!("{}{}", source_db.display(), suffix));
@@ -71,7 +71,7 @@ pub(super) async fn copy_sqlite_fixture(source_db: PathBuf, target_db: &Path) ->
     Ok(())
 }
 
-pub(super) async fn reset_creator_live_state(
+pub(crate) async fn reset_creator_live_state(
     pool: &SqlitePool,
     creator: &CreatorProfile,
 ) -> AppResult<()> {
@@ -111,7 +111,7 @@ pub(super) async fn reset_creator_live_state(
     Ok(())
 }
 
-pub(super) async fn write_test_media_file(
+pub(crate) async fn write_test_media_file(
     state: &SharedState,
     relative_path: &str,
     body: impl AsRef<[u8]>,
@@ -124,7 +124,7 @@ pub(super) async fn write_test_media_file(
     Ok(())
 }
 
-pub(super) async fn insert_ready_broadcast(
+pub(crate) async fn insert_ready_broadcast(
     pool: &SqlitePool,
     creator: &CreatorProfile,
 ) -> AppResult<Broadcast> {

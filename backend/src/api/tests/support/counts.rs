@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) async fn creator_live_event_count(
+pub(crate) async fn creator_live_event_count(
     pool: &SqlitePool,
     broadcast_id: &str,
 ) -> AppResult<i64> {
@@ -13,7 +13,7 @@ pub(super) async fn creator_live_event_count(
     Ok(row.get("count"))
 }
 
-pub(super) async fn creator_notification_delivery_count(
+pub(crate) async fn creator_notification_delivery_count(
     pool: &SqlitePool,
     creator_id: &str,
     kind: &str,
@@ -37,7 +37,7 @@ pub(super) async fn creator_notification_delivery_count(
     Ok(row.get("count"))
 }
 
-pub(super) async fn insert_test_notification_delivery(
+pub(crate) async fn insert_test_notification_delivery(
     pool: &SqlitePool,
     recipient_user_id: &str,
     channel: &str,
@@ -75,7 +75,7 @@ pub(super) async fn insert_test_notification_delivery(
     Ok(delivery_id)
 }
 
-pub(super) async fn live_ingest_event_count_for_session(
+pub(crate) async fn live_ingest_event_count_for_session(
     pool: &SqlitePool,
     session_id: &str,
     event_type: &str,
