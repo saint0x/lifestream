@@ -82,6 +82,10 @@ pub(super) async fn fetch_summary_row(
                 THEN 1 ELSE 0 END
             ) AS mix_minus_samples,
             SUM(CASE
+                WHEN json_extract(detail_json, '$.collaboration.transportGapPresent') = 1
+                THEN 1 ELSE 0 END
+            ) AS collaboration_transport_gap_samples,
+            SUM(CASE
                 WHEN packaging_status IN ('ready', 'complete')
                 THEN 1 ELSE 0 END
             ) AS packaging_ready_samples,
@@ -197,6 +201,8 @@ pub(super) async fn fetch_latest_telemetry_row(
             json_extract(detail_json, '$.collaboration.sessionId') AS collaboration_session_id,
             CAST(json_extract(detail_json, '$.collaboration.participantCount') AS INTEGER)
                 AS collaboration_participant_count,
+            CAST(json_extract(detail_json, '$.collaboration.transportGapPresent') AS INTEGER)
+                AS collaboration_transport_gap_present,
             CAST(json_extract(detail_json, '$.outputs.activeRouteCount') AS INTEGER) AS active_output_routes,
             json_extract(detail_json, '$.collaboration.audioMixMode') AS audio_mix_mode,
             CAST(json_extract(detail_json, '$.collaboration.engineNodeCount') AS INTEGER) AS engine_node_count,

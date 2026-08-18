@@ -80,6 +80,9 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         mix_minus_samples: total_row
             .get::<Option<i64>, _>("mix_minus_samples")
             .unwrap_or(0),
+        collaboration_transport_gap_samples: total_row
+            .get::<Option<i64>, _>("collaboration_transport_gap_samples")
+            .unwrap_or(0),
         packaging_ready_samples: total_row
             .get::<Option<i64>, _>("packaging_ready_samples")
             .unwrap_or(0),
@@ -228,6 +231,11 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         last_collaboration_participant_count: latest_row
             .as_ref()
             .and_then(|row| row.get("collaboration_participant_count")),
+        last_collaboration_transport_gap_present: latest_row
+            .as_ref()
+            .and_then(|row| row.get::<Option<i64>, _>("collaboration_transport_gap_present"))
+            .unwrap_or(0)
+            != 0,
         last_active_output_routes: latest_row
             .as_ref()
             .and_then(|row| row.get("active_output_routes")),
