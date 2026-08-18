@@ -20,13 +20,25 @@ The service listens on `127.0.0.1:8080` by default and creates `lifestream.db` i
 
 Protected routes require `Authorization: Bearer <token>`.
 
-For local development, the seed process creates a local bearer token on first boot:
+Auth sessions are persisted in SQLite. Provision users, creator profiles, and bearer sessions explicitly through the backend runtime commands:
 
-```text
-lifestream-local-dev-token
+```bash
+cargo run -- provision-user \
+  --user-id user_demo \
+  --handle demo \
+  --display-name "Demo User"
+
+cargo run -- provision-creator \
+  --creator-id creator_demo \
+  --user-id user_demo \
+  --handle demo-live \
+  --display-name "Demo Live"
+
+cargo run -- issue-session \
+  --user-id user_demo \
+  --label local-dev \
+  --scopes viewer,creator,admin
 ```
-
-Set `LIFESTREAM_LOCAL_SEED_TOKEN` before first boot to override that local token.
 
 ## Main API Surface
 

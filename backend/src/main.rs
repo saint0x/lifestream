@@ -3,10 +3,12 @@ mod auth;
 mod config;
 mod error;
 mod models;
+mod runtime_command;
 mod state;
 
 use std::sync::Arc;
 
+use crate::runtime_command::RuntimeCommand;
 use crate::{config::Config, state::AppState};
 use axum::http::HeaderValue;
 use sqlx::{SqlitePool, migrate::Migrator, sqlite::SqlitePoolOptions};
@@ -23,26 +25,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_env()?;
     match command {
         RuntimeCommand::Serve => serve(config).await?,
+        RuntimeCommand::ProvisionUser(command) => {
+            let pool = connect_pool(&config).await?;
+            command.execute(&pool).await?;
+        }
+        RuntimeCommand::ProvisionCreator(command) => {
+            let pool = connect_pool(&config).await?;
+            command.execute(&pool).await?;
+        }
+        RuntimeCommand::IssueSession(command) => {
+            let pool = connect_pool(&config).await?;
+            command.execute(&pool).await?;
+        }
     }
 
     Ok(())
-}
-
-enum RuntimeCommand {
-    Serve,
-}
-
-impl RuntimeCommand {
-    fn from_args(
-        mut args: impl Iterator<Item = String>,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
-        match args.next().as_deref() {
-            None | Some("serve") => Ok(Self::Serve),
-            Some(flag) => {
-                Err(format!("unknown command `{flag}`; supported commands: `serve`").into())
-            }
-        }
-    }
 }
 
 fn init_tracing() {

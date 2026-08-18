@@ -2,4 +2,4 @@
 
 ## Unfinished Media Runtime Work
 
-- runtime audio execution with enforced mix-minus or equivalent echo prevention against participant return buses
+- executable collaboration media worker that consumes persisted runtime bundles and drives live guest contribution plus mix-minus return routing end to end
