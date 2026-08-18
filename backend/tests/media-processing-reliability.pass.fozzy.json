@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "media-processing-reliability-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health')); assert data['status'] == 'ok' and data['database'] is True; print('health-ok')"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "tests/media-processing-reliability-check.py"
+      ],
+      "exit_code": 0,
+      "stdout": "failed|3|failed\n",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": [
+        "tests/media-processing-reliability-check.py"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "failed|3|failed\n"
+    }
+  ]
+}

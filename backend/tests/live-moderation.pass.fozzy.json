@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "name": "live-moderation-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, os, urllib.request; base=os.environ.get('LIFESTREAM_BASE_URL','http://127.0.0.1:8080'); data=json.load(urllib.request.urlopen(base + '/health')); assert data['status'] == 'ok' and data['database'] is True; print('health-ok')"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import os, runpy; os.environ['LIFESTREAM_BASE_URL']=os.environ.get('LIFESTREAM_BASE_URL','http://127.0.0.1:8080'); runpy.run_path('tests/live-moderation-control-check.py', run_name='__main__')"
+      ],
+      "exit_code": 0,
+      "stdout": "live-moderation|inspect|reconcile|revoke\n",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import os, runpy; os.environ['LIFESTREAM_BASE_URL']=os.environ.get('LIFESTREAM_BASE_URL','http://127.0.0.1:8080'); runpy.run_path('tests/live-moderation-control-check.py', run_name='__main__')"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "live-moderation|inspect|reconcile|revoke\n"
+    }
+  ]
+}

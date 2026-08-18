@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "notification-event-flow-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health')); assert data['status'] == 'ok' and data['database'] is True; print('health-ok')"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request, urllib.error; BASE='http://127.0.0.1:8080'; HOST='Bearer lifestream-local-dev-token'; ATLAS='Bearer lifestream-local-collaborator-token';\n\ndef req(path, method='GET', token=None, body=None):\n    headers={}\n    if token: headers['Authorization']=token\n    data=None\n    if body is not None:\n        data=json.dumps(body).encode(); headers['Content-Type']='application/json'\n    request=urllib.request.Request(BASE + path, data=data, headers=headers, method=method)\n    try:\n        with urllib.request.urlopen(request) as resp:\n            raw=resp.read().decode(); return resp.status, json.loads(raw) if raw else None\n    except urllib.error.HTTPError as exc:\n        raw=exc.read().decode(); return exc.code, json.loads(raw) if raw else None\n\nreport=req('/api/v1/live/streams/lv-deepsaint-live/report','POST',ATLAS,{'reason':'spam','details':'notify creator'})\nassert report[0] == 202, report\ncreator_notes=req('/api/v1/creator/me/notifications','GET',HOST)\nassert creator_notes[0] == 200 and any(item['kind'] == 'live_report_received' for item in creator_notes[1]), creator_notes\ncreator_note_id=next(item['id'] for item in creator_notes[1] if item['kind'] == 'live_report_received')\nread_creator=req(f'/api/v1/creator/me/notifications/{creator_note_id}/read','POST',HOST)\nassert read_creator[0] == 204, read_creator\nsession=req('/api/v1/creator/me/live/collabs/sessions','POST',HOST,{'broadcastId':'bcast-now','title':'notif flow','chatMode':'shared','recordingPolicy':'host_archive'})\nassert session[0] == 200, session\nsid=session[1]['id']\ninvite=req(f'/api/v1/creator/me/live/collabs/sessions/{sid}/invites','POST',HOST,{'inviteeUserId':'usr-2','role':'guest','mirrorToGuestChannel':False,'message':'notif invite','expiresInMinutes':30})\nassert invite[0] == 200, invite\nuser_notes=req('/api/v1/me/notifications','GET',ATLAS)\nassert user_notes[0] == 200 and any(item['kind'] == 'collaboration_invite' for item in user_notes[1]), user_notes\ninvite_note_id=next(item['id'] for item in user_notes[1] if item['kind'] == 'collaboration_invite')\nread_user=req(f'/api/v1/me/notifications/{invite_note_id}/read','POST',ATLAS)\nassert read_user[0] == 204, read_user\nmod=req('/api/v1/live/streams/lv-deepsaint-live/moderation/actions','POST',HOST,{'subjectUserId':'usr-2','actionType':'shadowban','reason':'notif action','durationMinutes':5})\nassert mod[0] == 200, mod\nuser_notes_2=req('/api/v1/me/notifications','GET',ATLAS)\nassert user_notes_2[0] == 200 and any(item['kind'] == 'moderation_action' for item in user_notes_2[1]), user_notes_2\nended=req(f'/api/v1/creator/me/live/collabs/sessions/{sid}/end','POST',HOST)\nassert ended[0] == 200, ended\nprint('notification-event-flow-pass')"
+      ],
+      "exit_code": 0,
+      "times": 1
+    }
+  ]
+}

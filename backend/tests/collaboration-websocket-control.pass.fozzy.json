@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "collaboration-websocket-control-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health')); assert data['status'] == 'ok' and data['database'] is True; print('health-ok')"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "node",
+      "args": [
+        "tests/collaboration-websocket-control-check.js"
+      ],
+      "exit_code": 0,
+      "stdout": "collab-ws|control|host-guest-authority\n",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "node",
+      "args": [
+        "tests/collaboration-websocket-control-check.js"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "collab-ws|control|host-guest-authority\n"
+    }
+  ]
+}

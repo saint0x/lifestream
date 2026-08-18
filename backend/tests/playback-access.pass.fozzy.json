@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "name": "playback-access-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health')); print(f\"{data['status']}|{str(data['database']).lower()}\")"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": ["tests/playback-access-check.py"],
+      "exit_code": 0,
+      "stdout": "401|public|200|true|200\n",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": ["tests/playback-access-check.py"],
+      "expect_exit": 0,
+      "expect_stdout": "401|public|200|true|200\n"
+    }
+  ]
+}

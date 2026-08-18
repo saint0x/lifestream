@@ -1,0 +1,12 @@
+{
+  "dependencyGraphHash": "dcf86c7d72334f7a1e3ab554d41dab1f98d972dc03d9404c8f634faff9120ba9",
+  "graph": {
+    "deps": [],
+    "package": {
+      "manifestHash": "62b085d9e7d674c6d4d0da93e6d2772405785b41c41eac8eb33d44de88a94d2c",
+      "name": "lifestream-backend",
+      "version": "0.1.0"
+    }
+  },
+  "schemaVersion": "fozzylang.lock.v0"
+}

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "control-plane-reconciliation-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health')); assert data['status'] == 'ok' and data['database'] is True; print('health-ok')"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import datetime, hashlib, json, sqlite3, time, urllib.request, urllib.error; BASE='http://127.0.0.1:8080'; DB='/Users/deepsaint/Desktop/lifestream/backend/lifestream.db'; HOST='Bearer lifestream-local-dev-token'; COLLAB='Bearer lifestream-local-collaborator-token';\n\ndef req(path, method='GET', token=None, body=None):\n    headers={}\n    if token: headers['Authorization']=token\n    data=None\n    if body is not None:\n        data=json.dumps(body).encode(); headers['Content-Type']='application/json'\n    request=urllib.request.Request(BASE + path, data=data, headers=headers, method=method)\n    try:\n        with urllib.request.urlopen(request) as resp:\n            raw=resp.read().decode(); return resp.status, json.loads(raw) if raw else None\n    except urllib.error.HTTPError as exc:\n        raw=exc.read().decode(); return exc.code, json.loads(raw) if raw else None\n\nfuture='2026-08-19T18:00:00Z'\nscheduled=req('/api/v1/creator/me/uploads/up-draft-ep/lifecycle','PATCH',HOST,{'visibility':'public','releaseAt':future})\nassert scheduled[0] == 200 and scheduled[1]['status'] == 'scheduled', scheduled\nsession=req('/api/v1/creator/me/live/collabs/sessions','POST',HOST,{'broadcastId':'bcast-now','title':'reconcile flow','chatMode':'shared','recordingPolicy':'host_archive'})\nassert session[0] == 200, session\nsid=session[1]['id']\ninvite=req(f'/api/v1/creator/me/live/collabs/sessions/{sid}/invites','POST',HOST,{'inviteeUserId':'usr-2','role':'co_streamer','mirrorToGuestChannel':True,'message':'expire me','expiresInMinutes':30})\nassert invite[0] == 200, invite\niid=invite[1]['id']\naccepted=req(f'/api/v1/live/collabs/invites/{iid}/accept','POST',COLLAB)\nassert accepted[0] == 200, accepted\npid=accepted[1]['id']\ngrant=req(f'/api/v1/creator/me/live/collabs/sessions/{sid}/participants/{pid}/grants/mirror','POST',HOST)\nassert grant[0] == 200, grant\ngid=grant[1]['id']\nmod=req('/api/v1/live/streams/lv-deepsaint-live/moderation/actions','POST',HOST,{'subjectUserId':'usr-2','actionType':'mute','reason':'reconcile expire','durationMinutes':10})\nassert mod[0] == 200, mod\nmid=mod[1]['id']\nconn=sqlite3.connect(DB)\npast='2026-08-17T00:00:00Z'\nconn.execute(\"UPDATE uploads SET release_at = ?, status = 'scheduled', visibility = 'public' WHERE id = ?\", (past, 'up-draft-ep'))\nconn.execute(\"UPDATE collaboration_invites SET expires_at = ?, state = 'pending', responded_at = NULL WHERE id = ?\", (past, iid))\nconn.execute(\"UPDATE collaboration_mirror_grants SET expires_at = ?, state = 'issued', revoked_at = NULL WHERE id = ?\", (past, gid))\nconn.execute(\"UPDATE live_moderation_actions SET expires_at = ?, state = 'active', revoked_at = NULL WHERE id = ?\", (past, mid))\nconn.commit(); conn.close()\ntime.sleep(6)\ncreator_uploads=req('/api/v1/creator/me/uploads','GET',HOST)\nrow=next(item for item in creator_uploads[1] if item['id'] == 'up-draft-ep')\nassert row['status'] == 'published', row\nsession_events=req(f'/api/v1/creator/me/live/collabs/sessions/{sid}/events','GET',HOST)\nassert session_events[0] == 200 and any(e['eventType'] == 'invite_expired' for e in session_events[1]) and any(e['eventType'] == 'mirror_grant_expired' for e in session_events[1]), session_events\nactions=req('/api/v1/live/streams/lv-deepsaint-live/moderation/actions','GET',HOST)\nmod_row=next(item for item in actions[1] if item['id'] == mid)\nassert mod_row['state'] == 'expired', mod_row\nended=req(f'/api/v1/creator/me/live/collabs/sessions/{sid}/end','POST',HOST)\nassert ended[0] == 200, ended\nprint('control-plane-reconciliation-pass')"
+      ],
+      "exit_code": 0,
+      "times": 1
+    }
+  ]
+}

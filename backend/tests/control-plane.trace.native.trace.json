@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "fozzylang.thread_trace.v0",
+  "capability": "thread",
+  "scheduler": "fifo",
+  "seed": 1,
+  "executionOrder": [
+    0
+  ],
+  "asyncSchedule": [],
+  "rpcFrames": [],
+  "events": [
+    {
+      "event": "spawned",
+      "taskId": 0,
+      "detached": false
+    },
+    {
+      "event": "started",
+      "taskId": 0
+    },
+    {
+      "event": "completed",
+      "taskId": 0
+    }
+  ],
+  "runtimeEvents": [
+    {
+      "taskId": 0,
+      "phase": "spawned",
+      "kind": "baseline",
+      "label": "baseline"
+    },
+    {
+      "taskId": 0,
+      "phase": "started",
+      "kind": "baseline",
+      "label": "baseline"
+    },
+    {
+      "taskId": 0,
+      "phase": "terminal",
+      "kind": "baseline",
+      "label": "baseline"
+    }
+  ],
+  "causalLinks": [],
+  "threadFindings": []
+}

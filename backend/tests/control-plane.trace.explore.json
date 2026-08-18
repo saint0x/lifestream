@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "fozzylang.explore.v0",
+  "schedules": [
+    {
+      "name": "fifo",
+      "order": [
+        0
+      ]
+    },
+    {
+      "name": "reverse",
+      "order": [
+        0
+      ]
+    },
+    {
+      "name": "rotate_1",
+      "order": [
+        0
+      ]
+    }
+  ],
+  "rpcFramePermutations": [],
+  "scenarioPriorities": [
+    {
+      "scenario": "backend/tests/control-plane.trace.scenarios/all.fozzy.json",
+      "score": 70
+    }
+  ],
+  "shrinkHints": [
+    {
+      "kind": "task_order",
+      "order": [
+        0
+      ]
+    }
+  ],
+  "focus": "rpc_failure_repro"
+}

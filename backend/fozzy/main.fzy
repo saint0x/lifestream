@@ -1,0 +1,531 @@
+{
+  "version": 1,
+  "name": "backend-control-plane-validation",
+  "steps": [
+    {
+      "name": "declare-stale-ingest-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::stale_ingest_reconcile_preserves_broadcast_for_reconnect",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "stale-ingest-reconcile-preserves-reconnect-state",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::stale_ingest_reconcile_preserves_broadcast_for_reconnect",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-reconnect-notification-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::reconnect_after_stale_does_not_duplicate_live_notification",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "reconnect-does-not-duplicate-live-notification",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::reconnect_after_stale_does_not_duplicate_live_notification",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-expired-mirror-grant-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::expired_mirror_grant_cannot_be_redeemed_before_reconciliation",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "expired-mirror-grant-cannot-redeem",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::expired_mirror_grant_cannot_be_redeemed_before_reconciliation",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-issue-mirror-grant-eligibility-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::issue_mirror_grant_rejects_non_mirrored_or_non_live_participants",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "issue-mirror-grant-enforces-eligibility",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::issue_mirror_grant_rejects_non_mirrored_or_non_live_participants",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-collaboration-remove-revokes-grant-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::removing_participant_publishes_mirror_grant_revoked_event",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "collaboration-remove-publishes-mirror-grant-revocation",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::removing_participant_publishes_mirror_grant_revoked_event",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-session-end-revokes-invite-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::ending_session_publishes_invite_revoked_event",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "session-end-publishes-invite-revocation",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::ending_session_publishes_invite_revoked_event",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-collaboration-invite-inbox-pending-only-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::collaboration_invite_inbox_only_returns_pending_invites",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "collaboration-invite-inbox-only-returns-pending",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::collaboration_invite_inbox_only_returns_pending_invites",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-collaboration-runtime-grant-visibility-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::participant_collaboration_runtime_only_exposes_own_grants",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "collaboration-runtime-scopes-participant-grants",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::participant_collaboration_runtime_only_exposes_own_grants",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-collaboration-event-visibility-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::participant_collaboration_events_hide_other_invites_and_grants",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "collaboration-events-hide-other-invites-and-grants",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::participant_collaboration_events_hide_other_invites_and_grants",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-playback-source-path-guard-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::playback_token_cannot_access_source_media_path",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "playback-token-cannot-access-source-media",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::playback_token_cannot_access_source_media_path",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-stale-media-worker-lease-guard-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::stale_media_worker_cannot_overwrite_newer_processing_attempt",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "stale-media-worker-cannot-overwrite-newer-attempt",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::stale_media_worker_cannot_overwrite_newer_processing_attempt",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-scheduled-publish-asset-sync-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::scheduled_publish_keeps_media_asset_scheduled_until_release",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "scheduled-publish-keeps-media-asset-scheduled",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::scheduled_publish_keeps_media_asset_scheduled_until_release",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-unpublish-asset-sync-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::unpublish_upload_moves_media_asset_back_to_draft",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "unpublish-returns-media-asset-to-draft",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::unpublish_upload_moves_media_asset_back_to_draft",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-invalid-collab-chat-mode-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::create_collaboration_session_rejects_invalid_chat_mode",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "invalid-collaboration-chat-mode-is-rejected",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::create_collaboration_session_rejects_invalid_chat_mode",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-invalid-collab-recording-policy-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::create_collaboration_session_rejects_invalid_recording_policy",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "invalid-collaboration-recording-policy-is-rejected",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::create_collaboration_session_rejects_invalid_recording_policy",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-collaboration-chat-speaking-enforcement-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::collaboration_participant_without_chat_speaking_rights_cannot_post",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "collaboration-chat-speaking-rights-are-enforced",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::collaboration_participant_without_chat_speaking_rights_cannot_post",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-live-moderation-revoke-realtime-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::revoking_live_moderation_action_publishes_realtime_event",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "revoking-live-moderation-action-publishes-realtime-event",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::revoking_live_moderation_action_publishes_realtime_event",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-expired-purchase-revokes-playback-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::expired_purchase_reconciliation_expires_invalid_playback_session",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "expired-purchase-revokes-invalid-playback-session",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::expired_purchase_reconciliation_expires_invalid_playback_session",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-expired-membership-keeps-valid-purchase-session-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::expired_membership_keeps_session_when_purchase_still_grants_access",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "expired-membership-does-not-overrevoke-valid-purchase-session",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::expired_membership_keeps_session_when_purchase_still_grants_access",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-collaboration-distinct-presence-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::collaboration_presence_counts_distinct_participants_not_socket_tabs",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "collaboration-presence-counts-distinct-participants",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::collaboration_presence_counts_distinct_participants_not_socket_tabs",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "name": "declare-collaboration-resume-bootstrap-test-proc",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::collaboration_resume_bootstrap_does_not_duplicate_snapshot_events",
+        "--",
+        "--exact"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "collaboration-resume-bootstrap-is-replay-clean",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "api::tests::collaboration_resume_bootstrap_does_not_duplicate_snapshot_events",
+        "--",
+        "--exact"
+      ],
+      "expect_exit": 0
+    }
+  ]
+}

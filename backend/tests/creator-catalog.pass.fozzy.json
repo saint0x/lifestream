@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "name": "creator-catalog-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health')); print(f\"{data['status']}|{str(data['database']).lower()}\")"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; BASE='http://127.0.0.1:8080'; films=json.load(urllib.request.urlopen(BASE + '/api/v1/catalog/creator/films')); series=json.load(urllib.request.urlopen(BASE + '/api/v1/catalog/creator/series')); northlight=json.load(urllib.request.urlopen(BASE + '/api/v1/catalog/creator/series/northlight-studio')); content=json.load(urllib.request.urlopen(BASE + '/api/v1/catalog/content/upl-48e7a559a80f4fe6bcec7e29764768e8')); future=[ep['title'] for season in northlight['seasons'] for ep in season['episodes'] if ep['releaseAt'] > '2026-08-15T23:59:59Z']; print(f\"{len(films)}|{films[0]['slug']}|{len(series)}|{northlight['publishedEpisodeCount']}|{len(future)}|{content['title']}\")"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; BASE='http://127.0.0.1:8080'; films=json.load(urllib.request.urlopen(BASE + '/api/v1/catalog/creator/films')); series=json.load(urllib.request.urlopen(BASE + '/api/v1/catalog/creator/series')); northlight=json.load(urllib.request.urlopen(BASE + '/api/v1/catalog/creator/series/northlight-studio')); content=json.load(urllib.request.urlopen(BASE + '/api/v1/catalog/content/upl-48e7a559a80f4fe6bcec7e29764768e8')); future=[ep['title'] for season in northlight['seasons'] for ep in season['episodes'] if ep['releaseAt'] > '2026-08-15T23:59:59Z']; print(f\"{len(films)}|{films[0]['slug']}|{len(series)}|{northlight['publishedEpisodeCount']}|{len(future)}|{content['title']}\")"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "1|pipeline-validation-feature|1|1|0|Pipeline validation feature\n"
+    }
+  ]
+}

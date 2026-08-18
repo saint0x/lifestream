@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "name": "discovery-following-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health')); assert data['status'] == 'ok' and data['database'] is True; print('health-ok')"
+      ],
+      "exit_code": 0,
+      "stdout": "health-ok\n",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "tests/discovery-following-check.py"
+      ],
+      "exit_code": 0,
+      "stdout": "discovery-following-pass\n",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": [
+        "tests/discovery-following-check.py"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "discovery-following-pass\n"
+    }
+  ]
+}

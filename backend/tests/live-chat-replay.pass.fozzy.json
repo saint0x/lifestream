@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "name": "live-chat-replay-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "node",
+      "args": [
+        "tests/live-chat-replay-check.js"
+      ],
+      "exit_code": 0,
+      "stdout": "live-chat-replay-pass\n",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "node",
+      "args": [
+        "tests/live-chat-replay-check.js"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "live-chat-replay-pass\n"
+    }
+  ]
+}

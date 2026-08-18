@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "name": "stale-live-read-consistency-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "tests/stale-live-read-consistency-check.py"
+      ],
+      "exit_code": 0,
+      "stdout": "stale-live|public-hidden|creator-healed\n",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": [
+        "tests/stale-live-read-consistency-check.py"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "stale-live|public-hidden|creator-healed\n"
+    }
+  ]
+}

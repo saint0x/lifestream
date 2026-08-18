@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "media-pipeline-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health')); print(f\"{data['status']}|{str(data['database']).lower()}\")"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "tests/media-pipeline-check.py"
+      ],
+      "exit_code": 0,
+      "stdout": "ready|3|200|200|published|320x240\n",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": [
+        "tests/media-pipeline-check.py"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "ready|3|200|200|published|320x240\n"
+    }
+  ]
+}

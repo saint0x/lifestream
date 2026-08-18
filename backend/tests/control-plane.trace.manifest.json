@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "fozzylang.artifacts.v0",
+  "trace": "backend/tests/control-plane.trace.native.trace.json",
+  "report": "backend/tests/control-plane.trace.report.json",
+  "timeline": "backend/tests/control-plane.trace.timeline.json",
+  "explore": "backend/tests/control-plane.trace.explore.json",
+  "shrink": "backend/tests/control-plane.trace.shrink.json",
+  "scenariosIndex": "backend/tests/control-plane.trace.scenarios.json",
+  "primaryScenario": "backend/tests/control-plane.trace.scenarios/all.fozzy.json",
+  "goalTrace": "backend/tests/control-plane.trace.fozzy",
+  "detail": "rich"
+}

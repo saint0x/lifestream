@@ -1,4 +1,22 @@
+use super::discovery::{
+    fetch_categories, fetch_category_by_slug, fetch_film_by_id, fetch_film_by_slug, fetch_films,
+    fetch_films_by_genre, fetch_live_stream_by_id, fetch_live_stream_by_slug, fetch_live_streams,
+    fetch_live_streams_by_category, fetch_series, fetch_series_by_genre, fetch_series_by_id,
+    fetch_series_by_slug, fetch_streamer_by_id, fetch_streamers, fetch_user,
+    fetch_viewer_app_state, sort_live_streams,
+};
+use super::moderation::{
+    authorize_live_stream_moderation, authorize_live_stream_owner, fetch_creator_moderator,
+    fetch_creator_moderators, fetch_live_moderation_action_by_id,
+    fetch_live_moderation_action_by_id_raw, fetch_live_moderation_actions,
+    fetch_live_stream_owner_creator_id, fetch_live_stream_report_by_id, fetch_live_stream_reports,
+    fetch_moderation_audit_log, validate_creator_moderator_role,
+    validate_live_moderation_action_type, validate_live_moderation_subject,
+    validate_live_report_status, write_moderation_audit_entry,
+};
+use super::realtime::persist_chat_message;
 use super::*;
+use serde::Deserialize;
 
 pub(super) fn routes() -> Router<SharedState> {
     Router::new()

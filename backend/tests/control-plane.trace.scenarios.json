@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "fozzylang.scenarios.v0",
+  "primary": "backend/tests/control-plane.trace.scenarios/all.fozzy.json",
+  "items": [
+    "backend/tests/control-plane.trace.scenarios/all.fozzy.json"
+  ]
+}

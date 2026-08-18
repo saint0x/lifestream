@@ -1,3 +1,4 @@
+use super::discovery::fetch_user;
 use super::*;
 
 pub(super) fn routes() -> Router<SharedState> {
