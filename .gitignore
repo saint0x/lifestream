@@ -1,7 +1,7 @@
 .DS_Store
 
 .fozzy/
-artifacts/
+/artifacts/
 
 node_modules/
 dist/

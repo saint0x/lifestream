@@ -1,6 +1,111 @@
 use super::*;
 
 #[tokio::test]
+async fn runtime_reconcile_detects_missing_collaboration_engine_artifact() -> AppResult<()> {
+    let (state, creator) = setup_test_state().await?;
+    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let connected = connect_live_ingest(
+        State(state.clone()),
+        Json(IngestConnectRequest {
+            stream_key: creator.stream_key.clone(),
+            protocol: "rtmp".to_string(),
+            ingest_server: "test-ingest-collab-runtime-reconcile".to_string(),
+            broadcast_id: Some(broadcast.id.clone()),
+        }),
+    )
+    .await?
+    .0;
+
+    let manifest_relative_path = runtime_manifest_path(&connected.session);
+    write_test_media_file(
+        &state,
+        &manifest_relative_path,
+        "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:2\n",
+    )
+    .await?;
+
+    let (collaboration_session, collaboration_participant) =
+        insert_shared_chat_collaboration_for_current_broadcast(
+            &state.pool,
+            &creator,
+            "crt-atlas",
+            "usr-2",
+            true,
+        )
+        .await?;
+    let _grant = issue_mirror_grant_for_participant(
+        &state,
+        &collaboration_session,
+        &collaboration_participant,
+        &creator.user_id,
+    )
+    .await?;
+
+    let mut ingest_headers = HeaderMap::new();
+    ingest_headers.insert(
+        "x-ingest-token",
+        HeaderValue::from_str(&connected.ingest_token).unwrap(),
+    );
+    let output = report_live_runtime(
+        State(state.clone()),
+        Path(connected.session.id.clone()),
+        ingest_headers,
+        Json(UpdateLiveRuntimeStateRequest {
+            runtime_state: "healthy".to_string(),
+            packaging_status: "ready".to_string(),
+            archive_status: "not_started".to_string(),
+            manifest_relative_path: Some(manifest_relative_path.clone()),
+            archive_relative_path: None,
+            last_error: None,
+        }),
+    )
+    .await?
+    .0;
+    assert_eq!(output.runtime_state, "healthy");
+
+    let engine_relative_path = format!(
+        "runtime/{}/{}/{}/collaboration/engine.json",
+        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
+    );
+    tokio::fs::remove_file(media_path_for_relative(&state, &engine_relative_path))
+        .await
+        .map_err(AppError::Io)?;
+
+    let session =
+        fetch_live_ingest_session_by_id(&state.pool, &creator.id, &connected.session.id).await?;
+    let reconciled = reconcile_live_runtime_output_artifacts(&state, &session)
+        .await?
+        .expect("reconciled runtime output");
+    assert_eq!(reconciled.runtime_state, "packaging_degraded");
+    assert_eq!(reconciled.packaging_status, "degraded");
+    assert!(
+        reconciled
+            .last_error
+            .as_deref()
+            .is_some_and(|error| error.contains("collaboration engine artifact missing"))
+    );
+
+    let record =
+        fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
+            .await?;
+    assert!(
+        record
+            .artifact_health
+            .as_ref()
+            .and_then(|health| health.collaboration.as_ref())
+            .is_some_and(|state| state.state == "invalid")
+    );
+    assert!(
+        record
+            .recent_events
+            .iter()
+            .any(|event| event.event_type == "runtime_artifact_reconciled")
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn runtime_report_reconciles_missing_manifest_into_packaging_drift() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
     let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
@@ -550,4 +655,3 @@ async fn background_runtime_artifact_reconciliation_repairs_missing_manifest_wit
 
     Ok(())
 }
-

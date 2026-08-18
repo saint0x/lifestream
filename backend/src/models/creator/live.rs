@@ -255,6 +255,7 @@ pub struct LiveRuntimeArtifactHealth {
     pub checked_at: String,
     pub manifest: LiveRuntimeArtifactState,
     pub archive: LiveRuntimeArtifactState,
+    pub collaboration: Option<LiveRuntimeArtifactState>,
     pub issues: Vec<String>,
 }
 
