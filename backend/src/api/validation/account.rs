@@ -1,15 +1,6 @@
 use super::*;
 
-pub(super) fn validate_collaboration_role(role: &str) -> AppResult<()> {
-    match role {
-        "guest" | "co_host" | "co_streamer" => Ok(()),
-        other => Err(AppError::BadRequest(format!(
-            "unsupported collaboration role: {other}"
-        ))),
-    }
-}
-
-pub(super) fn validate_profile_update(input: &UpdateProfileRequest) -> AppResult<()> {
+pub(crate) fn validate_profile_update(input: &UpdateProfileRequest) -> AppResult<()> {
     if let Some(display_name) = input.display_name.as_deref() {
         let trimmed = display_name.trim();
         if trimmed.is_empty() {
@@ -66,7 +57,7 @@ pub(super) fn validate_profile_update(input: &UpdateProfileRequest) -> AppResult
     Ok(())
 }
 
-pub(super) fn validate_settings_update(input: &UpdateSettingsRequest) -> AppResult<()> {
+pub(crate) fn validate_settings_update(input: &UpdateSettingsRequest) -> AppResult<()> {
     if let Some(playback) = input.playback.as_ref() {
         validate_allowed_value(
             "playback.defaultQuality",
@@ -210,7 +201,7 @@ pub(super) fn validate_settings_update(input: &UpdateSettingsRequest) -> AppResu
     Ok(())
 }
 
-pub(super) fn validate_allowed_value(field: &str, value: &str, allowed: &[&str]) -> AppResult<()> {
+fn validate_allowed_value(field: &str, value: &str, allowed: &[&str]) -> AppResult<()> {
     if allowed.contains(&value) {
         Ok(())
     } else {
@@ -218,178 +209,4 @@ pub(super) fn validate_allowed_value(field: &str, value: &str, allowed: &[&str])
             "{field} contains an unsupported value"
         )))
     }
-}
-
-pub(super) fn validate_collaboration_participant_state(state: &str) -> AppResult<()> {
-    match state {
-        "accepted" | "backstage" | "live" | "removed" | "left" => Ok(()),
-        other => Err(AppError::BadRequest(format!(
-            "unsupported collaboration participant state: {other}"
-        ))),
-    }
-}
-
-pub(super) fn validate_collaboration_chat_mode(chat_mode: &str) -> AppResult<()> {
-    match chat_mode {
-        "shared" | "host_only" => Ok(()),
-        other => Err(AppError::BadRequest(format!(
-            "unsupported collaboration chat mode: {other}"
-        ))),
-    }
-}
-
-pub(super) fn validate_collaboration_recording_policy(recording_policy: &str) -> AppResult<()> {
-    match recording_policy {
-        "host_archive" | "split_archive" => Ok(()),
-        other => Err(AppError::BadRequest(format!(
-            "unsupported collaboration recording policy: {other}"
-        ))),
-    }
-}
-
-pub(super) fn validate_collaboration_participant_transition(
-    current: &str,
-    next: &str,
-    host_action: bool,
-) -> AppResult<()> {
-    if current == next {
-        return Ok(());
-    }
-
-    let allowed = if host_action {
-        matches!(
-            (current, next),
-            ("accepted", "backstage")
-                | ("accepted", "live")
-                | ("accepted", "removed")
-                | ("backstage", "live")
-                | ("backstage", "removed")
-                | ("live", "backstage")
-                | ("live", "removed")
-                | ("left", "backstage")
-                | ("removed", "backstage")
-        )
-    } else {
-        matches!(
-            (current, next),
-            ("accepted", "backstage")
-                | ("accepted", "left")
-                | ("backstage", "left")
-                | ("live", "left")
-                | ("left", "backstage")
-                | ("removed", "backstage")
-        )
-    };
-
-    if allowed {
-        Ok(())
-    } else {
-        Err(AppError::BadRequest(format!(
-            "illegal collaboration participant transition: {current} -> {next}"
-        )))
-    }
-}
-
-pub(super) fn validate_pending_collaboration_invite(invite: &CollaborationInvite) -> AppResult<()> {
-    if invite.state != "pending" {
-        return Err(AppError::BadRequest(
-            "collaboration invite is no longer pending".to_string(),
-        ));
-    }
-    let now = Utc::now().to_rfc3339();
-    if invite.expires_at <= now {
-        return Err(AppError::BadRequest(
-            "collaboration invite has expired".to_string(),
-        ));
-    }
-    Ok(())
-}
-
-pub(super) fn validate_redeemable_collaboration_mirror_grant(
-    grant: &CollaborationMirrorGrant,
-    participant: &CollaborationParticipant,
-    session: &CollaborationSession,
-) -> AppResult<()> {
-    if grant.state != "issued" {
-        return Err(AppError::BadRequest(
-            "collaboration mirror grant is not redeemable".to_string(),
-        ));
-    }
-    if grant.scope != "mirror_pickup" {
-        return Err(AppError::BadRequest(
-            "unsupported collaboration mirror grant scope".to_string(),
-        ));
-    }
-    if !grant.mirror_to_guest_channel || !participant.mirror_to_guest_channel {
-        return Err(AppError::BadRequest(
-            "participant is not enabled for mirrored guest channel pickup".to_string(),
-        ));
-    }
-    if session.status != "active" {
-        return Err(AppError::BadRequest(
-            "collaboration mirror grant can only be redeemed for an active session".to_string(),
-        ));
-    }
-    let now = Utc::now().to_rfc3339();
-    if grant.expires_at <= now {
-        return Err(AppError::BadRequest(
-            "collaboration mirror grant has expired".to_string(),
-        ));
-    }
-    if participant.state != "live" {
-        return Err(AppError::BadRequest(
-            "collaboration mirror grants can only be redeemed by live participants".to_string(),
-        ));
-    }
-    if participant.creator_id.as_deref() != Some(grant.guest_creator_id.as_str()) {
-        return Err(AppError::Forbidden);
-    }
-    Ok(())
-}
-
-pub(super) fn transition_creator_operational_status(
-    current: &str,
-    submit_requested: bool,
-    terminal_approved: &str,
-    terminal_blocked: &str,
-) -> AppResult<String> {
-    if current == terminal_approved {
-        return Ok(current.to_string());
-    }
-    if current == terminal_blocked && submit_requested {
-        return Ok("submitted".to_string());
-    }
-    if submit_requested {
-        return Ok(match current {
-            "pending" | "rejected" | "disabled" => "submitted".to_string(),
-            "in_review" => "in_review".to_string(),
-            "submitted" => "submitted".to_string(),
-            other => other.to_string(),
-        });
-    }
-    Ok(current.to_string())
-}
-
-pub(super) fn monetized_access_policy(access_policy: &str) -> bool {
-    matches!(
-        access_policy,
-        "subscription" | "purchase" | "subscription_or_purchase"
-    )
-}
-
-pub(super) fn parse_optional_future_timestamp(value: Option<&str>) -> AppResult<Option<String>> {
-    let Some(raw) = value.map(str::trim).filter(|value| !value.is_empty()) else {
-        return Ok(None);
-    };
-    let parsed = chrono::DateTime::parse_from_rfc3339(raw)
-        .map_err(|_| {
-            AppError::BadRequest("expiresAt must be a valid RFC3339 timestamp".to_string())
-        })?
-        .with_timezone(&Utc);
-    if parsed <= Utc::now() {
-        return Err(AppError::BadRequest(
-            "expiresAt must be in the future".to_string(),
-        ));
-    }
-    Ok(Some(parsed.to_rfc3339()))
 }
