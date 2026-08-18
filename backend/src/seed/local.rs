@@ -3,7 +3,7 @@ use sqlx::SqlitePool;
 
 use crate::{auth::hash_token, config::Config};
 
-use super::json;
+use super::support::json;
 
 pub(super) async fn seed_local_auth_session(
     pool: &SqlitePool,
