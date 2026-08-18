@@ -190,6 +190,18 @@ pub struct CollaborationMediaTarget {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CollaborationMediaReturn {
+    pub participant_id: Id,
+    pub input_bus_id: Id,
+    pub output_bus_id: Id,
+    pub excluded_participant_ids: Vec<Id>,
+    pub attached_output_ids: Vec<Id>,
+    pub route_state: String,
+    pub mix_minus_required: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CollaborationMediaRuntime {
     pub runtime_mode: String,
     pub bundle_mode: String,
@@ -199,6 +211,7 @@ pub struct CollaborationMediaRuntime {
     pub stage_count: i64,
     pub stages: Vec<CollaborationMediaStage>,
     pub output_targets: Vec<CollaborationMediaTarget>,
+    pub return_targets: Vec<CollaborationMediaReturn>,
     pub input_participant_ids: Vec<Id>,
     pub mix_minus_participant_ids: Vec<Id>,
 }

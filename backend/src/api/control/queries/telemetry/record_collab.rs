@@ -35,6 +35,7 @@ pub(super) struct LiveRuntimeTelemetryCollaboration {
     pub bundle_return_count: i64,
     pub media_stage_count: i64,
     pub media_output_target_count: i64,
+    pub media_return_target_count: i64,
     pub media_input_participant_count: i64,
     pub media_mix_minus_participant_count: i64,
 }
@@ -156,6 +157,7 @@ pub(super) async fn build_live_runtime_telemetry_collaboration(
     let bundle_return_count = bundle.returns.len() as i64;
     let media_stage_count = media_runtime.stage_count;
     let media_output_target_count = media_runtime.output_targets.len() as i64;
+    let media_return_target_count = media_runtime.return_targets.len() as i64;
     let media_input_participant_count = media_runtime.input_participant_ids.len() as i64;
     let media_mix_minus_participant_count = media_runtime.mix_minus_participant_ids.len() as i64;
 
@@ -191,6 +193,7 @@ pub(super) async fn build_live_runtime_telemetry_collaboration(
         bundle_return_count,
         media_stage_count,
         media_output_target_count,
+        media_return_target_count,
         media_input_participant_count,
         media_mix_minus_participant_count,
     }))

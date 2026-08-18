@@ -204,6 +204,7 @@ fn build_collaboration_detail(collaboration: Option<&LiveRuntimeTelemetryCollabo
                 "bundleReturnCount": item.bundle_return_count,
                 "mediaStageCount": item.media_stage_count,
                 "mediaOutputTargetCount": item.media_output_target_count,
+                "mediaReturnTargetCount": item.media_return_target_count,
                 "mediaInputParticipantCount": item.media_input_participant_count,
                 "mediaMixMinusParticipantCount": item.media_mix_minus_participant_count,
             })

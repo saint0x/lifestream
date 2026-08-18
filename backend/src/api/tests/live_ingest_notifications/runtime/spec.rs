@@ -549,6 +549,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         .as_array()
         .expect("media output targets array")
         .len() as i64;
+    let media_return_target_count = ready_spec["collaboration"]["media"]["returnTargets"]
+        .as_array()
+        .expect("media return targets array")
+        .len() as i64;
     let media_input_participant_count = ready_spec["collaboration"]["media"]["inputParticipantIds"]
         .as_array()
         .expect("media input participant ids array")
@@ -629,6 +633,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
     assert_eq!(
         runtime.telemetry_summary.peak_media_output_target_count,
         media_output_target_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_media_return_target_count,
+        media_return_target_count
     );
     assert_eq!(
         runtime.telemetry_summary.peak_media_input_participant_count,
@@ -753,6 +761,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         Some(media_output_target_count)
     );
     assert_eq!(
+        runtime.telemetry_summary.last_media_return_target_count,
+        Some(media_return_target_count)
+    );
+    assert_eq!(
         runtime.telemetry_summary.last_media_input_participant_count,
         Some(media_input_participant_count)
     );
@@ -816,6 +828,7 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             && sample.detail["collaboration"]["bundleReturnCount"] == bundle_return_count
             && sample.detail["collaboration"]["mediaStageCount"] == media_stage_count
             && sample.detail["collaboration"]["mediaOutputTargetCount"] == media_output_target_count
+            && sample.detail["collaboration"]["mediaReturnTargetCount"] == media_return_target_count
             && sample.detail["collaboration"]["mediaInputParticipantCount"]
                 == media_input_participant_count
             && sample.detail["collaboration"]["mediaMixMinusParticipantCount"]
@@ -1106,6 +1119,17 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .any(|target| {
                 target["outputKind"] == "mirror_channel"
                     && target["relativePath"] == expected_mirror_playlist
+            })
+    );
+    assert!(
+        ready_spec["collaboration"]["media"]["returnTargets"]
+            .as_array()
+            .expect("media runtime return targets array")
+            .iter()
+            .any(|target| {
+                target["participantId"] == collaboration_participant.id
+                    && target["mixMinusRequired"] == true
+                    && target["excludedParticipantIds"] == json!([collaboration_participant.id])
             })
     );
     assert!(

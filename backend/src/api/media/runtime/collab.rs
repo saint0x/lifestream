@@ -1,7 +1,7 @@
 use super::*;
 use crate::models::{
-    CollaborationMediaRuntime, CollaborationMediaStage, CollaborationMediaTarget,
-    CollaborationRuntimeBundle,
+    CollaborationMediaReturn, CollaborationMediaRuntime, CollaborationMediaStage,
+    CollaborationMediaTarget, CollaborationRuntimeBundle,
 };
 
 pub(crate) fn build_collaboration_media_runtime(
@@ -89,6 +89,19 @@ pub(crate) fn build_collaboration_media_runtime(
             mix_minus_required: fanout.mix_minus_required,
         })
         .collect::<Vec<_>>();
+    let return_targets = bundle
+        .returns
+        .iter()
+        .map(|item| CollaborationMediaReturn {
+            participant_id: item.participant_id.clone(),
+            input_bus_id: item.input_bus_id.clone(),
+            output_bus_id: item.output_bus_id.clone(),
+            excluded_participant_ids: item.excluded_participant_ids.clone(),
+            attached_output_ids: item.attached_output_ids.clone(),
+            route_state: item.route_state.clone(),
+            mix_minus_required: item.mix_minus_required,
+        })
+        .collect::<Vec<_>>();
 
     let input_participant_ids = bundle
         .attachments
@@ -111,6 +124,7 @@ pub(crate) fn build_collaboration_media_runtime(
         stage_count: stages.len() as i64,
         stages,
         output_targets,
+        return_targets,
         input_participant_ids,
         mix_minus_participant_ids,
     })
@@ -165,6 +179,15 @@ fn validate_runtime_bundle(bundle: &CollaborationRuntimeBundle) -> AppResult<()>
     {
         return Err(AppError::Internal(
             "collaboration media runtime mix-minus return missing exclusion set".to_string(),
+        ));
+    }
+    if bundle
+        .returns
+        .iter()
+        .any(|item| item.attached_output_ids.is_empty())
+    {
+        return Err(AppError::Internal(
+            "collaboration media runtime return missing attached output routing".to_string(),
         ));
     }
     Ok(())

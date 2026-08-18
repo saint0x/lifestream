@@ -118,6 +118,8 @@ pub(super) async fn fetch_summary_row(
                 AS peak_media_stage_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mediaOutputTargetCount') AS INTEGER), 0))
                 AS peak_media_output_target_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mediaReturnTargetCount') AS INTEGER), 0))
+                AS peak_media_return_target_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mediaInputParticipantCount') AS INTEGER), 0))
                 AS peak_media_input_participant_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mediaMixMinusParticipantCount') AS INTEGER), 0))
@@ -213,6 +215,8 @@ pub(super) async fn fetch_latest_telemetry_row(
                 AS media_stage_count,
             CAST(json_extract(detail_json, '$.collaboration.mediaOutputTargetCount') AS INTEGER)
                 AS media_output_target_count,
+            CAST(json_extract(detail_json, '$.collaboration.mediaReturnTargetCount') AS INTEGER)
+                AS media_return_target_count,
             CAST(json_extract(detail_json, '$.collaboration.mediaInputParticipantCount') AS INTEGER)
                 AS media_input_participant_count,
             CAST(json_extract(detail_json, '$.collaboration.mediaMixMinusParticipantCount') AS INTEGER)

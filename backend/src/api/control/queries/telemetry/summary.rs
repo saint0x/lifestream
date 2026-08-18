@@ -129,6 +129,9 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         peak_media_output_target_count: total_row
             .get::<Option<i64>, _>("peak_media_output_target_count")
             .unwrap_or(0),
+        peak_media_return_target_count: total_row
+            .get::<Option<i64>, _>("peak_media_return_target_count")
+            .unwrap_or(0),
         peak_media_input_participant_count: total_row
             .get::<Option<i64>, _>("peak_media_input_participant_count")
             .unwrap_or(0),
@@ -261,6 +264,9 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         last_media_output_target_count: latest_row
             .as_ref()
             .and_then(|row| row.get("media_output_target_count")),
+        last_media_return_target_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("media_return_target_count")),
         last_media_input_participant_count: latest_row
             .as_ref()
             .and_then(|row| row.get("media_input_participant_count")),
