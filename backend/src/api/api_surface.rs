@@ -11,7 +11,7 @@ pub(super) fn router(state: SharedState) -> Router {
         .merge(playback::routes())
         .merge(realtime::routes())
         .merge(uploads::routes())
-        .merge(upload_jobs::routes())
+        .merge(media::jobs::routes())
         .route("/api/v1/media/*path", get(serve_media_file))
         .layer(middleware::from_fn_with_state(
             state.clone(),

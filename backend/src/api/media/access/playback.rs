@@ -33,7 +33,7 @@ pub(crate) async fn creator_can_access_media_path(
             row.get::<Option<String>, _>("poster_relative_path"),
             row.get::<Option<String>, _>("playback_relative_path"),
         );
-        let extra_paths = fetch_media_asset_variants(pool, &asset.0)
+        let extra_paths: Vec<String> = fetch_media_asset_variants(pool, &asset.0)
             .await?
             .into_iter()
             .map(|variant| variant.relative_path)

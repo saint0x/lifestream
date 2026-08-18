@@ -14,7 +14,7 @@ pub(crate) use publish::{
     retry_upload_job_processing,
 };
 
-pub(super) fn routes() -> Router<SharedState> {
+pub(crate) fn routes() -> Router<SharedState> {
     Router::new()
         .route(
             "/api/v1/creator/me/upload-jobs",

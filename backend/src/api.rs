@@ -106,8 +106,7 @@ mod discovery;
 mod ingest;
 mod ingestctl;
 mod me;
-mod media_access;
-mod media_pipeline;
+mod media;
 mod moderation;
 mod notifications;
 mod playback;
@@ -117,7 +116,6 @@ mod public;
 mod realtime;
 mod reconciliation;
 mod shared_helpers;
-mod upload_jobs;
 mod uploads;
 mod validation;
 
@@ -252,7 +250,7 @@ use me::{
     get_my_membership_entitlement, get_my_purchase_entitlement,
     reconcile_my_membership_entitlement, reconcile_my_purchase_entitlement, revoke_session,
 };
-use media_access::{
+use media::access::{
     check_database, ensure_parent_dir, fetch_admin_playback_session_record,
     fetch_admin_playback_sessions, fetch_playback_session_by_id, media_api_url,
     media_path_for_relative, parse_ffprobe_ratio, path_allowed_for_paths,
@@ -262,11 +260,11 @@ use media_access::{
     validate_upload_ingest_token,
 };
 #[cfg(test)]
-use media_pipeline::{
+use media::pipeline::{
     GeneratedHlsVariant, MAX_MEDIA_PROCESSING_ATTEMPTS, fail_media_job_for_lease,
     validate_generated_hls_package, write_hls_master_manifest,
 };
-use media_pipeline::{
+use media::pipeline::{
     HlsVariantPlan, ProbedAudioStream, ProbedMedia, StoredMediaPreviewTrack,
     ensure_media_asset_shell, fetch_admin_media_job_record, fetch_admin_media_jobs,
     fetch_media_asset_by_id_any_creator, fetch_media_asset_by_upload_id,
@@ -382,17 +380,17 @@ use creator::*;
 #[cfg(test)]
 use discovery::*;
 #[cfg(test)]
-use media_access::*;
+use media::access::*;
 #[cfg(test)]
-use media_pipeline::*;
+use media::jobs::*;
+#[cfg(test)]
+use media::pipeline::*;
 #[cfg(test)]
 use moderation::*;
 #[cfg(test)]
 use public::*;
 #[cfg(test)]
 use realtime::*;
-#[cfg(test)]
-use upload_jobs::*;
 #[cfg(test)]
 use uploads::*;
 

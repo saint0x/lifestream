@@ -37,9 +37,10 @@ pub(crate) async fn fetch_creator_upload_operations_response(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<CreatorUploadOperationsResponse> {
-    let jobs = fetch_upload_jobs(pool, creator_id).await?;
-    let ingest_sessions = fetch_upload_ingest_sessions(pool, creator_id).await?;
-    let media_assets = fetch_media_assets(pool, creator_id).await?;
+    let jobs: Vec<UploadJob> = fetch_upload_jobs(pool, creator_id).await?;
+    let ingest_sessions: Vec<UploadIngestSession> =
+        fetch_upload_ingest_sessions(pool, creator_id).await?;
+    let media_assets: Vec<MediaAsset> = fetch_media_assets(pool, creator_id).await?;
     let uploads = fetch_uploads(pool, creator_id).await?;
 
     let session_by_job: HashMap<String, UploadIngestSession> = ingest_sessions
