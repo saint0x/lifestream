@@ -1,5 +1,6 @@
 use super::record_collab::LiveRuntimeTelemetryCollaboration;
 use super::*;
+use crate::api::control::apply_collaboration_transport_gap;
 use crate::models::LiveRuntimeTarget;
 
 mod artifacts;
@@ -57,13 +58,16 @@ pub(super) fn build_live_runtime_telemetry_detail(
         "session".to_string(),
         build_session_detail(session, sample_kind),
     );
+    let advisory = apply_collaboration_transport_gap(
+        session,
+        crate::api::control::build_live_runtime_advisory(Some(session), output, None),
+        collaboration
+            .map(|item| item.transport_gap_present)
+            .unwrap_or(false),
+    );
     detail.insert(
         "advisory".to_string(),
-        json!(crate::api::control::build_live_runtime_advisory(
-            Some(session),
-            output,
-            None,
-        )),
+        json!(advisory),
     );
     detail.insert(
         "artifacts".to_string(),

@@ -2,7 +2,9 @@ use super::*;
 use crate::api::collab::{
     build_collaboration_runtime_response_for_host, fetch_active_collaboration_session_for_broadcast,
 };
-use crate::api::control::artifacts::build_collaboration_runtime_bundle;
+use crate::api::control::{
+    build_collaboration_runtime_bundle, collaboration_transport_gap_from_topology,
+};
 use crate::api::control::fetch_terminalizable_live_ingest_sessions_for_broadcast;
 use crate::api::media::build_collaboration_media_runtime;
 
@@ -20,6 +22,7 @@ pub(super) struct LiveRuntimeTelemetryCollaboration {
     pub issued_grant_count: i64,
     pub active_pickup_count: i64,
     pub mix_minus_required: bool,
+    pub transport_gap_present: bool,
     pub audio_mix_mode: &'static str,
     pub active_route_count: i64,
     pub armed_archive_route_count: i64,
@@ -87,6 +90,7 @@ pub(super) async fn build_live_runtime_telemetry_collaboration(
         .filter(|participant| participant.role != "host" && participant.mirror_to_guest_channel)
         .count() as i64;
     let mix_minus_required = topology.mix_minus_required;
+    let transport_gap_present = collaboration_transport_gap_from_topology(&topology);
     let active_grant_count = count_collaboration_rows(
         pool,
         "collaboration_mirror_grants",
@@ -174,6 +178,7 @@ pub(super) async fn build_live_runtime_telemetry_collaboration(
         issued_grant_count,
         active_pickup_count,
         mix_minus_required,
+        transport_gap_present,
         audio_mix_mode: if mix_minus_required {
             "mix_minus"
         } else {

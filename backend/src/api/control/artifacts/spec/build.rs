@@ -1,5 +1,8 @@
 use super::*;
-use crate::api::control::{build_live_runtime_advisory, describe_live_runtime_artifact_health};
+use crate::api::control::{
+    apply_collaboration_transport_gap, build_live_runtime_advisory,
+    describe_live_runtime_artifact_health,
+};
 use doc::{
     LiveRuntimeArchiveSpec, LiveRuntimeCollaborationSpec, LiveRuntimePackagingSpec,
     LiveRuntimeReconnectSpec, LiveRuntimeSpecDocument, LiveRuntimeSpecPaths,
@@ -41,6 +44,15 @@ pub(super) async fn build_live_runtime_spec(
         collaboration.as_ref(),
     );
     let advisory = build_live_runtime_advisory(Some(session), Some(output), None);
+    let advisory = if let Some(collaboration) = collaboration.as_ref() {
+        apply_collaboration_transport_gap(
+            session,
+            advisory,
+            collaboration_transport_gap_from_spec(collaboration),
+        )
+    } else {
+        advisory
+    };
     let artifact_health = describe_live_runtime_artifact_health(state, session, output).await?;
 
     Ok(LiveRuntimeSpecDocument {
@@ -137,6 +149,16 @@ pub(super) async fn build_live_runtime_spec(
                 "session_state".to_string(),
             ],
         },
+    })
+}
+
+fn collaboration_transport_gap_from_spec(collaboration: &LiveRuntimeCollaborationSpec) -> bool {
+    collaboration.media.return_targets.iter().any(|route| {
+        route.mix_minus_required
+            && collaboration.contributions.iter().any(|contribution| {
+                contribution.participant_id == route.participant_id
+                    && contribution.transport_class == "collaboration_socket"
+            })
     })
 }
 

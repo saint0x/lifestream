@@ -1,6 +1,7 @@
 use super::*;
 use crate::models::{
-    LiveRuntimeAdvisory, LiveRuntimeAdvisoryAction, LiveRuntimeTelemetrySummary,
+    CollaborationRuntimeTopology, LiveRuntimeAdvisory, LiveRuntimeAdvisoryAction,
+    LiveRuntimeTelemetrySummary,
     LiveSourceValidationIssue,
 };
 
@@ -94,17 +95,79 @@ pub(crate) fn build_live_runtime_advisory(
         });
     }
 
-    let blocking_issue_count = actions
-        .iter()
-        .filter(|action| action.severity == "error")
-        .count() as i64;
-    let repairable_issue_count = actions.iter().filter(|action| action.repairable).count() as i64;
     let runtime_failure_present = output.is_some_and(|item| {
         item.runtime_state == "failed"
             || item.packaging_status == "failed"
             || item.archive_status == "failed"
     }) || telemetry.is_some_and(|item| item.failure_samples > 0);
 
+    finalize_advisory(
+        session,
+        runtime_failure_present,
+        actions,
+        None,
+        telemetry,
+    )
+}
+
+pub(crate) fn apply_collaboration_transport_gap(
+    session: &LiveIngestSession,
+    mut advisory: LiveRuntimeAdvisory,
+    transport_gap_present: bool,
+) -> LiveRuntimeAdvisory {
+    if !transport_gap_present
+        || advisory
+            .recommended_actions
+            .iter()
+            .any(|action| action.code == "collaboration_transport_gap")
+    {
+        return advisory;
+    }
+
+    advisory.recommended_actions.push(LiveRuntimeAdvisoryAction {
+        code: "collaboration_transport_gap".to_string(),
+        severity: "error".to_string(),
+        repairable: false,
+        title: "Collaboration return transport is not executable".to_string(),
+        detail: "This collaboration session requires participant return audio over collaboration socket transport, but no concrete media transport endpoint is declared for executable guest audio ingress or egress.".to_string(),
+    });
+
+    finalize_advisory(
+        session,
+        advisory.runtime_failure_present,
+        advisory.recommended_actions,
+        advisory.source_validation_state,
+        None,
+    )
+}
+
+pub(crate) fn collaboration_transport_gap_from_topology(
+    topology: &CollaborationRuntimeTopology,
+) -> bool {
+    topology.audio.iter().any(|route| {
+        route.receive_program_audio
+            && route.mix_minus_required
+            && topology.contributions.iter().any(|contribution| {
+                contribution.participant_id == route.participant_id
+                    && contribution.transport_class == "collaboration_socket"
+            })
+    })
+}
+
+fn finalize_advisory(
+    session: &LiveIngestSession,
+    runtime_failure_present: bool,
+    actions: Vec<LiveRuntimeAdvisoryAction>,
+    source_validation_state: Option<String>,
+    telemetry: Option<&LiveRuntimeTelemetrySummary>,
+) -> LiveRuntimeAdvisory {
+    let blocking_issue_count = actions
+        .iter()
+        .filter(|action| action.severity == "error")
+        .count() as i64;
+    let repairable_issue_count = actions.iter().filter(|action| action.repairable).count() as i64;
+    let runtime_failure_present = runtime_failure_present
+        || telemetry.is_some_and(|item| item.failure_samples > 0);
     let status = if runtime_failure_present || blocking_issue_count > 0 {
         "critical"
     } else if repairable_issue_count > 0 {
@@ -143,10 +206,12 @@ pub(crate) fn build_live_runtime_advisory(
         requires_operator_action: blocking_issue_count > 0 || runtime_failure_present,
         blocking_issue_count,
         repairable_issue_count,
-        source_validation_state: session
-            .source_validation
-            .as_ref()
-            .map(|report| report.state.clone()),
+        source_validation_state: source_validation_state.or_else(|| {
+            session
+                .source_validation
+                .as_ref()
+                .map(|report| report.state.clone())
+        }),
         runtime_failure_present,
         recommended_actions: actions,
     }

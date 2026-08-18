@@ -35,8 +35,9 @@ pub(crate) use sessions::{
     fetch_terminalizable_live_ingest_sessions_for_broadcast,
 };
 pub(crate) use state::{
-    build_live_runtime_advisory, validate_runtime_output_model, validate_runtime_report_transition,
-    validate_runtime_state_input,
+    apply_collaboration_transport_gap, build_live_runtime_advisory,
+    collaboration_transport_gap_from_topology, validate_runtime_output_model,
+    validate_runtime_report_transition, validate_runtime_state_input,
 };
 pub(crate) use telemetry::{
     fetch_current_operational_telemetry, fetch_live_runtime_telemetry_for_session,

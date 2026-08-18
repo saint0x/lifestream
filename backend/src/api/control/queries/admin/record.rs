@@ -63,13 +63,27 @@ pub(crate) async fn fetch_admin_live_ingest_session_record(
     let telemetry_summary =
         fetch_live_runtime_telemetry_summary_for_session(pool, session_id).await?;
     let recent_events = fetch_live_ingest_events_for_session(pool, session_id, 20).await?;
+    let runtime_advisory = build_live_runtime_advisory(
+        Some(&session),
+        runtime_output.as_ref(),
+        Some(&telemetry_summary),
+    );
+    let runtime_advisory = if let Some(collaboration_session) =
+        fetch_active_collaboration_session_for_broadcast(pool, &session.broadcast_id).await?
+    {
+        let runtime =
+            build_collaboration_runtime_response_for_host(pool, collaboration_session).await?;
+        apply_collaboration_transport_gap(
+            &session,
+            runtime_advisory,
+            collaboration_transport_gap_from_topology(&runtime.topology),
+        )
+    } else {
+        runtime_advisory
+    };
     Ok(AdminLiveIngestSessionRecord {
         stale_connection: is_live_ingest_session_stale(&session),
-        runtime_advisory: build_live_runtime_advisory(
-            Some(&session),
-            runtime_output.as_ref(),
-            Some(&telemetry_summary),
-        ),
+        runtime_advisory,
         artifact_health: runtime_output
             .as_ref()
             .map(|output| describe_declared_live_runtime_artifact_health(&session, output)),
@@ -93,13 +107,27 @@ pub(crate) async fn fetch_creator_live_ingest_session_record(
     let telemetry_summary =
         fetch_live_runtime_telemetry_summary_for_session(pool, session_id).await?;
     let recent_events = fetch_live_ingest_events_for_session(pool, session_id, 20).await?;
+    let runtime_advisory = build_live_runtime_advisory(
+        Some(&session),
+        runtime_output.as_ref(),
+        Some(&telemetry_summary),
+    );
+    let runtime_advisory = if let Some(collaboration_session) =
+        fetch_active_collaboration_session_for_broadcast(pool, &session.broadcast_id).await?
+    {
+        let runtime =
+            build_collaboration_runtime_response_for_host(pool, collaboration_session).await?;
+        apply_collaboration_transport_gap(
+            &session,
+            runtime_advisory,
+            collaboration_transport_gap_from_topology(&runtime.topology),
+        )
+    } else {
+        runtime_advisory
+    };
     Ok(AdminLiveIngestSessionRecord {
         stale_connection: is_live_ingest_session_stale(&session),
-        runtime_advisory: build_live_runtime_advisory(
-            Some(&session),
-            runtime_output.as_ref(),
-            Some(&telemetry_summary),
-        ),
+        runtime_advisory,
         artifact_health: runtime_output
             .as_ref()
             .map(|output| describe_declared_live_runtime_artifact_health(&session, output)),

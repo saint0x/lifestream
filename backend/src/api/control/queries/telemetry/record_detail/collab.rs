@@ -20,6 +20,7 @@ pub(super) fn build_collaboration_detail(
                 "issuedGrantCount": item.issued_grant_count,
                 "activePickupCount": item.active_pickup_count,
                 "mixMinusRequired": item.mix_minus_required,
+                "transportGapPresent": item.transport_gap_present,
                 "audioMixMode": item.audio_mix_mode,
                 "sharedProgramMirrorRouteCount": item.shared_program_mirror_route_count,
                 "guestIsolatedMirrorRouteCount": item.guest_isolated_mirror_route_count,

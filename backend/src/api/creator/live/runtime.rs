@@ -1,6 +1,7 @@
 use super::*;
 use crate::api::control::{
-    build_live_runtime_advisory, describe_declared_live_runtime_artifact_health,
+    apply_collaboration_transport_gap, build_live_runtime_advisory,
+    collaboration_transport_gap_from_topology, describe_declared_live_runtime_artifact_health,
     describe_live_runtime_artifact_health, fetch_current_live_runtime_targets,
     fetch_live_runtime_telemetry_summary, fetch_recent_live_runtime_targets,
     fetch_recent_live_runtime_telemetry, reconcile_live_runtime_output_artifacts,
@@ -69,6 +70,18 @@ pub(crate) async fn fetch_creator_live_runtime_response(
         active_runtime_output.as_ref(),
         Some(&telemetry_summary),
     );
+    let runtime_advisory = if let (Some(session), Some(active_control)) = (
+        active_session.as_ref(),
+        collaboration.active_control.as_ref(),
+    ) {
+        apply_collaboration_transport_gap(
+            session,
+            runtime_advisory,
+            collaboration_transport_gap_from_topology(&active_control.runtime.topology),
+        )
+    } else {
+        runtime_advisory
+    };
     let artifact_health = match (active_session.as_ref(), active_runtime_output.as_ref()) {
         (Some(session), Some(output)) => Some(describe_declared_live_runtime_artifact_health(
             session, output,
