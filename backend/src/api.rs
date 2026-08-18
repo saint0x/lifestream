@@ -90,6 +90,9 @@ use crate::{
 };
 
 mod admin_ops;
+mod api_runtime;
+mod api_surface;
+mod app_request;
 mod collaboration;
 mod collaboration_core;
 mod collaboration_events;
@@ -120,6 +123,8 @@ mod shared_helpers;
 mod upload_jobs;
 mod uploads;
 mod validation;
+
+pub(super) use app_request::{enforce_rate_limit, validate_request_origin};
 
 use admin_ops::{
     get_admin_media_job, get_admin_notification_delivery, reconcile_admin_media_job,
@@ -367,186 +372,11 @@ const MAX_NOTIFICATION_DELIVERY_ATTEMPTS: i64 = 3;
 const BACKGROUND_WORKER_STALE_AFTER_SECONDS: u64 = 15;
 
 pub fn router(state: SharedState) -> Router {
-    Router::new()
-        .merge(admin_ops_routes())
-        .merge(public::routes())
-        .merge(me::routes())
-        .merge(creator_business::routes())
-        .merge(creator_core::routes())
-        .merge(creator_live_routes())
-        .merge(collaboration_routes())
-        .merge(live_ingest_routes())
-        .merge(playback_routes())
-        .merge(realtime_routes())
-        .merge(uploads_routes())
-        .merge(upload_jobs_routes())
-        .route("/api/v1/media/*path", get(serve_media_file))
-        .layer(middleware::from_fn_with_state(
-            state.clone(),
-            request_context_middleware,
-        ))
-        .with_state(state.clone())
-        .layer(build_cors_layer(state.as_ref()))
-        .layer(TraceLayer::new_for_http())
-}
-
-fn build_cors_layer(state: &AppState) -> CorsLayer {
-    CorsLayer::new()
-        .allow_methods([
-            Method::GET,
-            Method::POST,
-            Method::PUT,
-            Method::PATCH,
-            Method::DELETE,
-            Method::OPTIONS,
-        ])
-        .allow_headers([
-            header::ACCEPT,
-            header::AUTHORIZATION,
-            header::CONTENT_TYPE,
-            header::ORIGIN,
-            header::HeaderName::from_static("x-request-id"),
-        ])
-        .allow_origin(state.cors_allowed_origins.clone())
-        .expose_headers([header::HeaderName::from_static("x-request-id")])
+    api_surface::router(state)
 }
 
 pub fn start_background_workers(state: SharedState) {
-    tokio::spawn(async move {
-        loop {
-            state.background_worker.mark_tick().await;
-            let mut errors = Vec::new();
-
-            match fetch_pending_media_jobs(&state.pool).await {
-                Ok(pending_jobs) => {
-                    for (creator_id, job_id) in pending_jobs {
-                        schedule_media_processing(state.clone(), creator_id, job_id).await;
-                    }
-                }
-                Err(error) => {
-                    errors.push(format!("pending media jobs fetch failed: {error}"));
-                }
-            }
-
-            if let Err(error) = reconcile_stale_live_ingest_sessions(state.clone()).await {
-                errors.push(format!("stale live ingest reconciliation failed: {error}"));
-            }
-            if let Err(error) = reconcile_expired_collaboration_invites(state.clone()).await {
-                errors.push(format!(
-                    "expired collaboration invite reconciliation failed: {error}"
-                ));
-            }
-            if let Err(error) = reconcile_expired_collaboration_mirror_grants(state.clone()).await {
-                errors.push(format!(
-                    "expired collaboration mirror grant reconciliation failed: {error}"
-                ));
-            }
-            if let Err(error) = reconcile_expired_user_entitlements(state.clone()).await {
-                errors.push(format!(
-                    "expired entitlement reconciliation failed: {error}"
-                ));
-            }
-            if let Err(error) = reconcile_expired_live_moderation_actions(state.clone()).await {
-                errors.push(format!(
-                    "expired live moderation reconciliation failed: {error}"
-                ));
-            }
-            if let Err(error) = reconcile_expired_creator_enforcement_actions(state.clone()).await {
-                errors.push(format!(
-                    "expired creator enforcement reconciliation failed: {error}"
-                ));
-            }
-            if let Err(error) = reconcile_notification_deliveries(state.clone()).await {
-                errors.push(format!(
-                    "notification delivery reconciliation failed: {error}"
-                ));
-            }
-            if let Err(error) = reconcile_stale_media_processing_jobs(state.clone()).await {
-                errors.push(format!(
-                    "stale media processing reconciliation failed: {error}"
-                ));
-            }
-            if let Err(error) = reconcile_scheduled_upload_releases(state.clone()).await {
-                errors.push(format!("scheduled release reconciliation failed: {error}"));
-            }
-            if let Err(error) = reconcile_stale_presence_sessions(state.clone()).await {
-                errors.push(format!("stale presence reconciliation failed: {error}"));
-            }
-            if let Err(error) = reconcile_invalid_playback_sessions(state.clone()).await {
-                errors.push(format!(
-                    "invalid playback session reconciliation failed: {error}"
-                ));
-            }
-
-            if errors.is_empty() {
-                state.background_worker.mark_success().await;
-            } else {
-                state
-                    .background_worker
-                    .mark_failure(errors.join("; "))
-                    .await;
-            }
-
-            sleep(Duration::from_secs(5)).await;
-        }
-    });
-}
-
-async fn request_context_middleware(
-    State(state): State<SharedState>,
-    mut request: Request<Body>,
-    next: Next,
-) -> Response {
-    state.metrics.begin_request();
-
-    let request_id = request
-        .headers()
-        .get("x-request-id")
-        .and_then(|value| value.to_str().ok())
-        .filter(|value| !value.trim().is_empty())
-        .map(ToOwned::to_owned)
-        .unwrap_or_else(|| Uuid::new_v4().to_string());
-
-    if let Ok(value) = HeaderValue::from_str(&request_id) {
-        request.headers_mut().insert("x-request-id", value);
-    }
-
-    let mut response = next.run(request).await;
-    if let Ok(value) = HeaderValue::from_str(&request_id) {
-        response.headers_mut().insert("x-request-id", value);
-    }
-    state
-        .metrics
-        .finish_request(response.status().as_u16())
-        .await;
-    response
-}
-
-fn validate_request_origin(state: &SharedState, headers: &HeaderMap) -> AppResult<()> {
-    let Some(origin) = headers.get(header::ORIGIN) else {
-        return Ok(());
-    };
-    if state.allows_origin(origin) {
-        Ok(())
-    } else {
-        Err(AppError::Forbidden)
-    }
-}
-
-async fn enforce_rate_limit(
-    state: &SharedState,
-    key: &str,
-    limit: usize,
-    window: Duration,
-) -> AppResult<()> {
-    state
-        .rate_limits
-        .check(key, limit, window)
-        .await
-        .map_err(|_| {
-            state.metrics.increment_rate_limit();
-            AppError::RateLimited
-        })
+    api_runtime::start_background_workers(state)
 }
 
 #[cfg(test)]
