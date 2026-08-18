@@ -47,25 +47,24 @@ use crate::{
         CollaborationSessionView, CollaborationSocketPresence,
         CollaborationSocketPresenceReconciliationAction,
         CollaborationSocketPresenceReconciliationReport, CollaborationTopologyMember,
-        ConnectedAccount, ContentPurchase, ContinueWatchingEntry, CreateCollaborationInviteRequest,
-        CreateCollaborationSessionRequest, CreateCreatorEnforcementActionRequest,
-        CreateCreatorModeratorRequest, CreateCreatorSeriesRequest,
-        CreateCreatorSubscriberTierRequest, CreateLiveModerationActionRequest,
-        CreateSessionRequest, CreateUploadJobRequest, CreatorAnalyticsSummary, CreatorAppState,
-        CreatorCatalogEpisode, CreatorCatalogFilm, CreatorCatalogSeason, CreatorCatalogSeries,
-        CreatorCollaborationControlResponse, CreatorContentQuery, CreatorContentResponse,
-        CreatorContentSummary, CreatorDashboard, CreatorEnforcementAction, CreatorEnforcementState,
-        CreatorEnforcementReconciliationAction, CreatorEnforcementReconciliationReport,
-        CreatorHealthSample, CreatorLiveCollaborationSummary, CreatorLiveControlResponse,
-        CreatorLiveHealth, CreatorLiveRuntimeResponse, CreatorLiveSettings,
+        ConnectedAccount, ContentPurchase, ContentPurchaseReconciliationReport,
+        ContinueWatchingEntry, CreateCollaborationInviteRequest, CreateCollaborationSessionRequest,
+        CreateCreatorEnforcementActionRequest, CreateCreatorModeratorRequest,
+        CreateCreatorSeriesRequest, CreateCreatorSubscriberTierRequest,
+        CreateLiveModerationActionRequest, CreateSessionRequest, CreateUploadJobRequest,
+        CreatorAnalyticsSummary, CreatorAppState, CreatorCatalogEpisode, CreatorCatalogFilm,
+        CreatorCatalogSeason, CreatorCatalogSeries, CreatorCollaborationControlResponse,
+        CreatorContentQuery, CreatorContentResponse, CreatorContentSummary, CreatorDashboard,
+        CreatorEnforcementAction, CreatorEnforcementReconciliationAction,
+        CreatorEnforcementReconciliationReport, CreatorEnforcementState, CreatorHealthSample,
+        CreatorLiveCollaborationSummary, CreatorLiveControlResponse, CreatorLiveHealth,
+        CreatorLiveRuntimeResponse, CreatorLiveSettings, CreatorLiveSnapshot,
         CreatorLiveSocketPresence, CreatorLiveSocketPresenceReconciliationAction,
-        CreatorLiveSocketPresenceReconciliationReport, CreatorLiveSnapshot,
-        CreatorMembership, CreatorMembershipReconciliationReport, CreatorModerator,
-        CreatorNotification, CreatorOperationalChecklistItem,
-        ContentPurchaseReconciliationReport,
-        CreatorOperationalState, CreatorProfile, CreatorRevenueBreakdownEntry,
-        CreatorRevenueSummary, CreatorSeriesProject, CreatorSubscriberTier,
-        CreatorUploadOperationRecord, CreatorUploadOperationsResponse,
+        CreatorLiveSocketPresenceReconciliationReport, CreatorMembership,
+        CreatorMembershipReconciliationReport, CreatorModerator, CreatorNotification,
+        CreatorOperationalChecklistItem, CreatorOperationalState, CreatorProfile,
+        CreatorRevenueBreakdownEntry, CreatorRevenueSummary, CreatorSeriesProject,
+        CreatorSubscriberTier, CreatorUploadOperationRecord, CreatorUploadOperationsResponse,
         CreatorUploadOperationsSummary, DownloadSettings, Episode, Film, FollowingFeedResponse,
         HealthDependencies, HealthDependencyStatus, HealthResponse, HomeResponse,
         IngestConnectRequest, IngestConnectResponse, IngestHeartbeatRequest, LanguageSettings,
@@ -75,48 +74,57 @@ use crate::{
         LiveNotifyPreference, LiveReportRequest, LiveStream, LiveStreamReportRecord, MediaAsset,
         MediaAssetVariant, MediaJobReconciliationAction, MediaJobReconciliationReport,
         MediaProcessingRun, ModerationAuditEntry, NotificationChannelSetting,
-        NotificationDeliveryQuery, NotificationDeliveryRecord,
-        NotificationDeliveryReconciliationAction,
-        NotificationDeliveryReconciliationReport, NotificationSettings,
+        NotificationDeliveryQuery, NotificationDeliveryReconciliationAction,
+        NotificationDeliveryReconciliationReport, NotificationDeliveryRecord, NotificationSettings,
         ParentalControls, PlaybackAccessQuery, PlaybackAudioTrack, PlaybackCaptionTrack,
         PlaybackGrant, PlaybackPreviewTrack, PlaybackReconciliationAction,
-        PlaybackReconciliationReport, PlaybackSession, PlaybackSettings,
-        PrivacySettings, ProgressInput, PublishUploadJobRequest,
-        ReleaseCreatorEnforcementActionRequest, ResolveLiveStreamReportRequest, RevenueEntry,
-        Season, Series, SessionTokenResponse, StartBroadcastRequest, Streamer,
-        TerminateLiveIngestRequest, TopContent, TrafficSource,
+        PlaybackReconciliationReport, PlaybackSession, PlaybackSettings, PrivacySettings,
+        ProgressInput, PublishUploadJobRequest, ReleaseCreatorEnforcementActionRequest,
+        ResolveLiveStreamReportRequest, RevenueEntry, Season, Series, SessionTokenResponse,
+        StartBroadcastRequest, Streamer, TerminateLiveIngestRequest, TopContent, TrafficSource,
         UpdateCollaborationParticipantRequest, UpdateCreatorLiveSettingsRequest,
         UpdateCreatorOperationalStateRequest, UpdateCreatorSeriesRequest,
         UpdateCreatorSubscriberTierRequest, UpdateLiveRequest, UpdateProfileRequest,
         UpdateSettingsRequest, UpdateUploadJobRequest, UpdateUploadLifecycleRequest,
         UpdateUploadRequest, Upload, UploadIngestSession, UploadIngestTicket, UploadJob, User,
-        UserEntitlements, UserLibrary, UserNotification, UserProfileDetails, UserSettingsBundle,
-        ViewerAppState, ViewerPreview, WatchHistoryEntry, WatchlistResponse, WsEvent,
-        UserEntitlementReconciliationAction,
+        UserEntitlementReconciliationAction, UserEntitlements, UserLibrary, UserNotification,
+        UserProfileDetails, UserSettingsBundle, ViewerAppState, ViewerPreview, WatchHistoryEntry,
+        WatchlistResponse, WsEvent,
     },
     state::AppState,
 };
 
-mod public;
-mod me;
+mod collaboration;
 mod creator_core;
+mod me;
+mod public;
 
-use public::{
-    LimitQuery, PersistedChatMessage, bootstrap, check_binary_available,
-    check_media_root_writable, check_runtime_dependencies_with_binaries, create_clip_request,
-    create_live_moderation_action, get_live_moderation_action, get_live_viewer_preview,
-    list_chat_messages, list_live_moderation_actions, list_live_streams, metrics,
-    reconcile_live_moderation_action, remove_live_stream_moderator, resolve_live_stream_report,
-    revoke_live_moderation_action,
+use collaboration::{
+    accept_collaboration_invite, apply_collaboration_participant_update,
+    create_collaboration_invite, create_collaboration_session, end_collaboration_session,
+    get_creator_collaboration_control, get_creator_collaboration_runtime,
+    get_creator_collaboration_session, get_creator_collaboration_socket_session,
+    get_my_collaboration_runtime, get_my_collaboration_session, list_creator_collaboration_events,
+    list_my_collaboration_events, list_my_collaboration_invites,
+    reconcile_creator_collaboration_socket_session, remove_collaboration_participant,
+    revoke_collaboration_invite, revoke_collaboration_invite_internal,
+    routes as collaboration_routes, update_collaboration_participant,
+};
+use creator_core::{
+    get_admin_creator_enforcement_action, get_creator_live, get_creator_live_socket_session,
+    get_creator_state, reconcile_admin_creator_enforcement_action,
+    reconcile_creator_live_socket_session,
 };
 use me::{
     get_my_membership_entitlement, get_my_purchase_entitlement,
     reconcile_my_membership_entitlement, reconcile_my_purchase_entitlement, revoke_session,
 };
-use creator_core::{
-    get_admin_creator_enforcement_action, get_creator_live, get_creator_state,
-    get_creator_live_socket_session, reconcile_admin_creator_enforcement_action,
-    reconcile_creator_live_socket_session,
+use public::{
+    LimitQuery, PersistedChatMessage, bootstrap, check_binary_available, check_media_root_writable,
+    check_runtime_dependencies_with_binaries, create_clip_request, create_live_moderation_action,
+    get_live_moderation_action, get_live_viewer_preview, list_chat_messages,
+    list_live_moderation_actions, list_live_streams, metrics, reconcile_live_moderation_action,
+    remove_live_stream_moderator, resolve_live_stream_report, revoke_live_moderation_action,
 };
 
 type SharedState = Arc<AppState>;
@@ -130,6 +138,7 @@ pub fn router(state: SharedState) -> Router {
         .merge(public::routes())
         .merge(me::routes())
         .merge(creator_core::routes())
+        .merge(collaboration_routes())
         .route(
             "/api/v1/admin/notifications/deliveries",
             get(list_admin_notification_deliveries),
@@ -193,66 +202,6 @@ pub fn router(state: SharedState) -> Router {
         .route(
             "/api/v1/admin/playback/sessions/:session_id/revoke",
             post(revoke_admin_playback_session),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs",
-            get(list_creator_collaboration_sessions),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions",
-            post(create_collaboration_session),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id",
-            get(get_creator_collaboration_session),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/events",
-            get(list_creator_collaboration_events),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/control",
-            get(get_creator_collaboration_control),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/socket-sessions/:socket_id",
-            get(get_creator_collaboration_socket_session),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/socket-sessions/:socket_id/reconcile",
-            post(reconcile_creator_collaboration_socket_session),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/runtime",
-            get(get_creator_collaboration_runtime),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/reconcile",
-            post(reconcile_creator_collaboration_session),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/end",
-            post(end_collaboration_session),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/invites",
-            post(create_collaboration_invite),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/invites/:invite_id/revoke",
-            post(revoke_collaboration_invite),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/participants/:participant_id",
-            patch(update_collaboration_participant),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/participants/:participant_id/remove",
-            post(remove_collaboration_participant),
-        )
-        .route(
-            "/api/v1/creator/me/live/collabs/sessions/:session_id/participants/:participant_id/grants/mirror",
-            post(issue_collaboration_mirror_grant),
         )
         .route(
             "/api/v1/creator/me/subscriber-tiers",
@@ -361,8 +310,14 @@ pub fn router(state: SharedState) -> Router {
             "/api/v1/playback/live/:stream_id/session",
             post(create_live_playback_session),
         )
-        .route("/api/v1/uploads/:upload_id/purchase", post(purchase_upload_access))
-        .route("/api/v1/content/:content_id/purchase", post(purchase_content_access))
+        .route(
+            "/api/v1/uploads/:upload_id/purchase",
+            post(purchase_upload_access),
+        )
+        .route(
+            "/api/v1/content/:content_id/purchase",
+            post(purchase_content_access),
+        )
         .route(
             "/api/v1/playback/sessions/:session_id",
             get(get_playback_session),
@@ -382,46 +337,6 @@ pub fn router(state: SharedState) -> Router {
         .route(
             "/api/v1/creator/subscriptions/:creator_id",
             delete(cancel_creator_subscription),
-        )
-        .route(
-            "/api/v1/me/live/collabs/invites",
-            get(list_my_collaboration_invites),
-        )
-        .route(
-            "/api/v1/me/live/collabs/sessions",
-            get(list_my_collaboration_sessions),
-        )
-        .route(
-            "/api/v1/me/live/collabs/sessions/:session_id",
-            get(get_my_collaboration_session),
-        )
-        .route(
-            "/api/v1/me/live/collabs/sessions/:session_id/leave",
-            post(leave_my_collaboration_session),
-        )
-        .route(
-            "/api/v1/me/live/collabs/sessions/:session_id/events",
-            get(list_my_collaboration_events),
-        )
-        .route(
-            "/api/v1/me/live/collabs/sessions/:session_id/runtime",
-            get(get_my_collaboration_runtime),
-        )
-        .route(
-            "/api/v1/me/live/collabs/sessions/:session_id/grants",
-            get(list_my_collaboration_mirror_grants),
-        )
-        .route(
-            "/api/v1/live/collabs/invites/:invite_id/accept",
-            post(accept_collaboration_invite),
-        )
-        .route(
-            "/api/v1/live/collabs/invites/:invite_id/decline",
-            post(decline_collaboration_invite),
-        )
-        .route(
-            "/api/v1/live/collabs/grants/:grant_id/redeem",
-            post(redeem_collaboration_mirror_grant),
         )
         .route("/api/v1/ingest/live/connect", post(connect_live_ingest))
         .route(
@@ -946,978 +861,6 @@ async fn revoke_admin_playback_session(
     expire_playback_session_by_id(&state.pool, &session_id).await?;
     Ok(Json(
         fetch_admin_playback_session_record(&state.pool, &session_id).await?,
-    ))
-}
-
-async fn list_creator_collaboration_sessions(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-) -> AppResult<Json<Vec<CollaborationSession>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    reconcile_collaboration_expiry_for_host_read(&state, creator_id).await?;
-    Ok(Json(
-        fetch_collaboration_sessions_for_host(&state.pool, creator_id).await?,
-    ))
-}
-
-async fn create_collaboration_session(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Json(input): Json<CreateCollaborationSessionRequest>,
-) -> AppResult<Json<CollaborationSession>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    enforce_rate_limit(
-        &state,
-        &format!("creator-collab-session:{}", identity.user_id),
-        20,
-        Duration::from_secs(60),
-    )
-    .await?;
-    let creator_id = identity.require_creator_scope()?;
-    ensure_creator_collaboration_enabled(&state.pool, creator_id).await?;
-    let broadcast =
-        resolve_collaboration_broadcast(&state.pool, creator_id, input.broadcast_id.as_deref())
-            .await?;
-    if let Some(existing) =
-        fetch_active_collaboration_session_for_broadcast(&state.pool, &broadcast.id).await?
-    {
-        return Err(AppError::BadRequest(format!(
-            "a collaboration session is already active for broadcast {}",
-            existing.id
-        )));
-    }
-    let now = Utc::now().to_rfc3339();
-    let session_id = format!("cols-{}", Uuid::new_v4().simple());
-    let title = input
-        .title
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| format!("{} collaboration", broadcast.title));
-    let chat_mode = input.chat_mode.unwrap_or_else(|| "shared".to_string());
-    let recording_policy = input
-        .recording_policy
-        .unwrap_or_else(|| "host_archive".to_string());
-    validate_collaboration_chat_mode(&chat_mode)?;
-    validate_collaboration_recording_policy(&recording_policy)?;
-
-    sqlx::query(
-        r#"
-        INSERT INTO collaboration_sessions (
-            id, host_creator_id, source_broadcast_id, title, status, chat_mode,
-            recording_policy, created_at, updated_at, activated_at, ended_at
-        ) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, NULL, NULL)
-        "#,
-    )
-    .bind(&session_id)
-    .bind(creator_id)
-    .bind(&broadcast.id)
-    .bind(&title)
-    .bind(&chat_mode)
-    .bind(&recording_policy)
-    .bind(&now)
-    .bind(&now)
-    .execute(&state.pool)
-    .await?;
-
-    let participant_id = format!("colp-{}", Uuid::new_v4().simple());
-    sqlx::query(
-        r#"
-        INSERT INTO collaboration_participants (
-            id, session_id, invite_id, user_id, creator_id, role, state, publish_to_host,
-            mirror_to_guest_channel, can_speak_in_chat, joined_at, left_at, created_at, updated_at
-        ) VALUES (?, ?, NULL, ?, ?, 'host', 'live', 1, 0, 1, ?, NULL, ?, ?)
-        "#,
-    )
-    .bind(&participant_id)
-    .bind(&session_id)
-    .bind(&identity.user_id)
-    .bind(Some(creator_id.to_string()))
-    .bind(&now)
-    .bind(&now)
-    .bind(&now)
-    .execute(&state.pool)
-    .await?;
-
-    sqlx::query(
-        "UPDATE collaboration_sessions SET status = 'active', activated_at = ?, updated_at = ? WHERE id = ?",
-    )
-    .bind(&now)
-    .bind(&now)
-    .bind(&session_id)
-    .execute(&state.pool)
-    .await?;
-    publish_collaboration_event(
-        &state,
-        &session_id,
-        Some(identity.user_id.clone()),
-        Some(participant_id),
-        "session_created",
-        json!({
-            "hostCreatorId": creator_id,
-            "sourceBroadcastId": broadcast.id,
-            "title": title,
-            "chatMode": chat_mode,
-            "recordingPolicy": recording_policy,
-        }),
-    )
-    .await?;
-
-    Ok(Json(
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?,
-    ))
-}
-
-async fn get_creator_collaboration_session(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-) -> AppResult<Json<CollaborationSession>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
-    Ok(Json(
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?,
-    ))
-}
-
-async fn get_creator_collaboration_runtime(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-) -> AppResult<Json<CollaborationRuntimeResponse>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
-    let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    Ok(Json(
-        build_collaboration_runtime_response_for_host(&state.pool, session).await?,
-    ))
-}
-
-async fn get_creator_collaboration_control(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-) -> AppResult<Json<CreatorCollaborationControlResponse>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
-    let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    Ok(Json(
-        build_creator_collaboration_control_response_for_host(&state.pool, session).await?,
-    ))
-}
-
-async fn get_creator_collaboration_socket_session(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path((session_id, socket_id)): Path<(String, String)>,
-) -> AppResult<Json<CollaborationSocketPresence>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    let socket_session =
-        fetch_collaboration_socket_presence_by_id_raw(&state.pool, &session.id, &socket_id).await?;
-    Ok(Json(socket_session))
-}
-
-async fn reconcile_creator_collaboration_socket_session(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path((session_id, socket_id)): Path<(String, String)>,
-) -> AppResult<Json<CollaborationSocketPresenceReconciliationReport>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    let socket_session =
-        fetch_collaboration_socket_presence_by_id_raw(&state.pool, &session.id, &socket_id).await?;
-    if socket_session.session_id != session.id {
-        return Err(AppError::NotFound);
-    }
-    Ok(Json(
-        reconcile_single_collaboration_socket_session(state, &session.id, &socket_id).await?,
-    ))
-}
-
-async fn reconcile_creator_collaboration_session(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-) -> AppResult<Json<CollaborationReconciliationReport>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    Ok(Json(
-        reconcile_single_collaboration_session(state, &session_id).await?,
-    ))
-}
-
-async fn list_creator_collaboration_events(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-    Query(query): Query<CollaborationEventsQuery>,
-) -> AppResult<Json<Vec<CollaborationEvent>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
-    fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    Ok(Json(
-        fetch_collaboration_events(
-            &state.pool,
-            &session_id,
-            query.after_seq.unwrap_or(0),
-            query.limit.unwrap_or(100),
-        )
-        .await?,
-    ))
-}
-
-async fn end_collaboration_session(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-) -> AppResult<Json<CollaborationSession>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    end_collaboration_session_internal(
-        &state,
-        &session,
-        Some(identity.user_id.clone()),
-        json!({
-            "hostCreatorId": creator_id,
-            "reason": "host ended the collaboration session",
-        }),
-    )
-    .await?;
-
-    Ok(Json(
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?,
-    ))
-}
-
-async fn create_collaboration_invite(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-    Json(input): Json<CreateCollaborationInviteRequest>,
-) -> AppResult<Json<CollaborationInvite>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    enforce_rate_limit(
-        &state,
-        &format!("creator-collab-invite:{}", identity.user_id),
-        30,
-        Duration::from_secs(60),
-    )
-    .await?;
-    let creator_id = identity.require_creator_scope()?;
-    ensure_creator_collaboration_enabled(&state.pool, creator_id).await?;
-    let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    if session.status == "ended" {
-        return Err(AppError::BadRequest(
-            "cannot invite participants into an ended collaboration session".to_string(),
-        ));
-    }
-    let invitee = fetch_user(&state.pool, &input.invitee_user_id).await?;
-    let invitee_creator_id = fetch_creator_id_for_user(&state.pool, &invitee.id).await?;
-    if input.mirror_to_guest_channel && invitee_creator_id.is_none() {
-        return Err(AppError::BadRequest(
-            "mirror-to-channel collaboration requires the invited user to have a creator profile"
-                .to_string(),
-        ));
-    }
-    if let Ok(existing_participant) =
-        fetch_collaboration_participant_for_user(&state.pool, &session_id, &invitee.id).await
-    {
-        if existing_participant.state != "left" && existing_participant.state != "removed" {
-            return Err(AppError::BadRequest(
-                "user is already participating in this collaboration session".to_string(),
-            ));
-        }
-    }
-    if has_pending_collaboration_invite_for_user(&state.pool, &session_id, &invitee.id).await? {
-        return Err(AppError::BadRequest(
-            "user already has a pending collaboration invite for this session".to_string(),
-        ));
-    }
-    validate_collaboration_role(&input.role)?;
-    let now = Utc::now();
-    let expires_at = (now
-        + chrono::Duration::minutes(input.expires_in_minutes.unwrap_or(30).clamp(5, 24 * 60)))
-    .to_rfc3339();
-    let invite_id = format!("coli-{}", Uuid::new_v4().simple());
-
-    sqlx::query(
-        r#"
-        INSERT INTO collaboration_invites (
-            id, session_id, host_creator_id, invitee_user_id, invitee_creator_id, role, state,
-            mirror_to_guest_channel, message, created_at, responded_at, expires_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, ?)
-        "#,
-    )
-    .bind(&invite_id)
-    .bind(&session_id)
-    .bind(creator_id)
-    .bind(&invitee.id)
-    .bind(&invitee_creator_id)
-    .bind(&input.role)
-    .bind(input.mirror_to_guest_channel as i64)
-    .bind(input.message)
-    .bind(now.to_rfc3339())
-    .bind(&expires_at)
-    .execute(&state.pool)
-    .await?;
-    publish_collaboration_event(
-        &state,
-        &session_id,
-        Some(identity.user_id.clone()),
-        None,
-        "invite_created",
-        json!({
-            "inviteId": invite_id,
-            "inviteeUserId": invitee.id,
-            "inviteeCreatorId": invitee_creator_id,
-            "role": input.role,
-            "mirrorToGuestChannel": input.mirror_to_guest_channel,
-            "expiresAt": expires_at,
-        }),
-    )
-    .await?;
-    enqueue_notification_event(
-        &state.pool,
-        "collaboration_invite",
-        &format!(
-            "{} invited you to join a collaboration session.",
-            session.title
-        ),
-        Some(&identity.user_id),
-        Some(&session.title),
-        Some(creator_id),
-        None,
-        None,
-        json!({
-            "inviteId": invite_id,
-            "sessionId": session_id,
-            "role": input.role,
-            "mirrorToGuestChannel": input.mirror_to_guest_channel,
-        }),
-        &[invitee.id],
-        &[],
-    )
-    .await?;
-
-    Ok(Json(
-        fetch_collaboration_invite_by_id(&state.pool, &invite_id).await?,
-    ))
-}
-
-async fn revoke_collaboration_invite(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path((session_id, invite_id)): Path<(String, String)>,
-) -> AppResult<Json<CollaborationInvite>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    Ok(Json(
-        revoke_collaboration_invite_internal(
-            &state,
-            &session,
-            &invite_id,
-            &identity.user_id,
-            "host_revoked",
-        )
-        .await?,
-    ))
-}
-
-async fn revoke_collaboration_invite_internal(
-    state: &SharedState,
-    session: &CollaborationSession,
-    invite_id: &str,
-    actor_user_id: &str,
-    reason: &str,
-) -> AppResult<CollaborationInvite> {
-    if session.status == "ended" {
-        return Err(AppError::BadRequest(
-            "cannot revoke invites from an ended collaboration session".to_string(),
-        ));
-    }
-    let invite = fetch_collaboration_invite_by_id(&state.pool, invite_id).await?;
-    if invite.session_id != session.id || invite.host_creator_id != session.host_creator_id {
-        return Err(AppError::NotFound);
-    }
-    if invite.state == "revoked" {
-        return Ok(invite);
-    }
-    validate_pending_collaboration_invite(&invite)?;
-    let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        "UPDATE collaboration_invites SET state = 'revoked', responded_at = COALESCE(responded_at, ?) WHERE id = ?",
-    )
-    .bind(&now)
-    .bind(invite_id)
-    .execute(&state.pool)
-    .await?;
-    publish_collaboration_invite_revoked_events(
-        state,
-        &session.id,
-        Some(actor_user_id.to_string()),
-        std::slice::from_ref(&invite),
-        &now,
-        reason,
-    )
-    .await?;
-    fetch_collaboration_invite_by_id(&state.pool, invite_id).await
-}
-
-async fn update_collaboration_participant(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path((session_id, participant_id)): Path<(String, String)>,
-    Json(input): Json<UpdateCollaborationParticipantRequest>,
-) -> AppResult<Json<CollaborationParticipant>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    ensure_creator_collaboration_enabled(&state.pool, creator_id).await?;
-    let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    Ok(Json(
-        apply_collaboration_participant_update(
-            &state,
-            &session,
-            &participant_id,
-            &identity.user_id,
-            &input,
-        )
-        .await?,
-    ))
-}
-
-async fn apply_collaboration_participant_update(
-    state: &SharedState,
-    session: &CollaborationSession,
-    participant_id: &str,
-    actor_user_id: &str,
-    input: &UpdateCollaborationParticipantRequest,
-) -> AppResult<CollaborationParticipant> {
-    if session.status == "ended" {
-        return Err(AppError::BadRequest(
-            "cannot update participants for an ended collaboration session".to_string(),
-        ));
-    }
-
-    let participant = fetch_collaboration_participant_by_id(&state.pool, participant_id).await?;
-    if participant.session_id != session.id {
-        return Err(AppError::NotFound);
-    }
-    if participant.role == "host" {
-        return Err(AppError::BadRequest(
-            "the host participant cannot be mutated through collaboration controls".to_string(),
-        ));
-    }
-
-    let next_state = match input.state.as_deref() {
-        Some(state_value) => {
-            validate_collaboration_participant_state(state_value)?;
-            validate_collaboration_participant_transition(&participant.state, state_value, true)?;
-            state_value.to_string()
-        }
-        None => participant.state.clone(),
-    };
-    let publish_to_host = input.publish_to_host.unwrap_or(participant.publish_to_host);
-    let mirror_to_guest_channel = input
-        .mirror_to_guest_channel
-        .unwrap_or(participant.mirror_to_guest_channel);
-    let can_speak_in_chat = input
-        .can_speak_in_chat
-        .unwrap_or(participant.can_speak_in_chat);
-
-    if mirror_to_guest_channel && participant.creator_id.is_none() {
-        return Err(AppError::BadRequest(
-            "participant must have a creator profile to mirror to their guest channel".to_string(),
-        ));
-    }
-
-    let now = Utc::now().to_rfc3339();
-    let left_at = if matches!(next_state.as_str(), "left" | "removed") {
-        Some(participant.left_at.clone().unwrap_or_else(|| now.clone()))
-    } else {
-        None
-    };
-    sqlx::query(
-        r#"
-        UPDATE collaboration_participants
-        SET state = ?, publish_to_host = ?, mirror_to_guest_channel = ?, can_speak_in_chat = ?,
-            left_at = ?, updated_at = ?
-        WHERE id = ? AND session_id = ?
-        "#,
-    )
-    .bind(&next_state)
-    .bind(publish_to_host as i64)
-    .bind(mirror_to_guest_channel as i64)
-    .bind(can_speak_in_chat as i64)
-    .bind(left_at)
-    .bind(&now)
-    .bind(participant_id)
-    .bind(&session.id)
-    .execute(&state.pool)
-    .await?;
-
-    if !matches!(next_state.as_str(), "live") || !mirror_to_guest_channel {
-        revoke_collaboration_mirror_grants_for_participant(
-            state,
-            &session.id,
-            participant_id,
-            Some(actor_user_id.to_string()),
-            &now,
-            "participant_updated",
-        )
-        .await?;
-    }
-
-    publish_collaboration_event(
-        state,
-        &session.id,
-        Some(actor_user_id.to_string()),
-        Some(participant_id.to_string()),
-        "participant_updated",
-        json!({
-            "participantId": participant_id,
-            "previousState": participant.state,
-            "state": next_state,
-            "publishToHost": publish_to_host,
-            "mirrorToGuestChannel": mirror_to_guest_channel,
-            "canSpeakInChat": can_speak_in_chat,
-            "updatedAt": now,
-        }),
-    )
-    .await?;
-
-    fetch_collaboration_participant_by_id(&state.pool, participant_id).await
-}
-
-async fn remove_collaboration_participant(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path((session_id, participant_id)): Path<(String, String)>,
-) -> AppResult<Json<CollaborationParticipant>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    if session.status == "ended" {
-        return Err(AppError::BadRequest(
-            "cannot remove participants from an ended collaboration session".to_string(),
-        ));
-    }
-    let participant = fetch_collaboration_participant_by_id(&state.pool, &participant_id).await?;
-    if participant.session_id != session_id {
-        return Err(AppError::NotFound);
-    }
-    if participant.role == "host" {
-        return Err(AppError::BadRequest(
-            "the host cannot be removed from a collaboration session".to_string(),
-        ));
-    }
-    if participant.state == "removed" {
-        return Ok(Json(participant));
-    }
-    let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        r#"
-        UPDATE collaboration_participants
-        SET state = 'removed', left_at = COALESCE(left_at, ?), updated_at = ?
-        WHERE id = ? AND session_id = ?
-        "#,
-    )
-    .bind(&now)
-    .bind(&now)
-    .bind(&participant_id)
-    .bind(&session_id)
-    .execute(&state.pool)
-    .await?;
-    revoke_collaboration_mirror_grants_for_participant(
-        &state,
-        &session_id,
-        &participant_id,
-        Some(identity.user_id.clone()),
-        &now,
-        "participant_removed",
-    )
-    .await?;
-    publish_collaboration_event(
-        &state,
-        &session_id,
-        Some(identity.user_id.clone()),
-        Some(participant_id.clone()),
-        "participant_removed",
-        json!({
-            "participantId": participant_id,
-            "removedAt": now,
-        }),
-    )
-    .await?;
-    Ok(Json(
-        fetch_collaboration_participant_by_id(&state.pool, &participant_id).await?,
-    ))
-}
-
-async fn issue_collaboration_mirror_grant(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path((session_id, participant_id)): Path<(String, String)>,
-) -> AppResult<Json<CollaborationMirrorGrant>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
-    ensure_creator_collaboration_enabled(&state.pool, creator_id).await?;
-    let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    if session.status == "ended" {
-        return Err(AppError::BadRequest(
-            "cannot issue collaboration grants for an ended session".to_string(),
-        ));
-    }
-    let participant = fetch_collaboration_participant_by_id(&state.pool, &participant_id).await?;
-    if participant.session_id != session_id {
-        return Err(AppError::NotFound);
-    }
-    if participant.state != "live" {
-        return Err(AppError::BadRequest(
-            "mirror grants can only be issued for live participants".to_string(),
-        ));
-    }
-    if !participant.mirror_to_guest_channel {
-        return Err(AppError::BadRequest(
-            "participant is not enabled for mirrored guest channel pickup".to_string(),
-        ));
-    }
-    if participant.creator_id.is_none() {
-        return Err(AppError::BadRequest(
-            "participant must have a creator profile to receive a mirror grant".to_string(),
-        ));
-    }
-    Ok(Json(
-        issue_mirror_grant_for_participant(&state, &session, &participant, &identity.user_id)
-            .await?,
-    ))
-}
-
-async fn list_my_collaboration_invites(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-) -> AppResult<Json<Vec<CollaborationInvite>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    reconcile_collaboration_expiry_for_participant_read(&state, &identity.user_id).await?;
-    Ok(Json(
-        fetch_collaboration_invites_for_user(&state.pool, &identity.user_id).await?,
-    ))
-}
-
-async fn list_my_collaboration_sessions(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-) -> AppResult<Json<Vec<CollaborationSessionView>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    reconcile_collaboration_expiry_for_participant_read(&state, &identity.user_id).await?;
-    Ok(Json(
-        fetch_collaboration_sessions_for_participant(&state.pool, &identity.user_id).await?,
-    ))
-}
-
-async fn list_my_collaboration_events(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-    Query(query): Query<CollaborationEventsQuery>,
-) -> AppResult<Json<Vec<CollaborationEvent>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
-    let session =
-        fetch_collaboration_session_for_participant(&state.pool, &identity.user_id, &session_id)
-            .await?;
-    Ok(Json(filter_visible_collaboration_events_for_session(
-        &session,
-        fetch_collaboration_events(
-            &state.pool,
-            &session_id,
-            query.after_seq.unwrap_or(0),
-            query.limit.unwrap_or(100),
-        )
-        .await?,
-    )))
-}
-
-async fn get_my_collaboration_session(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-) -> AppResult<Json<CollaborationSessionView>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
-    Ok(Json(
-        fetch_collaboration_session_for_participant(&state.pool, &identity.user_id, &session_id)
-            .await?,
-    ))
-}
-
-async fn get_my_collaboration_runtime(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-) -> AppResult<Json<CollaborationRuntimeResponse>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
-    let session =
-        fetch_collaboration_session_for_participant(&state.pool, &identity.user_id, &session_id)
-            .await?;
-    Ok(Json(
-        build_collaboration_runtime_response_for_participant(&state.pool, session).await?,
-    ))
-}
-
-async fn list_my_collaboration_mirror_grants(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-) -> AppResult<Json<Vec<CollaborationMirrorGrant>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
-    let participant =
-        fetch_collaboration_participant_for_user(&state.pool, &session_id, &identity.user_id)
-            .await?;
-    validate_collaboration_participant_access(&participant)?;
-    Ok(Json(
-        fetch_collaboration_mirror_grants_for_participant(&state.pool, &participant.id).await?,
-    ))
-}
-
-async fn leave_my_collaboration_session(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(session_id): Path<String>,
-) -> AppResult<Json<CollaborationParticipant>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let participant =
-        fetch_collaboration_participant_for_user(&state.pool, &session_id, &identity.user_id)
-            .await?;
-    if participant.role == "host" {
-        return Err(AppError::BadRequest(
-            "hosts must end the collaboration session instead of leaving it".to_string(),
-        ));
-    }
-    if participant.state == "left" || participant.state == "removed" {
-        return Ok(Json(participant));
-    }
-
-    let session = fetch_collaboration_session_by_id(&state.pool, &session_id).await?;
-    if session.status == "ended" {
-        return Ok(Json(participant));
-    }
-    validate_collaboration_participant_transition(&participant.state, "left", false)?;
-
-    let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        r#"
-        UPDATE collaboration_participants
-        SET state = 'left', left_at = COALESCE(left_at, ?), updated_at = ?
-        WHERE id = ? AND session_id = ?
-        "#,
-    )
-    .bind(&now)
-    .bind(&now)
-    .bind(&participant.id)
-    .bind(&session_id)
-    .execute(&state.pool)
-    .await?;
-    revoke_collaboration_mirror_grants_for_participant(
-        &state,
-        &session_id,
-        &participant.id,
-        Some(identity.user_id.clone()),
-        &now,
-        "participant_left",
-    )
-    .await?;
-    publish_collaboration_event(
-        &state,
-        &session_id,
-        Some(identity.user_id.clone()),
-        Some(participant.id.clone()),
-        "participant_left",
-        json!({
-            "participantId": participant.id,
-            "leftAt": now,
-        }),
-    )
-    .await?;
-
-    Ok(Json(
-        fetch_collaboration_participant_by_id(&state.pool, &participant.id).await?,
-    ))
-}
-
-async fn accept_collaboration_invite(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(invite_id): Path<String>,
-) -> AppResult<Json<CollaborationParticipant>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let invite = fetch_collaboration_invite_by_id(&state.pool, &invite_id).await?;
-    if invite.invitee_user_id != identity.user_id {
-        return Err(AppError::Forbidden);
-    }
-    validate_pending_collaboration_invite(&invite)?;
-    let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        "UPDATE collaboration_invites SET state = 'accepted', responded_at = ? WHERE id = ?",
-    )
-    .bind(&now)
-    .bind(&invite_id)
-    .execute(&state.pool)
-    .await?;
-    let creator_id = fetch_creator_id_for_user(&state.pool, &identity.user_id).await?;
-    let participant = match fetch_collaboration_participant_for_user(
-        &state.pool,
-        &invite.session_id,
-        &identity.user_id,
-    )
-    .await
-    {
-        Ok(existing) => {
-            validate_collaboration_participant_transition(&existing.state, "backstage", false)?;
-            sqlx::query(
-                r#"
-                UPDATE collaboration_participants
-                SET invite_id = ?, creator_id = ?, role = ?, state = 'backstage',
-                    publish_to_host = 1, mirror_to_guest_channel = ?, can_speak_in_chat = 1,
-                    joined_at = ?, left_at = NULL, updated_at = ?
-                WHERE id = ? AND session_id = ?
-                "#,
-            )
-            .bind(&invite.id)
-            .bind(creator_id)
-            .bind(&invite.role)
-            .bind(invite.mirror_to_guest_channel as i64)
-            .bind(&now)
-            .bind(&now)
-            .bind(&existing.id)
-            .bind(&invite.session_id)
-            .execute(&state.pool)
-            .await?;
-            let rejoined = fetch_collaboration_participant_by_id(&state.pool, &existing.id).await?;
-            publish_collaboration_event(
-                &state,
-                &invite.session_id,
-                Some(identity.user_id.clone()),
-                Some(existing.id.clone()),
-                "participant_rejoined",
-                json!({
-                    "inviteId": invite.id,
-                    "participantId": existing.id,
-                    "role": invite.role,
-                    "mirrorToGuestChannel": invite.mirror_to_guest_channel,
-                    "rejoinedAt": now,
-                }),
-            )
-            .await?;
-            rejoined
-        }
-        Err(AppError::NotFound) => {
-            let participant_id = format!("colp-{}", Uuid::new_v4().simple());
-            sqlx::query(
-                r#"
-                INSERT INTO collaboration_participants (
-                    id, session_id, invite_id, user_id, creator_id, role, state, publish_to_host,
-                    mirror_to_guest_channel, can_speak_in_chat, joined_at, left_at, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 'backstage', 1, ?, 1, ?, NULL, ?, ?)
-                "#,
-            )
-            .bind(&participant_id)
-            .bind(&invite.session_id)
-            .bind(&invite.id)
-            .bind(&identity.user_id)
-            .bind(creator_id)
-            .bind(&invite.role)
-            .bind(invite.mirror_to_guest_channel as i64)
-            .bind(&now)
-            .bind(&now)
-            .bind(&now)
-            .execute(&state.pool)
-            .await?;
-            publish_collaboration_event(
-                &state,
-                &invite.session_id,
-                Some(identity.user_id.clone()),
-                Some(participant_id.clone()),
-                "invite_accepted",
-                json!({
-                    "inviteId": invite.id,
-                    "participantId": participant_id,
-                    "role": invite.role,
-                    "mirrorToGuestChannel": invite.mirror_to_guest_channel,
-                }),
-            )
-            .await?;
-            fetch_collaboration_participant_by_id(&state.pool, &participant_id).await?
-        }
-        Err(error) => return Err(error),
-    };
-    Ok(Json(participant))
-}
-
-async fn decline_collaboration_invite(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(invite_id): Path<String>,
-) -> AppResult<Json<CollaborationInvite>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let invite = fetch_collaboration_invite_by_id(&state.pool, &invite_id).await?;
-    if invite.invitee_user_id != identity.user_id {
-        return Err(AppError::Forbidden);
-    }
-    validate_pending_collaboration_invite(&invite)?;
-    let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        "UPDATE collaboration_invites SET state = 'declined', responded_at = ? WHERE id = ?",
-    )
-    .bind(&now)
-    .bind(&invite_id)
-    .execute(&state.pool)
-    .await?;
-    publish_collaboration_event(
-        &state,
-        &invite.session_id,
-        Some(identity.user_id.clone()),
-        None,
-        "invite_declined",
-        json!({
-            "inviteId": invite.id,
-            "inviteeUserId": identity.user_id,
-        }),
-    )
-    .await?;
-    Ok(Json(
-        fetch_collaboration_invite_by_id(&state.pool, &invite_id).await?,
-    ))
-}
-
-async fn redeem_collaboration_mirror_grant(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(grant_id): Path<String>,
-) -> AppResult<Json<CollaborationMirrorGrant>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    Ok(Json(
-        redeem_collaboration_mirror_grant_internal(&state, &identity, &grant_id).await?,
     ))
 }
 
@@ -3987,12 +2930,16 @@ async fn create_live_playback_session(
         .map(|path| format!("/api/v1/media/{path}?playbackToken={playback_token}"));
     let preferred_subtitle_language = fetch_user_subtitle_preference(
         &state.pool,
-        maybe_identity.as_ref().map(|identity| identity.user_id.as_str()),
+        maybe_identity
+            .as_ref()
+            .map(|identity| identity.user_id.as_str()),
     )
     .await?;
     let (preferred_audio_language, prefer_dubbed) = fetch_user_audio_preferences(
         &state.pool,
-        maybe_identity.as_ref().map(|identity| identity.user_id.as_str()),
+        maybe_identity
+            .as_ref()
+            .map(|identity| identity.user_id.as_str()),
     )
     .await?;
     let audio_tracks = build_media_audio_tracks(
@@ -4011,8 +2958,11 @@ async fn create_live_playback_session(
         preferred_subtitle_language.as_deref(),
     );
     let preview_track_rows = fetch_media_preview_track_rows(&state.pool, &target.asset.id).await?;
-    let preview_tracks =
-        build_media_preview_tracks(&target.asset.status, &preview_track_rows, Some(&playback_token));
+    let preview_tracks = build_media_preview_tracks(
+        &target.asset.status,
+        &preview_track_rows,
+        Some(&playback_token),
+    );
 
     Ok(Json(PlaybackGrant {
         session,
@@ -4094,12 +3044,16 @@ async fn create_playback_session_for_content_id(
         .map(|path| format!("/api/v1/media/{path}?playbackToken={playback_token}"));
     let preferred_subtitle_language = fetch_user_subtitle_preference(
         &state.pool,
-        maybe_identity.as_ref().map(|identity| identity.user_id.as_str()),
+        maybe_identity
+            .as_ref()
+            .map(|identity| identity.user_id.as_str()),
     )
     .await?;
     let (preferred_audio_language, prefer_dubbed) = fetch_user_audio_preferences(
         &state.pool,
-        maybe_identity.as_ref().map(|identity| identity.user_id.as_str()),
+        maybe_identity
+            .as_ref()
+            .map(|identity| identity.user_id.as_str()),
     )
     .await?;
     let audio_tracks = build_media_audio_tracks(
@@ -4118,8 +3072,11 @@ async fn create_playback_session_for_content_id(
         preferred_subtitle_language.as_deref(),
     );
     let preview_track_rows = fetch_media_preview_track_rows(&state.pool, &target.asset.id).await?;
-    let preview_tracks =
-        build_media_preview_tracks(&target.asset.status, &preview_track_rows, Some(&playback_token));
+    let preview_tracks = build_media_preview_tracks(
+        &target.asset.status,
+        &preview_track_rows,
+        Some(&playback_token),
+    );
 
     Ok(Json(PlaybackGrant {
         session,
@@ -4538,8 +3495,11 @@ async fn build_playback_grant_from_session_record(
         preferred_subtitle_language.as_deref(),
     );
     let preview_track_rows = fetch_media_preview_track_rows(&state.pool, &target.asset.id).await?;
-    let preview_tracks =
-        build_media_preview_tracks(&target.asset.status, &preview_track_rows, Some(playback_token));
+    let preview_tracks = build_media_preview_tracks(
+        &target.asset.status,
+        &preview_track_rows,
+        Some(playback_token),
+    );
 
     Ok(PlaybackGrant {
         session,
@@ -4668,10 +3628,14 @@ async fn serve_media_file(
     let content_type = media_content_type(&relative_path);
     if relative_path.ends_with(".vtt") {
         if let Some(playback_token) = query.playback_token.as_deref() {
-            let text = String::from_utf8(bytes)
-                .map_err(|error| AppError::Internal(error.to_string()))?;
+            let text =
+                String::from_utf8(bytes).map_err(|error| AppError::Internal(error.to_string()))?;
             let rewritten = rewrite_preview_vtt_body(&text, &relative_path, playback_token)?;
-            return Ok(([(header::CONTENT_TYPE, content_type)], Body::from(rewritten)).into_response());
+            return Ok((
+                [(header::CONTENT_TYPE, content_type)],
+                Body::from(rewritten),
+            )
+                .into_response());
         }
     }
     Ok(([(header::CONTENT_TYPE, content_type)], Body::from(bytes)).into_response())
@@ -4979,7 +3943,8 @@ async fn execute_collaboration_socket_command(
             let current_participant =
                 fetch_collaboration_participant_by_id(&state.pool, &session.participant.id).await?;
             validate_collaboration_participant_access(&current_participant)?;
-            let current_session = fetch_collaboration_session_by_id(&state.pool, session_id).await?;
+            let current_session =
+                fetch_collaboration_session_by_id(&state.pool, session_id).await?;
             if current_session.status == "ended" {
                 return Err(AppError::BadRequest(
                     "cannot request collaboration state changes for an ended session".to_string(),
@@ -5167,8 +4132,7 @@ async fn execute_collaboration_socket_command(
             }
             if participant.creator_id.is_none() {
                 return Err(AppError::BadRequest(
-                    "participant must have a creator profile to receive a mirror grant"
-                        .to_string(),
+                    "participant must have a creator profile to receive a mirror grant".to_string(),
                 ));
             }
             let grant = issue_mirror_grant_for_participant(
@@ -6030,34 +4994,36 @@ async fn handle_creator_live_socket(
         }
     };
 
-    let live_control = match fetch_authoritative_creator_live_control_response(&state, &creator_id).await {
-        Ok(control) => control,
-        Err(_) => {
-            let _ = disconnect_creator_live_socket_session(
-                &state.pool,
-                &creator_id,
-                &presence_session_token,
-                &ready_at,
-            )
-            .await;
-            state.realtime.leave(&channel_id).await;
-            return;
-        }
-    };
-    let live_runtime = match fetch_authoritative_creator_live_runtime_response(&state, &creator_id).await {
-        Ok(runtime) => runtime,
-        Err(_) => {
-            let _ = disconnect_creator_live_socket_session(
-                &state.pool,
-                &creator_id,
-                &presence_session_token,
-                &ready_at,
-            )
-            .await;
-            state.realtime.leave(&channel_id).await;
-            return;
-        }
-    };
+    let live_control =
+        match fetch_authoritative_creator_live_control_response(&state, &creator_id).await {
+            Ok(control) => control,
+            Err(_) => {
+                let _ = disconnect_creator_live_socket_session(
+                    &state.pool,
+                    &creator_id,
+                    &presence_session_token,
+                    &ready_at,
+                )
+                .await;
+                state.realtime.leave(&channel_id).await;
+                return;
+            }
+        };
+    let live_runtime =
+        match fetch_authoritative_creator_live_runtime_response(&state, &creator_id).await {
+            Ok(runtime) => runtime,
+            Err(_) => {
+                let _ = disconnect_creator_live_socket_session(
+                    &state.pool,
+                    &creator_id,
+                    &presence_session_token,
+                    &ready_at,
+                )
+                .await;
+                state.realtime.leave(&channel_id).await;
+                return;
+            }
+        };
     let mut touch_interval = interval(Duration::from_secs(WS_PRESENCE_TOUCH_INTERVAL_SECONDS));
 
     let _ = sender
@@ -7815,7 +6781,9 @@ async fn categories_with_live_totals(
     let live_streams = fetch_live_streams(pool, None).await?;
     let mut totals_by_category: HashMap<String, (i64, i64)> = HashMap::new();
     for stream in live_streams {
-        let entry = totals_by_category.entry(stream.category.clone()).or_insert((0, 0));
+        let entry = totals_by_category
+            .entry(stream.category.clone())
+            .or_insert((0, 0));
         entry.0 += stream.viewers;
         entry.1 += 1;
     }
@@ -8365,12 +7333,7 @@ async fn fetch_creator_operational_state(
     pool: &SqlitePool,
     profile: &CreatorProfile,
 ) -> AppResult<CreatorOperationalState> {
-    reconcile_expired_creator_enforcement_actions_for_read(
-        pool,
-        Some(&profile.id),
-        None,
-    )
-    .await?;
+    reconcile_expired_creator_enforcement_actions_for_read(pool, Some(&profile.id), None).await?;
     let row = sqlx::query(
         r#"
         SELECT legal_name, support_email, business_type, payout_country, payout_provider,
@@ -8526,12 +7489,7 @@ async fn fetch_creator_enforcement_state(
     pool: &SqlitePool,
     profile: &CreatorProfile,
 ) -> AppResult<CreatorEnforcementState> {
-    reconcile_expired_creator_enforcement_actions_for_read(
-        pool,
-        Some(&profile.id),
-        None,
-    )
-    .await?;
+    reconcile_expired_creator_enforcement_actions_for_read(pool, Some(&profile.id), None).await?;
     let history = fetch_creator_enforcement_actions(pool, &profile.id).await?;
     let active_actions = fetch_active_creator_enforcement_actions(pool, &profile.id).await?;
 
@@ -9092,7 +8050,8 @@ async fn reconcile_single_membership_entitlement(
                 reason: "creator membership exceeded its renewal or end boundary".to_string(),
                 occurred_at: now.clone(),
             });
-            reconcile_playback_sessions_for_user(&state.pool, user_id, Some(creator_id), None).await?;
+            reconcile_playback_sessions_for_user(&state.pool, user_id, Some(creator_id), None)
+                .await?;
         }
     }
 
@@ -11137,8 +10096,7 @@ async fn reconcile_single_collaboration_socket_session(
                 target_id: socket_id.to_string(),
                 previous_state: Some("connected".to_string()),
                 next_state: Some("disconnected".to_string()),
-                reason: "collaboration socket session exceeded the active presence TTL"
-                    .to_string(),
+                reason: "collaboration socket session exceeded the active presence TTL".to_string(),
                 occurred_at: now.clone(),
             });
         }
@@ -12052,7 +11010,15 @@ async fn publish_collaboration_reconciliation_event(
     event_type: &str,
     payload: Value,
 ) -> AppResult<CollaborationEvent> {
-    publish_collaboration_event_raw(state, session_id, actor_user_id, participant_id, event_type, payload).await
+    publish_collaboration_event_raw(
+        state,
+        session_id,
+        actor_user_id,
+        participant_id,
+        event_type,
+        payload,
+    )
+    .await
 }
 
 async fn issue_mirror_grant_for_participant(
@@ -12321,10 +11287,7 @@ async fn fetch_authoritative_creator_live_runtime_response(
     fetch_creator_live_runtime_response(&state.pool, creator_id).await
 }
 
-async fn publish_raw_creator_live_state(
-    state: &SharedState,
-    creator_id: &str,
-) -> AppResult<()> {
+async fn publish_raw_creator_live_state(state: &SharedState, creator_id: &str) -> AppResult<()> {
     let event = WsEvent::CreatorLiveState {
         control: fetch_creator_live_control_response(&state.pool, creator_id).await?,
         runtime: fetch_creator_live_runtime_response(&state.pool, creator_id).await?,
@@ -12916,8 +11879,9 @@ async fn transition_broadcast_to_live(
     if let Some(collaboration_session) =
         fetch_active_collaboration_session_for_broadcast(pool, &broadcast.id).await?
     {
-        let _ = sync_active_collaboration_mirror_pickups_for_session(pool, &collaboration_session.id)
-            .await;
+        let _ =
+            sync_active_collaboration_mirror_pickups_for_session(pool, &collaboration_session.id)
+                .await;
     }
     Ok(())
 }
@@ -13179,8 +12143,9 @@ async fn mark_live_ingest_session_stale_in_db(
     if let Some(collaboration_session) =
         fetch_active_collaboration_session_for_broadcast(pool, &session.broadcast_id).await?
     {
-        let _ = sync_active_collaboration_mirror_pickups_for_session(pool, &collaboration_session.id)
-            .await;
+        let _ =
+            sync_active_collaboration_mirror_pickups_for_session(pool, &collaboration_session.id)
+                .await;
     }
     Ok(())
 }
@@ -13248,7 +12213,8 @@ async fn reconcile_single_live_ingest_session(
 ) -> AppResult<LiveIngestReconciliationReport> {
     let now = Utc::now().to_rfc3339();
     let mut actions = Vec::new();
-    let session = fetch_live_ingest_session_by_id_global_unreconciled(&state.pool, session_id).await?;
+    let session =
+        fetch_live_ingest_session_by_id_global_unreconciled(&state.pool, session_id).await?;
 
     if session.status == "connected" && is_live_ingest_session_stale(&session) {
         mark_live_ingest_session_stale(&state, &session).await?;
@@ -13722,7 +12688,10 @@ async fn reconcile_single_creator_enforcement_action(
         let _ = enqueue_notification_event(
             &state.pool,
             "creator_enforcement_expired",
-            &format!("An enforcement restriction for scope '{}' has expired.", before.scope),
+            &format!(
+                "An enforcement restriction for scope '{}' has expired.",
+                before.scope
+            ),
             Some(&before.created_by_user_id),
             Some("operator"),
             Some(&before.creator_id),
@@ -14023,8 +12992,8 @@ async fn reconcile_single_creator_live_socket_session(
     creator_id: &str,
     socket_id: &str,
 ) -> AppResult<CreatorLiveSocketPresenceReconciliationReport> {
-    let before = fetch_creator_live_socket_presence_by_id_raw(&state.pool, creator_id, socket_id)
-        .await?;
+    let before =
+        fetch_creator_live_socket_presence_by_id_raw(&state.pool, creator_id, socket_id).await?;
     let now = Utc::now().to_rfc3339();
     let cutoff = active_presence_cutoff();
     let mut actions = Vec::new();
@@ -14045,8 +13014,7 @@ async fn reconcile_single_creator_live_socket_session(
                 target_id: socket_id.to_string(),
                 previous_state: Some("connected".to_string()),
                 next_state: Some("disconnected".to_string()),
-                reason: "creator live socket session exceeded the active presence TTL"
-                    .to_string(),
+                reason: "creator live socket session exceeded the active presence TTL".to_string(),
                 occurred_at: now.clone(),
             });
         }
@@ -14167,9 +13135,12 @@ fn playback_path_allowed_for_asset(asset: &MediaAsset, relative_path: &str) -> b
             .variants
             .iter()
             .map(|variant| variant.relative_path.clone())
-            .chain(asset.preview_tracks.iter().flat_map(|track| {
-                [track.image_path.clone(), track.vtt_path.clone()]
-            }))
+            .chain(
+                asset
+                    .preview_tracks
+                    .iter()
+                    .flat_map(|track| [track.image_path.clone(), track.vtt_path.clone()]),
+            )
             .collect::<Vec<_>>(),
     )
 }
@@ -14819,14 +13790,7 @@ async fn fetch_notifications_rows(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<Vec<CreatorNotification>> {
-    reconcile_notification_deliveries_for_read(
-        pool,
-        None,
-        None,
-        Some(creator_id),
-        None,
-    )
-    .await?;
+    reconcile_notification_deliveries_for_read(pool, None, None, Some(creator_id), None).await?;
     let legacy_rows = sqlx::query(
         "SELECT id, kind, body, sent_at, amount, actor FROM creator_notifications WHERE creator_id = ?",
     )
@@ -17125,7 +16089,8 @@ async fn process_media_job(
         &probed,
         &hls_subtitle_tracks,
     )
-    .await {
+    .await
+    {
         Ok(package) => {
             finish_media_processing_run(
                 &state.pool,
@@ -18513,12 +17478,10 @@ async fn fetch_user_subtitle_preference(
     let Some(user_id) = user_id else {
         return Ok(None);
     };
-    let row = sqlx::query(
-        "SELECT subtitle_language FROM user_playback_settings WHERE user_id = ?",
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?;
+    let row = sqlx::query("SELECT subtitle_language FROM user_playback_settings WHERE user_id = ?")
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?;
     Ok(row.map(|row| row.get("subtitle_language")))
 }
 
@@ -19092,12 +18055,9 @@ async fn probe_media(path: &FsPath) -> AppResult<ProbedMedia> {
             .and_then(|stream| stream.get("codec_name"))
             .and_then(Value::as_str)
             .map(ToOwned::to_owned),
-        audio_codec: audio_stream
-            .and_then(|stream| stream.codec.clone()),
-        audio_sample_rate_hz: audio_stream
-            .and_then(|stream| stream.sample_rate_hz),
-        audio_channels: audio_stream
-            .and_then(|stream| stream.channels),
+        audio_codec: audio_stream.and_then(|stream| stream.codec.clone()),
+        audio_sample_rate_hz: audio_stream.and_then(|stream| stream.sample_rate_hz),
+        audio_channels: audio_stream.and_then(|stream| stream.channels),
         has_video: video_stream.is_some(),
         has_audio: audio_stream.is_some(),
         bitrate_bps: format
@@ -19422,7 +18382,9 @@ async fn generate_timeline_preview_track(
     let image_name = PathBuf::from(image_relative_path)
         .file_name()
         .map(|value| value.to_string_lossy().to_string())
-        .ok_or_else(|| AppError::MediaPipeline("invalid timeline preview image path".to_string()))?;
+        .ok_or_else(|| {
+            AppError::MediaPipeline("invalid timeline preview image path".to_string())
+        })?;
     let mut vtt = String::from("WEBVTT\n\n");
     for (index, start_sec) in timestamps.iter().enumerate() {
         let end_sec = timestamps
@@ -19638,7 +18600,12 @@ async fn generate_hls(
             relative_playlist_path: format!("{label}/playlist.m3u8"),
             file_size_bytes: directory_size(&track_dir).await?,
             is_default: ordinal == 0,
-            is_dubbed: ordinal > 0 && language != media.audio_streams[0].language.clone().unwrap_or_else(|| "und".to_string()),
+            is_dubbed: ordinal > 0
+                && language
+                    != media.audio_streams[0]
+                        .language
+                        .clone()
+                        .unwrap_or_else(|| "und".to_string()),
         });
     }
 
@@ -21760,8 +20727,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn active_live_ingest_read_omits_stale_session_without_waiting_for_background_loop(
-    ) -> AppResult<()> {
+    async fn active_live_ingest_read_omits_stale_session_without_waiting_for_background_loop()
+    -> AppResult<()> {
         let (state, creator) = setup_test_state().await?;
         let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
 
@@ -21839,10 +20806,12 @@ mod tests {
         .await?
         .0;
         assert_eq!(record.session.id, connected.session.id);
-        assert!(record
-            .recent_events
-            .iter()
-            .any(|event| event.event_type == "heartbeat_recorded"));
+        assert!(
+            record
+                .recent_events
+                .iter()
+                .any(|event| event.event_type == "heartbeat_recorded")
+        );
 
         sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
             .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
@@ -21864,11 +20833,13 @@ mod tests {
                 && action.next_status.as_deref() == Some("stale")
         }));
         assert_eq!(report.record.session.status, "stale");
-        assert!(report
-            .record
-            .recent_events
-            .iter()
-            .any(|event| event.event_type == "stale_reconciled"));
+        assert!(
+            report
+                .record
+                .recent_events
+                .iter()
+                .any(|event| event.event_type == "stale_reconciled")
+        );
 
         let events = list_creator_live_ingest_events(
             State(state.clone()),
@@ -21877,7 +20848,11 @@ mod tests {
         )
         .await?
         .0;
-        assert!(events.iter().any(|event| event.event_type == "stale_reconciled"));
+        assert!(
+            events
+                .iter()
+                .any(|event| event.event_type == "stale_reconciled")
+        );
         Ok(())
     }
 
@@ -21908,10 +20883,12 @@ mod tests {
         .await?
         .0;
         assert_eq!(record.session.id, connected.session.id);
-        assert!(record
-            .recent_events
-            .iter()
-            .any(|event| event.event_type == "connected"));
+        assert!(
+            record
+                .recent_events
+                .iter()
+                .any(|event| event.event_type == "connected")
+        );
 
         sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
             .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
@@ -21926,10 +20903,12 @@ mod tests {
         )
         .await?
         .0;
-        assert!(report
-            .actions
-            .iter()
-            .any(|action| action.action_type == "session_marked_stale"));
+        assert!(
+            report
+                .actions
+                .iter()
+                .any(|action| action.action_type == "session_marked_stale")
+        );
         assert_eq!(report.record.session.status, "stale");
         Ok(())
     }
@@ -22236,7 +21215,11 @@ mod tests {
         let notifications = fetch_user_notifications(&state.pool, "usr-2").await?;
         let delivery = fetch_notification_delivery_by_id_raw(&state.pool, &delivery_id).await?;
 
-        assert!(notifications.iter().any(|item| item.id == delivery_id && item.delivery_state == "delivered"));
+        assert!(
+            notifications
+                .iter()
+                .any(|item| item.id == delivery_id && item.delivery_state == "delivered")
+        );
         assert_eq!(delivery.state, "delivered");
         assert!(delivery.delivered_at.is_some());
         Ok(())
@@ -22265,10 +21248,9 @@ mod tests {
 
         assert_eq!(record.state, "dead_lettered");
         assert!(
-            record
-                .last_error
-                .as_deref()
-                .is_some_and(|message| message.contains("unsupported notification delivery channel"))
+            record.last_error.as_deref().is_some_and(
+                |message| message.contains("unsupported notification delivery channel")
+            )
         );
         assert_eq!(record.retry_count, 3);
         Ok(())
@@ -22318,11 +21300,9 @@ mod tests {
         assert_eq!(report.delivery.state, "dead_lettered");
         assert_eq!(report.delivery.retry_count, 3);
         assert!(
-            report
-                .delivery
-                .last_error
-                .as_deref()
-                .is_some_and(|message| message.contains("unsupported notification delivery channel"))
+            report.delivery.last_error.as_deref().is_some_and(
+                |message| message.contains("unsupported notification delivery channel")
+            )
         );
         Ok(())
     }
@@ -22468,8 +21448,7 @@ mod tests {
             scopes: vec!["user".to_string(), "creator".to_string()],
         };
         let session_view =
-            fetch_current_collaboration_socket_session_view(&state, &session.id, &identity)
-                .await?;
+            fetch_current_collaboration_socket_session_view(&state, &session.id, &identity).await?;
 
         let outcome = execute_collaboration_socket_command(
             &state,
@@ -22483,7 +21462,10 @@ mod tests {
         .await?;
 
         assert_eq!(outcome.command_type, "removeParticipant");
-        assert_eq!(outcome.participant_id.as_deref(), Some(participant.id.as_str()));
+        assert_eq!(
+            outcome.participant_id.as_deref(),
+            Some(participant.id.as_str())
+        );
         assert_eq!(outcome.state.as_deref(), Some("removed"));
 
         let refreshed = fetch_collaboration_participant_by_id(&state.pool, &participant.id).await?;
@@ -22499,8 +21481,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn collaboration_socket_host_commands_can_issue_and_revoke_mirror_grants()
-    -> AppResult<()> {
+    async fn collaboration_socket_host_commands_can_issue_and_revoke_mirror_grants() -> AppResult<()>
+    {
         let (state, creator) = setup_test_state().await?;
         let (session, participant) =
             insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2")
@@ -22512,8 +21494,7 @@ mod tests {
             scopes: vec!["user".to_string(), "creator".to_string()],
         };
         let session_view =
-            fetch_current_collaboration_socket_session_view(&state, &session.id, &identity)
-                .await?;
+            fetch_current_collaboration_socket_session_view(&state, &session.id, &identity).await?;
 
         let issued = execute_collaboration_socket_command(
             &state,
@@ -22526,7 +21507,10 @@ mod tests {
         )
         .await?;
         assert_eq!(issued.command_type, "issueMirrorGrant");
-        assert_eq!(issued.participant_id.as_deref(), Some(participant.id.as_str()));
+        assert_eq!(
+            issued.participant_id.as_deref(),
+            Some(participant.id.as_str())
+        );
 
         let issued_grants =
             fetch_collaboration_mirror_grants_for_participant(&state.pool, &participant.id).await?;
@@ -22544,7 +21528,10 @@ mod tests {
         )
         .await?;
         assert_eq!(revoked.command_type, "revokeMirrorGrants");
-        assert_eq!(revoked.participant_id.as_deref(), Some(participant.id.as_str()));
+        assert_eq!(
+            revoked.participant_id.as_deref(),
+            Some(participant.id.as_str())
+        );
 
         let refreshed_grants =
             fetch_collaboration_mirror_grants_for_participant(&state.pool, &participant.id).await?;
@@ -22688,8 +21675,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn redeeming_mirror_grant_keeps_grant_issued_when_guest_has_other_broadcast(
-    ) -> AppResult<()> {
+    async fn redeeming_mirror_grant_keeps_grant_issued_when_guest_has_other_broadcast()
+    -> AppResult<()> {
         let (state, creator) = setup_test_state().await?;
         let guest_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
         reset_creator_live_state(&state.pool, &guest_creator).await?;
@@ -22893,15 +21880,19 @@ mod tests {
         assert_eq!(guest_stream.viewers, viewers);
         assert_eq!(guest_control.current_viewers, viewers);
         assert_eq!(
-            guest_control.snapshot.profile.current_broadcast_id.as_deref(),
+            guest_control
+                .snapshot
+                .profile
+                .current_broadcast_id
+                .as_deref(),
             Some(pickup.guest_broadcast_id.as_str())
         );
         Ok(())
     }
 
     #[tokio::test]
-    async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
-    -> AppResult<()> {
+    async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback() -> AppResult<()>
+    {
         let (state, creator) = setup_test_state().await?;
         let guest_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
         reset_creator_live_state(&state.pool, &guest_creator).await?;
@@ -22989,7 +21980,11 @@ mod tests {
 
         let guest_stream_id = format!("lv-{}-live", guest_creator.handle);
         let live_streams = list_live_streams(State(state.clone())).await?.0;
-        assert!(live_streams.iter().any(|stream| stream.id == guest_stream_id));
+        assert!(
+            live_streams
+                .iter()
+                .any(|stream| stream.id == guest_stream_id)
+        );
         let target = fetch_live_stream_playback_target(&state.pool, &guest_stream_id).await?;
 
         let playback = create_live_playback_session(
@@ -23004,8 +21999,14 @@ mod tests {
         assert_eq!(playback.content_kind, "live");
         assert!(playback.manifest_url.contains("/api/v1/playback/sessions/"));
         assert_eq!(playback.audio_tracks.len(), target.asset.audio_tracks.len());
-        assert_eq!(playback.caption_tracks.len(), target.asset.caption_tracks.len());
-        assert_eq!(playback.preview_tracks.len(), target.asset.preview_tracks.len());
+        assert_eq!(
+            playback.caption_tracks.len(),
+            target.asset.caption_tracks.len()
+        );
+        assert_eq!(
+            playback.preview_tracks.len(),
+            target.asset.preview_tracks.len()
+        );
         assert_eq!(
             playback.default_audio_track_id,
             target.asset.default_audio_track_id
@@ -23036,7 +22037,10 @@ mod tests {
         .await?
         .0;
         assert_eq!(fetched.audio_tracks.len(), playback.audio_tracks.len());
-        assert_eq!(fetched.default_audio_track_id, playback.default_audio_track_id);
+        assert_eq!(
+            fetched.default_audio_track_id,
+            playback.default_audio_track_id
+        );
 
         let refreshed = refresh_playback_session(
             State(state.clone()),
@@ -23388,8 +22392,7 @@ mod tests {
             scopes: vec!["user".to_string(), "creator".to_string()],
         };
         let session_view =
-            fetch_current_collaboration_socket_session_view(&state, &session.id, &identity)
-                .await?;
+            fetch_current_collaboration_socket_session_view(&state, &session.id, &identity).await?;
 
         let outcome = execute_collaboration_socket_command(
             &state,
@@ -24074,8 +23077,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn refreshing_playback_session_rotates_token_and_invalidates_old_token()
-    -> AppResult<()> {
+    async fn refreshing_playback_session_rotates_token_and_invalidates_old_token() -> AppResult<()>
+    {
         let (state, _creator) = setup_test_state().await?;
         let (session_id, playback_token, asset) =
             insert_playback_session_for_upload(&state.pool, "flm-afterglow", None, None, "free")
@@ -24326,13 +23329,10 @@ mod tests {
         let refreshed_job = fetch_upload_job_by_id(&state.pool, &creator.id, &job_id).await?;
         let refreshed_asset =
             fetch_media_asset_by_upload_job(&state.pool, &creator.id, &job_id).await?;
-        let asset_via_route = get_media_asset_for_upload_job(
-            State(state.clone()),
-            headers,
-            Path(job_id.clone()),
-        )
-        .await?
-        .0;
+        let asset_via_route =
+            get_media_asset_for_upload_job(State(state.clone()), headers, Path(job_id.clone()))
+                .await?
+                .0;
 
         assert_eq!(refreshed_job.status, "uploaded");
         assert_eq!(refreshed_asset.status, "uploaded");
@@ -24348,8 +23348,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn stale_processing_admin_media_record_materializes_as_failed_at_attempt_ceiling(
-    ) -> AppResult<()> {
+    async fn stale_processing_admin_media_record_materializes_as_failed_at_attempt_ceiling()
+    -> AppResult<()> {
         let (state, creator) = setup_test_state().await?;
         let row = sqlx::query(
             r#"
@@ -24425,13 +23425,10 @@ mod tests {
         .await?;
         let job_id: String = row.get("id");
 
-        let inspected = get_admin_media_job(
-            State(state.clone()),
-            headers.clone(),
-            Path(job_id.clone()),
-        )
-        .await?
-        .0;
+        let inspected =
+            get_admin_media_job(State(state.clone()), headers.clone(), Path(job_id.clone()))
+                .await?
+                .0;
         assert_eq!(inspected.upload_job.id, job_id);
 
         let stale_lease = (Utc::now() - chrono::Duration::minutes(10)).to_rfc3339();
@@ -24452,13 +23449,9 @@ mod tests {
         .execute(&state.pool)
         .await?;
 
-        let report = reconcile_admin_media_job(
-            State(state.clone()),
-            headers,
-            Path(job_id.clone()),
-        )
-        .await?
-        .0;
+        let report = reconcile_admin_media_job(State(state.clone()), headers, Path(job_id.clone()))
+            .await?
+            .0;
 
         assert_eq!(report.job_id, job_id);
         assert!(report.actions.iter().any(|action| {
@@ -24515,13 +23508,10 @@ mod tests {
         .execute(&state.pool)
         .await?;
 
-        let retried = retry_upload_job_processing(
-            State(state.clone()),
-            headers,
-            Path(job_id.clone()),
-        )
-        .await?
-        .0;
+        let retried =
+            retry_upload_job_processing(State(state.clone()), headers, Path(job_id.clone()))
+                .await?
+                .0;
 
         let asset = fetch_media_asset_by_upload_job(&state.pool, &creator.id, &job_id).await?;
 
@@ -24575,13 +23565,9 @@ mod tests {
         .execute(&state.pool)
         .await?;
 
-        let retried = retry_admin_media_job(
-            State(state.clone()),
-            headers,
-            Path(job_id.clone()),
-        )
-        .await?
-        .0;
+        let retried = retry_admin_media_job(State(state.clone()), headers, Path(job_id.clone()))
+            .await?
+            .0;
 
         assert_eq!(retried.upload_job.status, "uploaded");
         assert_eq!(retried.upload_job.processing_attempt_count, 3);
@@ -25166,8 +24152,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn processed_upload_materializes_thumbnail_variant_and_publish_uses_it()
-    -> AppResult<()> {
+    async fn processed_upload_materializes_thumbnail_variant_and_publish_uses_it() -> AppResult<()>
+    {
         let (state, creator) = setup_test_state().await?;
         let token = insert_creator_auth_session(&state.pool, &creator).await?;
         let headers = auth_headers(&token);
@@ -25250,7 +24236,8 @@ mod tests {
 
         let mut asset = None;
         for _ in 0..30 {
-            let current = fetch_media_asset_by_upload_job(&state.pool, &creator.id, &created.id).await?;
+            let current =
+                fetch_media_asset_by_upload_job(&state.pool, &creator.id, &created.id).await?;
             if current.status == "ready" {
                 asset = Some(current);
                 break;
@@ -25265,8 +24252,18 @@ mod tests {
             .expect("processed asset should include thumbnail derivative");
         assert_eq!(asset.variants.len(), 4);
         assert_eq!(thumbnail_variant.label, "card_thumbnail");
-        assert!(asset.variants.iter().any(|variant| variant.variant_type == "playback"));
-        assert!(asset.variants.iter().any(|variant| variant.variant_type == "audio"));
+        assert!(
+            asset
+                .variants
+                .iter()
+                .any(|variant| variant.variant_type == "playback")
+        );
+        assert!(
+            asset
+                .variants
+                .iter()
+                .any(|variant| variant.variant_type == "audio")
+        );
         assert!(thumbnail_variant.file_size_bytes > 0);
         assert_eq!(asset.preview_tracks.len(), 1);
         assert_eq!(asset.preview_tracks[0].label, "timeline_preview");
@@ -25277,9 +24274,11 @@ mod tests {
             asset.default_preview_track_id.as_deref(),
             Some(asset.preview_tracks[0].id.as_str())
         );
-        let preview_image_body =
-            tokio::fs::read(media_path_for_relative(&state, &asset.preview_tracks[0].image_path))
-                .await?;
+        let preview_image_body = tokio::fs::read(media_path_for_relative(
+            &state,
+            &asset.preview_tracks[0].image_path,
+        ))
+        .await?;
         assert!(!preview_image_body.is_empty());
         let preview_vtt_body = tokio::fs::read_to_string(media_path_for_relative(
             &state,
@@ -25514,7 +24513,10 @@ mod tests {
             asset.audio_tracks[0].playlist_url.as_deref(),
             Some(audio_variant.url.as_str())
         );
-        assert_eq!(asset.default_audio_track_id.as_deref(), Some(asset.audio_tracks[0].id.as_str()));
+        assert_eq!(
+            asset.default_audio_track_id.as_deref(),
+            Some(asset.audio_tracks[0].id.as_str())
+        );
         assert_eq!(asset.caption_tracks.len(), 1);
         assert_eq!(asset.caption_tracks[0].id, caption_variant.id);
         assert_eq!(asset.caption_tracks[0].language, "eng");
@@ -25753,7 +24755,11 @@ mod tests {
             .find(|track| track.is_default)
             .expect("asset should mark one default audio track");
         assert_eq!(
-            asset.audio_tracks.iter().filter(|track| track.is_default).count(),
+            asset
+                .audio_tracks
+                .iter()
+                .filter(|track| track.is_default)
+                .count(),
             1
         );
         assert_eq!(
@@ -25946,8 +24952,16 @@ mod tests {
             build_media_caption_tracks("published", &variants, Some("playback-token"), Some("deu"));
 
         assert_eq!(tracks.len(), 2);
-        assert!(tracks.iter().any(|track| track.id == "var-deu" && track.is_default));
-        assert!(tracks.iter().any(|track| track.id == "var-eng" && !track.is_default));
+        assert!(
+            tracks
+                .iter()
+                .any(|track| track.id == "var-deu" && track.is_default)
+        );
+        assert!(
+            tracks
+                .iter()
+                .any(|track| track.id == "var-eng" && !track.is_default)
+        );
         assert!(
             tracks
                 .iter()
@@ -26260,7 +25274,10 @@ mod tests {
 
         match error {
             AppError::BadRequest(message) => {
-                assert!(message.contains("taken-down uploads cannot change lifecycle or access controls"));
+                assert!(
+                    message
+                        .contains("taken-down uploads cannot change lifecycle or access controls")
+                );
             }
             other => panic!("unexpected error: {other:?}"),
         }
@@ -26410,14 +25427,22 @@ mod tests {
 
         let entitlements = fetch_user_entitlements(&state.pool, "usr-viewer").await?;
 
-        assert!(entitlements
-            .memberships
-            .iter()
-            .any(|membership| membership.creator_id == "crt-deepsaint" && membership.status == "expired"));
-        assert!(entitlements
-            .purchases
-            .iter()
-            .any(|purchase| purchase.upload_id == "upl-57fd50bbb54a44f58fe10605f97eeead" && purchase.status == "expired"));
+        assert!(
+            entitlements
+                .memberships
+                .iter()
+                .any(|membership| membership.creator_id == "crt-deepsaint"
+                    && membership.status == "expired")
+        );
+        assert!(
+            entitlements
+                .purchases
+                .iter()
+                .any(
+                    |purchase| purchase.upload_id == "upl-57fd50bbb54a44f58fe10605f97eeead"
+                        && purchase.status == "expired"
+                )
+        );
         Ok(())
     }
 
@@ -26496,7 +25521,10 @@ mod tests {
         assert_eq!(membership_report.creator_id, "crt-deepsaint");
         assert_eq!(membership_report.membership.status, "expired");
         assert_eq!(membership_report.actions.len(), 1);
-        assert_eq!(membership_report.actions[0].action_type, "membership_expired");
+        assert_eq!(
+            membership_report.actions[0].action_type,
+            "membership_expired"
+        );
         assert_eq!(
             membership_report.actions[0].previous_state.as_deref(),
             Some("canceling")
@@ -26522,8 +25550,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn user_entitlements_read_expires_invalid_playback_session_without_background_loop(
-    ) -> AppResult<()> {
+    async fn user_entitlements_read_expires_invalid_playback_session_without_background_loop()
+    -> AppResult<()> {
         let (state, _creator) = setup_test_state().await?;
         let now = Utc::now();
         let purchased_at = (now - chrono::Duration::hours(2)).to_rfc3339();
@@ -26575,21 +25603,17 @@ mod tests {
         .bind(upload_id)
         .execute(&state.pool)
         .await?;
-        let (older_valid_session_id, _token, _asset) = insert_playback_session_for_upload(
-            &state.pool,
-            upload_id,
-            None,
-            None,
-            "free",
-        )
-        .await?;
+        let (older_valid_session_id, _token, _asset) =
+            insert_playback_session_for_upload(&state.pool, upload_id, None, None, "free").await?;
         tokio::time::sleep(Duration::from_millis(5)).await;
-        let revoked_auth_token = insert_user_auth_session(&state.pool, "usr-viewer", &["user"]).await?;
-        let revoked_auth_session_id = sqlx::query("SELECT id FROM auth_sessions WHERE token_hash = ?")
-            .bind(hash_token(&revoked_auth_token))
-            .fetch_one(&state.pool)
-            .await?
-            .get::<String, _>("id");
+        let revoked_auth_token =
+            insert_user_auth_session(&state.pool, "usr-viewer", &["user"]).await?;
+        let revoked_auth_session_id =
+            sqlx::query("SELECT id FROM auth_sessions WHERE token_hash = ?")
+                .bind(hash_token(&revoked_auth_token))
+                .fetch_one(&state.pool)
+                .await?
+                .get::<String, _>("id");
         let (newer_invalid_session_id, _token, _asset) = insert_playback_session_for_upload(
             &state.pool,
             upload_id,
@@ -26618,9 +25642,14 @@ mod tests {
             .execute(&state.pool)
             .await?;
 
-        let sessions =
-            fetch_admin_playback_sessions(&state.pool, Some(&creator.id), Some(upload_id), Some("active"), 1)
-                .await?;
+        let sessions = fetch_admin_playback_sessions(
+            &state.pool,
+            Some(&creator.id),
+            Some(upload_id),
+            Some("active"),
+            1,
+        )
+        .await?;
 
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].session.id, older_valid_session_id);
@@ -26635,9 +25664,11 @@ mod tests {
             10,
         )
         .await?;
-        assert!(invalid
-            .iter()
-            .any(|record| record.session.id == newer_invalid_session_id));
+        assert!(
+            invalid
+                .iter()
+                .any(|record| record.session.id == newer_invalid_session_id)
+        );
         Ok(())
     }
 
@@ -26687,7 +25718,9 @@ mod tests {
         .execute(&state.pool)
         .await?;
 
-        let inbox = list_my_collaboration_invites(State(state.clone()), collab_headers).await?.0;
+        let inbox = list_my_collaboration_invites(State(state.clone()), collab_headers)
+            .await?
+            .0;
         let refreshed_invite = fetch_collaboration_invite_by_id(&state.pool, &invite.id).await?;
         let events = fetch_collaboration_events(&state.pool, &session.id, 0, 100).await?;
 
@@ -26712,8 +25745,8 @@ mod tests {
             insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2")
                 .await?;
 
-        let grant = issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1")
-            .await?;
+        let grant =
+            issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
         sqlx::query(
             "UPDATE collaboration_mirror_grants SET expires_at = ?, state = 'issued', revoked_at = NULL WHERE id = ?",
         )
@@ -26743,22 +25776,27 @@ mod tests {
         .await?
         .0;
         let host_runtime =
-            get_creator_collaboration_runtime(State(state), host_headers, Path(session.id)).await?
+            get_creator_collaboration_runtime(State(state), host_headers, Path(session.id))
+                .await?
                 .0;
 
         assert_eq!(refreshed_grant.state, "expired");
-        assert!(runtime
-            .grants
-            .iter()
-            .any(|item| item.id == grant.id && item.state == "expired"));
+        assert!(
+            runtime
+                .grants
+                .iter()
+                .any(|item| item.id == grant.id && item.state == "expired")
+        );
         assert!(participant_events.iter().any(|event| {
             event.event_type == "mirror_grant_expired"
                 && event.payload["grantId"] == Value::String(grant.id.clone())
         }));
-        assert!(host_runtime
-            .grants
-            .iter()
-            .any(|item| item.id == grant.id && item.state == "expired"));
+        assert!(
+            host_runtime
+                .grants
+                .iter()
+                .any(|item| item.id == grant.id && item.state == "expired")
+        );
         Ok(())
     }
 
@@ -26802,8 +25840,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn host_can_inspect_and_reconcile_collaboration_socket_session_by_id() -> AppResult<()>
-    {
+    async fn host_can_inspect_and_reconcile_collaboration_socket_session_by_id() -> AppResult<()> {
         let (state, creator) = setup_test_state().await?;
         let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
         let host_headers = auth_headers(&host_token);
@@ -26839,13 +25876,12 @@ mod tests {
         )
         .await?
         .0;
-        let disconnected_before: Option<String> = sqlx::query(
-            "SELECT disconnected_at FROM collaboration_socket_sessions WHERE id = ?",
-        )
-        .bind(&socket_id)
-        .fetch_one(&state.pool)
-        .await?
-        .get("disconnected_at");
+        let disconnected_before: Option<String> =
+            sqlx::query("SELECT disconnected_at FROM collaboration_socket_sessions WHERE id = ?")
+                .bind(&socket_id)
+                .fetch_one(&state.pool)
+                .await?
+                .get("disconnected_at");
 
         assert_eq!(inspected.id, socket_id);
         assert!(inspected.is_stale);
@@ -26859,13 +25895,12 @@ mod tests {
         )
         .await?
         .0;
-        let disconnected_after: Option<String> = sqlx::query(
-            "SELECT disconnected_at FROM collaboration_socket_sessions WHERE id = ?",
-        )
-        .bind(&socket_id)
-        .fetch_one(&state.pool)
-        .await?
-        .get("disconnected_at");
+        let disconnected_after: Option<String> =
+            sqlx::query("SELECT disconnected_at FROM collaboration_socket_sessions WHERE id = ?")
+                .bind(&socket_id)
+                .fetch_one(&state.pool)
+                .await?
+                .get("disconnected_at");
 
         assert_eq!(report.session_id, session.id);
         assert_eq!(report.socket_session_id, socket_id);
@@ -26873,8 +25908,14 @@ mod tests {
         assert!(report.socket_session.disconnected_at.is_some());
         assert_eq!(report.actions.len(), 1);
         assert_eq!(report.actions[0].action_type, "socket_disconnected");
-        assert_eq!(report.actions[0].previous_state.as_deref(), Some("connected"));
-        assert_eq!(report.actions[0].next_state.as_deref(), Some("disconnected"));
+        assert_eq!(
+            report.actions[0].previous_state.as_deref(),
+            Some("connected")
+        );
+        assert_eq!(
+            report.actions[0].next_state.as_deref(),
+            Some("disconnected")
+        );
         assert!(disconnected_after.is_some());
         Ok(())
     }
@@ -26923,11 +25964,13 @@ mod tests {
         .await?
         .0;
 
-        sqlx::query("UPDATE broadcasts SET status = 'ended', ended_at = ?, duration_sec = 1 WHERE id = ?")
-            .bind(Utc::now().to_rfc3339())
-            .bind(&broadcast.id)
-            .execute(&state.pool)
-            .await?;
+        sqlx::query(
+            "UPDATE broadcasts SET status = 'ended', ended_at = ?, duration_sec = 1 WHERE id = ?",
+        )
+        .bind(Utc::now().to_rfc3339())
+        .bind(&broadcast.id)
+        .execute(&state.pool)
+        .await?;
 
         let session_view = get_creator_collaboration_session(
             State(state.clone()),
@@ -27081,10 +26124,13 @@ mod tests {
         .execute(&state.pool)
         .await?;
 
-        let inspected =
-            get_creator_live_socket_session(State(state.clone()), headers.clone(), Path(socket_id.clone()))
-                .await?
-                .0;
+        let inspected = get_creator_live_socket_session(
+            State(state.clone()),
+            headers.clone(),
+            Path(socket_id.clone()),
+        )
+        .await?
+        .0;
         let disconnected_before: Option<String> = sqlx::query(
             "SELECT disconnected_at FROM creator_live_socket_sessions WHERE creator_id = ? AND id = ?",
         )
@@ -27099,10 +26145,13 @@ mod tests {
         assert!(inspected.disconnected_at.is_none());
         assert!(disconnected_before.is_none());
 
-        let report =
-            reconcile_creator_live_socket_session(State(state.clone()), headers, Path(socket_id.clone()))
-                .await?
-                .0;
+        let report = reconcile_creator_live_socket_session(
+            State(state.clone()),
+            headers,
+            Path(socket_id.clone()),
+        )
+        .await?
+        .0;
         let disconnected_after: Option<String> = sqlx::query(
             "SELECT disconnected_at FROM creator_live_socket_sessions WHERE creator_id = ? AND id = ?",
         )
@@ -27118,14 +26167,21 @@ mod tests {
         assert!(report.socket_session.disconnected_at.is_some());
         assert_eq!(report.actions.len(), 1);
         assert_eq!(report.actions[0].action_type, "socket_disconnected");
-        assert_eq!(report.actions[0].previous_state.as_deref(), Some("connected"));
-        assert_eq!(report.actions[0].next_state.as_deref(), Some("disconnected"));
+        assert_eq!(
+            report.actions[0].previous_state.as_deref(),
+            Some("connected")
+        );
+        assert_eq!(
+            report.actions[0].next_state.as_deref(),
+            Some("disconnected")
+        );
         assert!(disconnected_after.is_some());
         Ok(())
     }
 
     #[tokio::test]
-    async fn creator_live_authoritative_reads_reconcile_expired_collaboration_truth() -> AppResult<()> {
+    async fn creator_live_authoritative_reads_reconcile_expired_collaboration_truth()
+    -> AppResult<()> {
         let (state, creator) = setup_test_state().await?;
         let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
         let host_headers = auth_headers(&host_token);
@@ -27240,7 +26296,8 @@ mod tests {
             fetch_authoritative_creator_live_runtime_response(&state, &creator.id).await?;
         let refreshed_invite =
             fetch_collaboration_invite_by_id(&state.pool, &pending_invite.id).await?;
-        let refreshed_grant = fetch_collaboration_mirror_grant_by_id(&state.pool, &grant.id).await?;
+        let refreshed_grant =
+            fetch_collaboration_mirror_grant_by_id(&state.pool, &grant.id).await?;
         publish_creator_live_state(&state, &creator.id).await?;
         let published = tokio::time::timeout(Duration::from_secs(1), subscription.recv())
             .await
@@ -27275,13 +26332,17 @@ mod tests {
                 .map(|item| item.issued_grant_count),
             Some(0)
         );
-        assert!(runtime
-            .collaboration
-            .active_control
-            .as_ref()
-            .is_some_and(|item| item.runtime.grants.iter().any(|current| {
-                current.id == grant.id && current.state == "expired"
-            })));
+        assert!(
+            runtime
+                .collaboration
+                .active_control
+                .as_ref()
+                .is_some_and(|item| item
+                    .runtime
+                    .grants
+                    .iter()
+                    .any(|current| { current.id == grant.id && current.state == "expired" }))
+        );
         match published {
             WsEvent::CreatorLiveState { control, runtime } => {
                 assert_eq!(control.collaboration.pending_invite_count, 0);
@@ -27302,13 +26363,15 @@ mod tests {
                         .map(|item| item.issued_grant_count),
                     Some(0)
                 );
-                assert!(runtime
-                    .collaboration
-                    .active_control
-                    .as_ref()
-                    .is_some_and(|item| item.runtime.grants.iter().any(|current| {
-                        current.id == grant.id && current.state == "expired"
-                    })));
+                assert!(
+                    runtime
+                        .collaboration
+                        .active_control
+                        .as_ref()
+                        .is_some_and(|item| item.runtime.grants.iter().any(|current| {
+                            current.id == grant.id && current.state == "expired"
+                        }))
+                );
             }
             other => panic!("unexpected event: {other:?}"),
         }
@@ -27508,7 +26571,8 @@ mod tests {
         reset_creator_live_state(&state.pool, &other_creator).await?;
 
         let primary_stream_id = insert_live_stream_for_creator(&state.pool, &creator).await?;
-        let secondary_stream_id = insert_live_stream_for_creator(&state.pool, &other_creator).await?;
+        let secondary_stream_id =
+            insert_live_stream_for_creator(&state.pool, &other_creator).await?;
         let now = Utc::now().to_rfc3339();
 
         sqlx::query("UPDATE live_streams SET viewers = 500 WHERE id = ?")
@@ -27564,7 +26628,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn category_live_totals_follow_active_stream_truth_not_snapshot_columns() -> AppResult<()> {
+    async fn category_live_totals_follow_active_stream_truth_not_snapshot_columns() -> AppResult<()>
+    {
         let (state, creator) = setup_test_state().await?;
         let other_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
         reset_creator_live_state(&state.pool, &other_creator).await?;
@@ -27586,12 +26651,16 @@ mod tests {
             insert_live_stream_for_creator(&state.pool, &refreshed_other_creator).await?;
         let now = Utc::now().to_rfc3339();
 
-        sqlx::query("UPDATE categories SET live_viewers = 9999, live_channels = 99 WHERE slug = 'gaming'")
-            .execute(&state.pool)
-            .await?;
-        sqlx::query("UPDATE categories SET live_viewers = 1, live_channels = 1 WHERE slug = 'music'")
-            .execute(&state.pool)
-            .await?;
+        sqlx::query(
+            "UPDATE categories SET live_viewers = 9999, live_channels = 99 WHERE slug = 'gaming'",
+        )
+        .execute(&state.pool)
+        .await?;
+        sqlx::query(
+            "UPDATE categories SET live_viewers = 1, live_channels = 1 WHERE slug = 'music'",
+        )
+        .execute(&state.pool)
+        .await?;
         sqlx::query("UPDATE live_streams SET viewers = 0 WHERE id = ?")
             .bind(&gaming_stream_id)
             .execute(&state.pool)
@@ -28399,8 +27468,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn expired_creator_enforcement_is_not_reported_active_before_reconciliation(
-    ) -> AppResult<()> {
+    async fn expired_creator_enforcement_is_not_reported_active_before_reconciliation()
+    -> AppResult<()> {
         let (state, creator) = setup_test_state().await?;
         let before_state = fetch_creator_enforcement_state(&state.pool, &creator).await?;
         let expired_at = (Utc::now() - chrono::Duration::minutes(5)).to_rfc3339();
@@ -28433,7 +27502,10 @@ mod tests {
             enforcement_state.collaboration_enabled,
             before_state.collaboration_enabled
         );
-        assert_eq!(enforcement_state.history.len(), before_state.history.len() + 1);
+        assert_eq!(
+            enforcement_state.history.len(),
+            before_state.history.len() + 1
+        );
         assert!(
             enforcement_state
                 .history
@@ -28474,8 +27546,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn expired_creator_enforcement_read_self_heals_operational_state_and_by_id(
-    ) -> AppResult<()> {
+    async fn expired_creator_enforcement_read_self_heals_operational_state_and_by_id()
+    -> AppResult<()> {
         let (state, creator) = setup_test_state().await?;
         let action_id = format!("test-cea-op-{}", Uuid::new_v4().simple());
         let created_at = (Utc::now() - chrono::Duration::hours(2)).to_rfc3339();
@@ -28518,7 +27590,8 @@ mod tests {
         assert_eq!(by_id.state, "expired");
         assert_eq!(stored_state, "expired");
         assert_eq!(
-            audit.iter()
+            audit
+                .iter()
                 .filter(|entry| {
                     entry.event_type == "creator_enforcement_expired"
                         && entry.payload["actionId"] == action_id.as_str()
@@ -28678,8 +27751,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn expired_live_moderation_action_is_reported_expired_before_reconciliation(
-    ) -> AppResult<()> {
+    async fn expired_live_moderation_action_is_reported_expired_before_reconciliation()
+    -> AppResult<()> {
         let (state, creator) = setup_test_state().await?;
         let token = insert_creator_auth_session(&state.pool, &creator).await?;
         let headers = auth_headers(&token);
@@ -28710,11 +27783,12 @@ mod tests {
         let listed = list_live_moderation_actions(State(state.clone()), headers, Path(stream_id))
             .await?
             .0;
-        let stored_state: String = sqlx::query("SELECT state FROM live_moderation_actions WHERE id = ?")
-            .bind(&action_id)
-            .fetch_one(&state.pool)
-            .await?
-            .get("state");
+        let stored_state: String =
+            sqlx::query("SELECT state FROM live_moderation_actions WHERE id = ?")
+                .bind(&action_id)
+                .fetch_one(&state.pool)
+                .await?
+                .get("state");
 
         assert_eq!(by_id.state, "expired");
         assert_eq!(stored_state, "expired");

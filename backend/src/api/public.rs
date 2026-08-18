@@ -366,7 +366,10 @@ pub(super) async fn metrics(State(state): State<SharedState>) -> AppResult<Respo
         "lifestream_presence_collaboration_participants {}",
         active_collaboration_presence
     );
-    let _ = writeln!(body, "# TYPE lifestream_presence_creator_live_sockets gauge");
+    let _ = writeln!(
+        body,
+        "# TYPE lifestream_presence_creator_live_sockets gauge"
+    );
     let _ = writeln!(
         body,
         "lifestream_presence_creator_live_sockets {}",

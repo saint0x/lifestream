@@ -40,8 +40,14 @@ pub(super) fn routes() -> Router<SharedState> {
             "/api/v1/creator/me/live",
             get(get_creator_live).patch(update_creator_live),
         )
-        .route("/api/v1/creator/me/live/control", get(get_creator_live_control))
-        .route("/api/v1/creator/me/live/runtime", get(get_creator_live_runtime))
+        .route(
+            "/api/v1/creator/me/live/control",
+            get(get_creator_live_control),
+        )
+        .route(
+            "/api/v1/creator/me/live/runtime",
+            get(get_creator_live_runtime),
+        )
         .route(
             "/api/v1/creator/me/live/socket-sessions/:socket_id",
             get(get_creator_live_socket_session),

@@ -37,7 +37,10 @@ pub(super) fn routes() -> Router<SharedState> {
             get(get_my_settings).patch(update_my_settings),
         )
         .route("/api/v1/me/plan", get(get_my_plan))
-        .route("/api/v1/me/sessions", get(list_sessions).post(create_session))
+        .route(
+            "/api/v1/me/sessions",
+            get(list_sessions).post(create_session),
+        )
         .route("/api/v1/me/sessions/:id", delete(revoke_session))
         .route(
             "/api/v1/me/watchlist/:content_id",
@@ -50,7 +53,10 @@ pub(super) fn routes() -> Router<SharedState> {
         .route("/api/v1/me/following", get(get_my_following_feed))
         .route("/api/v1/me/progress", put(record_progress))
         .route("/api/v1/me/progress/:content_id", delete(remove_progress))
-        .route("/api/v1/me/history/:content_id", delete(remove_history_entry))
+        .route(
+            "/api/v1/me/history/:content_id",
+            delete(remove_history_entry),
+        )
 }
 
 pub(super) async fn get_me(
