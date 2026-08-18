@@ -61,12 +61,31 @@ pub(crate) async fn apply_collaboration_participant_update(
     let can_speak_in_chat = input
         .can_speak_in_chat
         .unwrap_or(participant.can_speak_in_chat);
+    let media_transport = input
+        .media_transport
+        .clone()
+        .or_else(|| participant.media_transport.clone());
+    let contribution_endpoint_url = input
+        .contribution_endpoint_url
+        .clone()
+        .or_else(|| participant.contribution_endpoint_url.clone());
+    let return_endpoint_url = input
+        .return_endpoint_url
+        .clone()
+        .or_else(|| participant.return_endpoint_url.clone());
 
     if mirror_to_guest_channel && participant.creator_id.is_none() {
         return Err(AppError::BadRequest(
             "participant must have a creator profile to mirror to their guest channel".to_string(),
         ));
     }
+    validate_collaboration_media_transport(
+        &next_state,
+        publish_to_host,
+        media_transport.as_deref(),
+        contribution_endpoint_url.as_deref(),
+        return_endpoint_url.as_deref(),
+    )?;
 
     let now = Utc::now().to_rfc3339();
     let left_at = if matches!(next_state.as_str(), "left" | "removed") {
@@ -78,6 +97,7 @@ pub(crate) async fn apply_collaboration_participant_update(
         r#"
         UPDATE collaboration_participants
         SET state = ?, publish_to_host = ?, mirror_to_guest_channel = ?, can_speak_in_chat = ?,
+            media_transport = ?, contribution_endpoint_url = ?, return_endpoint_url = ?,
             left_at = ?, updated_at = ?
         WHERE id = ? AND session_id = ?
         "#,
@@ -86,6 +106,9 @@ pub(crate) async fn apply_collaboration_participant_update(
     .bind(publish_to_host as i64)
     .bind(mirror_to_guest_channel as i64)
     .bind(can_speak_in_chat as i64)
+    .bind(&media_transport)
+    .bind(&contribution_endpoint_url)
+    .bind(&return_endpoint_url)
     .bind(left_at)
     .bind(&now)
     .bind(participant_id)
@@ -118,12 +141,60 @@ pub(crate) async fn apply_collaboration_participant_update(
             "publishToHost": publish_to_host,
             "mirrorToGuestChannel": mirror_to_guest_channel,
             "canSpeakInChat": can_speak_in_chat,
+            "mediaTransport": media_transport,
+            "contributionEndpointUrl": contribution_endpoint_url,
+            "returnEndpointUrl": return_endpoint_url,
             "updatedAt": now,
         }),
     )
     .await?;
 
     fetch_collaboration_participant_by_id(&state.pool, participant_id).await
+}
+
+fn validate_collaboration_media_transport(
+    next_state: &str,
+    publish_to_host: bool,
+    media_transport: Option<&str>,
+    contribution_endpoint_url: Option<&str>,
+    return_endpoint_url: Option<&str>,
+) -> AppResult<()> {
+    if !publish_to_host || next_state != "live" {
+        return Ok(());
+    }
+    if media_transport.is_none()
+        && contribution_endpoint_url.is_none()
+        && return_endpoint_url.is_none()
+    {
+        return Ok(());
+    }
+    match media_transport {
+        Some("rtmp" | "rtmps" | "srt") => {}
+        Some(_) => {
+            return Err(AppError::BadRequest(
+                "mediaTransport must be rtmp, rtmps, or srt when collaboration media endpoints are declared".to_string(),
+            ));
+        }
+        None => {
+            return Err(AppError::BadRequest(
+                "mediaTransport is required when collaboration media endpoints are declared"
+                    .to_string(),
+            ));
+        }
+    }
+    if contribution_endpoint_url.is_none_or(str::is_empty) {
+        return Err(AppError::BadRequest(
+            "contributionEndpointUrl is required when collaboration media transport is declared"
+                .to_string(),
+        ));
+    }
+    if return_endpoint_url.is_none_or(str::is_empty) {
+        return Err(AppError::BadRequest(
+            "returnEndpointUrl is required when collaboration media transport is declared"
+                .to_string(),
+        ));
+    }
+    Ok(())
 }
 
 pub(crate) async fn remove_collaboration_participant(

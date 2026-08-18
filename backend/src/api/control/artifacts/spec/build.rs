@@ -158,6 +158,15 @@ fn collaboration_transport_gap_from_spec(collaboration: &LiveRuntimeCollaboratio
             && collaboration.contributions.iter().any(|contribution| {
                 contribution.participant_id == route.participant_id
                     && contribution.transport_class == "collaboration_socket"
+                    && (contribution.media_transport.as_deref().is_none()
+                        || contribution
+                            .contribution_endpoint_url
+                            .as_deref()
+                            .is_none_or(str::is_empty)
+                        || contribution
+                            .return_endpoint_url
+                            .as_deref()
+                            .is_none_or(str::is_empty))
             })
     })
 }

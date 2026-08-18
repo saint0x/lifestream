@@ -1,8 +1,7 @@
 use super::*;
 use crate::models::{
     CollaborationRuntimeTopology, LiveRuntimeAdvisory, LiveRuntimeAdvisoryAction,
-    LiveRuntimeTelemetrySummary,
-    LiveSourceValidationIssue,
+    LiveRuntimeTelemetrySummary, LiveSourceValidationIssue,
 };
 
 pub(crate) fn build_live_runtime_advisory(
@@ -101,13 +100,7 @@ pub(crate) fn build_live_runtime_advisory(
             || item.archive_status == "failed"
     }) || telemetry.is_some_and(|item| item.failure_samples > 0);
 
-    finalize_advisory(
-        session,
-        runtime_failure_present,
-        actions,
-        None,
-        telemetry,
-    )
+    finalize_advisory(session, runtime_failure_present, actions, None, telemetry)
 }
 
 pub(crate) fn apply_collaboration_transport_gap(
@@ -150,6 +143,15 @@ pub(crate) fn collaboration_transport_gap_from_topology(
             && topology.contributions.iter().any(|contribution| {
                 contribution.participant_id == route.participant_id
                     && contribution.transport_class == "collaboration_socket"
+                    && (contribution.media_transport.as_deref().is_none()
+                        || contribution
+                            .contribution_endpoint_url
+                            .as_deref()
+                            .is_none_or(str::is_empty)
+                        || contribution
+                            .return_endpoint_url
+                            .as_deref()
+                            .is_none_or(str::is_empty))
             })
     })
 }
@@ -166,8 +168,8 @@ fn finalize_advisory(
         .filter(|action| action.severity == "error")
         .count() as i64;
     let repairable_issue_count = actions.iter().filter(|action| action.repairable).count() as i64;
-    let runtime_failure_present = runtime_failure_present
-        || telemetry.is_some_and(|item| item.failure_samples > 0);
+    let runtime_failure_present =
+        runtime_failure_present || telemetry.is_some_and(|item| item.failure_samples > 0);
     let status = if runtime_failure_present || blocking_issue_count > 0 {
         "critical"
     } else if repairable_issue_count > 0 {

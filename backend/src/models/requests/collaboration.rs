@@ -26,6 +26,9 @@ pub struct UpdateCollaborationParticipantRequest {
     pub publish_to_host: Option<bool>,
     pub mirror_to_guest_channel: Option<bool>,
     pub can_speak_in_chat: Option<bool>,
+    pub media_transport: Option<String>,
+    pub contribution_endpoint_url: Option<String>,
+    pub return_endpoint_url: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

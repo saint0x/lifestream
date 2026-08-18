@@ -47,7 +47,8 @@ pub(crate) async fn fetch_collaboration_participants_for_session(
     let rows = sqlx::query(
         r#"
         SELECT id, session_id, invite_id, user_id, creator_id, role, state, publish_to_host,
-               mirror_to_guest_channel, can_speak_in_chat, joined_at, left_at, created_at, updated_at
+               mirror_to_guest_channel, can_speak_in_chat, media_transport,
+               contribution_endpoint_url, return_endpoint_url, joined_at, left_at, created_at, updated_at
         FROM collaboration_participants
         WHERE session_id = ?
         ORDER BY created_at ASC
@@ -69,6 +70,9 @@ pub(crate) async fn fetch_collaboration_participants_for_session(
             publish_to_host: row.get::<i64, _>("publish_to_host") == 1,
             mirror_to_guest_channel: row.get::<i64, _>("mirror_to_guest_channel") == 1,
             can_speak_in_chat: row.get::<i64, _>("can_speak_in_chat") == 1,
+            media_transport: row.get("media_transport"),
+            contribution_endpoint_url: row.get("contribution_endpoint_url"),
+            return_endpoint_url: row.get("return_endpoint_url"),
             joined_at: row.get("joined_at"),
             left_at: row.get("left_at"),
             created_at: row.get("created_at"),
@@ -84,7 +88,8 @@ pub(crate) async fn fetch_collaboration_participant_by_id(
     let row = sqlx::query(
         r#"
         SELECT id, session_id, invite_id, user_id, creator_id, role, state, publish_to_host,
-               mirror_to_guest_channel, can_speak_in_chat, joined_at, left_at, created_at, updated_at
+               mirror_to_guest_channel, can_speak_in_chat, media_transport,
+               contribution_endpoint_url, return_endpoint_url, joined_at, left_at, created_at, updated_at
         FROM collaboration_participants
         WHERE id = ?
         "#,
@@ -104,6 +109,9 @@ pub(crate) async fn fetch_collaboration_participant_by_id(
         publish_to_host: row.get::<i64, _>("publish_to_host") == 1,
         mirror_to_guest_channel: row.get::<i64, _>("mirror_to_guest_channel") == 1,
         can_speak_in_chat: row.get::<i64, _>("can_speak_in_chat") == 1,
+        media_transport: row.get("media_transport"),
+        contribution_endpoint_url: row.get("contribution_endpoint_url"),
+        return_endpoint_url: row.get("return_endpoint_url"),
         joined_at: row.get("joined_at"),
         left_at: row.get("left_at"),
         created_at: row.get("created_at"),

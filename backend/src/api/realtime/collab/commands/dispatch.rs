@@ -35,6 +35,9 @@ pub(crate) async fn execute_collaboration_socket_command(
             publish_to_host,
             mirror_to_guest_channel,
             can_speak_in_chat,
+            media_transport,
+            contribution_endpoint_url,
+            return_endpoint_url,
         } => {
             host_controls::execute_update_participant(
                 state,
@@ -47,6 +50,9 @@ pub(crate) async fn execute_collaboration_socket_command(
                     publish_to_host,
                     mirror_to_guest_channel,
                     can_speak_in_chat,
+                    media_transport,
+                    contribution_endpoint_url,
+                    return_endpoint_url,
                 },
             )
             .await

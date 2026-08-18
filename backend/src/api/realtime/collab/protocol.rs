@@ -20,6 +20,9 @@ pub(crate) enum CollaborationSocketCommand {
         publish_to_host: Option<bool>,
         mirror_to_guest_channel: Option<bool>,
         can_speak_in_chat: Option<bool>,
+        media_transport: Option<String>,
+        contribution_endpoint_url: Option<String>,
+        return_endpoint_url: Option<String>,
     },
     RemoveParticipant {
         participant_id: String,

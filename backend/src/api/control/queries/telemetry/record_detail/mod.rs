@@ -65,10 +65,7 @@ pub(super) fn build_live_runtime_telemetry_detail(
             .map(|item| item.transport_gap_present)
             .unwrap_or(false),
     );
-    detail.insert(
-        "advisory".to_string(),
-        json!(advisory),
-    );
+    detail.insert("advisory".to_string(), json!(advisory));
     detail.insert(
         "artifacts".to_string(),
         build_live_runtime_telemetry_artifact_detail(

@@ -124,6 +124,9 @@ pub(super) fn build_topology_participants(
             user_id: participant.user_id.clone(),
             creator_id: participant.creator_id.clone(),
             transport_class,
+            media_transport: participant.media_transport.clone(),
+            contribution_endpoint_url: participant.contribution_endpoint_url.clone(),
+            return_endpoint_url: participant.return_endpoint_url.clone(),
             source_broadcast_id: if participant.role == "host" {
                 Some(session.source_broadcast_id.clone())
             } else {
