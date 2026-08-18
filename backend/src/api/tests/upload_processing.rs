@@ -93,6 +93,22 @@ async fn processed_upload_materializes_thumbnail_variant_and_publish_uses_it() -
         tokio::time::sleep(Duration::from_millis(250)).await;
     }
     let asset = asset.expect("processed asset should become ready");
+    assert!(
+        asset
+            .playback_path
+            .as_deref()
+            .is_some_and(|path| path.contains(&format!("/{}/gen-0001/", asset.id))),
+        "playback path should be generation-scoped by asset id: {:?}",
+        asset.playback_path
+    );
+    assert!(
+        asset
+            .poster_path
+            .as_deref()
+            .is_some_and(|path| path.contains(&format!("/{}/gen-0001/", asset.id))),
+        "poster path should be generation-scoped by asset id: {:?}",
+        asset.poster_path
+    );
     let thumbnail_variant = asset
         .variants
         .iter()

@@ -159,7 +159,7 @@ pub(crate) async fn generate_derivatives_and_package(
     attempt: &MediaProcessingAttempt,
     probed: &ProbedMedia,
 ) -> Result<GeneratedDerivativeBundle, (AppError, String)> {
-    let processed_root = format!("processed/{creator_id}/{job_id}");
+    let processed_root = processed_generation_root(creator_id, attempt);
     let poster_relative_path =
         generate_poster_derivative(state, creator_id, job_id, attempt, probed, &processed_root)
             .await?;
@@ -191,6 +191,13 @@ pub(crate) async fn generate_derivatives_and_package(
         generated_package,
         hls_relative_path,
     })
+}
+
+fn processed_generation_root(creator_id: &str, attempt: &MediaProcessingAttempt) -> String {
+    format!(
+        "processed/{creator_id}/{}/gen-{:04}",
+        attempt.asset.id, attempt.job.processing_attempt_count
+    )
 }
 
 async fn generate_poster_derivative(
