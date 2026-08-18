@@ -37,6 +37,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let pool = connect_pool(&config).await?;
             command.execute(&pool).await?;
         }
+        RuntimeCommand::RunCollaborationWorker(command) => {
+            let pool = connect_pool(&config).await?;
+            tokio::fs::create_dir_all(&config.media_root).await?;
+            command.execute(&config, &pool).await?;
+        }
     }
 
     Ok(())

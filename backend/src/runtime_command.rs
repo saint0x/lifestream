@@ -1,7 +1,13 @@
 use chrono::Utc;
+use sqlx::Row;
 use sqlx::SqlitePool;
+use std::path::Path;
+use std::process::Stdio;
+use tokio::process::Command;
 use uuid::Uuid;
 
+use crate::config::Config;
+use crate::models::{CollaborationMediaLaunchRuntime, CollaborationMediaLaunchStep};
 use crate::{auth::hash_token, error::AppError};
 
 pub(crate) enum RuntimeCommand {
@@ -9,6 +15,7 @@ pub(crate) enum RuntimeCommand {
     ProvisionUser(ProvisionUserCommand),
     ProvisionCreator(ProvisionCreatorCommand),
     IssueSession(IssueSessionCommand),
+    RunCollaborationWorker(RunCollaborationWorkerCommand),
 }
 
 pub(crate) struct ProvisionUserCommand {
@@ -42,6 +49,10 @@ pub(crate) struct IssueSessionCommand {
     pub(crate) expires_in_days: Option<i64>,
 }
 
+pub(crate) struct RunCollaborationWorkerCommand {
+    pub(crate) session_id: String,
+}
+
 impl RuntimeCommand {
     pub(crate) fn from_args(
         mut args: impl Iterator<Item = String>,
@@ -57,8 +68,11 @@ impl RuntimeCommand {
                 ProvisionCreatorCommand::from_args(args)?,
             )),
             "issue-session" => Ok(Self::IssueSession(IssueSessionCommand::from_args(args)?)),
+            "run-collaboration-worker" => Ok(Self::RunCollaborationWorker(
+                RunCollaborationWorkerCommand::from_args(args)?,
+            )),
             flag => Err(format!(
-                "unknown command `{flag}`; supported commands: `serve`, `provision-user`, `provision-creator`, `issue-session`"
+                "unknown command `{flag}`; supported commands: `serve`, `provision-user`, `provision-creator`, `issue-session`, `run-collaboration-worker`"
             )
             .into()),
         }
@@ -302,6 +316,219 @@ impl IssueSessionCommand {
         println!("scopes: {}", self.scopes.join(","));
         println!("expires_at: {}", expires_at.as_deref().unwrap_or("never"));
         println!("access_token: {access_token}");
+        Ok(())
+    }
+}
+
+impl RunCollaborationWorkerCommand {
+    fn from_args(args: impl Iterator<Item = String>) -> Result<Self, Box<dyn std::error::Error>> {
+        let options = parse_options(args)?;
+        Ok(Self {
+            session_id: required_option(&options, "--session-id")?,
+        })
+    }
+
+    pub(crate) async fn execute(
+        self,
+        config: &Config,
+        pool: &SqlitePool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let session_id = self.session_id.trim();
+        let launch_relative_path =
+            fetch_collaboration_launch_relative_path(pool, session_id).await?;
+        let launch_full_path = config.media_root.join(&launch_relative_path);
+        let launch_runtime = load_collaboration_launch_runtime(&launch_full_path).await?;
+
+        validate_launch_runtime(session_id, &launch_runtime)?;
+        ensure_launch_artifact_output_dirs(&config.media_root, &launch_runtime).await?;
+
+        for step in &launch_runtime.steps {
+            execute_launch_step(&config.media_root, session_id, step).await?;
+        }
+
+        println!(
+            "completed collaboration worker for session {}\nlaunch: {}",
+            session_id, launch_relative_path
+        );
+        Ok(())
+    }
+}
+
+async fn fetch_collaboration_launch_relative_path(
+    pool: &SqlitePool,
+    session_id: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let row = sqlx::query(
+        r#"
+        SELECT creator_id, broadcast_id
+        FROM live_ingest_sessions
+        WHERE id = ?
+        "#,
+    )
+    .bind(session_id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    let creator_id: String = row.get("creator_id");
+    let broadcast_id: String = row.get("broadcast_id");
+    Ok(format!(
+        "runtime/{creator_id}/{broadcast_id}/{session_id}/collaboration/launch.json"
+    ))
+}
+
+async fn load_collaboration_launch_runtime(
+    launch_full_path: &Path,
+) -> Result<CollaborationMediaLaunchRuntime, Box<dyn std::error::Error>> {
+    let launch_body = tokio::fs::read_to_string(launch_full_path).await?;
+    let launch_runtime = serde_json::from_str::<CollaborationMediaLaunchRuntime>(&launch_body)?;
+    Ok(launch_runtime)
+}
+
+fn validate_launch_runtime(
+    session_id: &str,
+    launch_runtime: &CollaborationMediaLaunchRuntime,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if !launch_runtime.ready {
+        let reason = if launch_runtime.unresolved_reasons.is_empty() {
+            "launch runtime is not marked ready".to_string()
+        } else {
+            launch_runtime.unresolved_reasons.join("; ")
+        };
+        return Err(AppError::BadRequest(format!(
+            "collaboration launch runtime for session {session_id} is unresolved: {reason}"
+        ))
+        .into());
+    }
+    if launch_runtime.steps.is_empty() {
+        return Err(AppError::BadRequest(format!(
+            "collaboration launch runtime for session {session_id} has no executable steps"
+        ))
+        .into());
+    }
+    Ok(())
+}
+
+async fn ensure_launch_artifact_output_dirs(
+    media_root: &Path,
+    launch_runtime: &CollaborationMediaLaunchRuntime,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for output in &launch_runtime.artifact_outputs {
+        let output_path = media_root.join(&output.relative_path);
+        let Some(parent) = output_path.parent() else {
+            return Err(AppError::BadRequest(format!(
+                "invalid collaboration artifact output path {}",
+                output.relative_path
+            ))
+            .into());
+        };
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    Ok(())
+}
+
+async fn execute_launch_step(
+    media_root: &Path,
+    session_id: &str,
+    step: &CollaborationMediaLaunchStep,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let resolved_args = resolve_launch_args(media_root, &step.args);
+    let status = Command::new(&step.command)
+        .args(&resolved_args)
+        .env("LIFESTREAM_MEDIA_ROOT", media_root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .status()
+        .await?;
+    if !status.success() {
+        return Err(AppError::Internal(format!(
+            "collaboration launch step {} failed for session {} with status {}",
+            step.step_kind, session_id, status
+        ))
+        .into());
+    }
+    Ok(())
+}
+
+fn resolve_launch_args(media_root: &Path, args: &[String]) -> Vec<String> {
+    let media_root_string = media_root.to_string_lossy();
+    args.iter()
+        .map(|arg| arg.replace("${LIFESTREAM_MEDIA_ROOT}", &media_root_string))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn resolves_media_root_placeholder_in_launch_args() {
+        let media_root = PathBuf::from("/tmp/lifestream-media");
+        let resolved = resolve_launch_args(
+            &media_root,
+            &[
+                "${LIFESTREAM_MEDIA_ROOT}/runtime/crt/broadcast/launch.json".to_string(),
+                "srt://guest.example.com:9000".to_string(),
+            ],
+        );
+        assert_eq!(
+            resolved,
+            vec![
+                "/tmp/lifestream-media/runtime/crt/broadcast/launch.json".to_string(),
+                "srt://guest.example.com:9000".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn rejects_unready_launch_runtime() {
+        let error = validate_launch_runtime(
+            "lis-test",
+            &CollaborationMediaLaunchRuntime {
+                launch_mode: "ffmpeg_plan_v1".to_string(),
+                worker_family: "ffmpeg".to_string(),
+                audio_codec: "aac".to_string(),
+                ready: false,
+                unresolved_participant_ids: vec!["col-prt-1".to_string()],
+                unresolved_reasons: vec![
+                    "participant col-prt-1 missing media transport declaration".to_string(),
+                ],
+                inputs: Vec::new(),
+                returns: Vec::new(),
+                artifact_outputs: Vec::new(),
+                steps: Vec::new(),
+            },
+        )
+        .expect_err("launch runtime should be rejected");
+        assert!(error.to_string().contains("unresolved"));
+    }
+
+    #[tokio::test]
+    async fn executes_launch_step_with_resolved_media_root()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let media_root = std::env::temp_dir().join(format!("lifestream-worker-{}", Uuid::new_v4()));
+        tokio::fs::create_dir_all(&media_root).await?;
+        let output_path = media_root.join("worker-proof.txt");
+        let step = CollaborationMediaLaunchStep {
+            step_kind: "proof".to_string(),
+            command: "sh".to_string(),
+            args: vec![
+                "-c".to_string(),
+                "printf ok > \"$1\"".to_string(),
+                "worker-proof".to_string(),
+                "${LIFESTREAM_MEDIA_ROOT}/worker-proof.txt".to_string(),
+            ],
+            filter_complex: None,
+            input_participant_ids: Vec::new(),
+            return_participant_ids: Vec::new(),
+            artifact_output_ids: Vec::new(),
+        };
+
+        execute_launch_step(&media_root, "lis-test", &step).await?;
+
+        let proof = tokio::fs::read_to_string(&output_path).await?;
+        assert_eq!(proof, "ok");
         Ok(())
     }
 }
