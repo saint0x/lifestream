@@ -4,7 +4,7 @@ use super::manifest::{
 use super::*;
 use crate::api::control::artifacts::spec::{
     build_collaboration_runtime_bundle, collaboration_bundle_relative_path,
-    collaboration_media_relative_path,
+    collaboration_media_relative_path, collaboration_return_relative_path,
 };
 use crate::api::media::build_collaboration_media_runtime;
 
@@ -32,6 +32,9 @@ pub(super) async fn emit_collaboration_route_artifacts(
     }
     for route in &runtime.topology.audio {
         emit_collaboration_audio_artifact(state, session, route).await?;
+    }
+    for route in &media_runtime.return_targets {
+        emit_collaboration_return_artifact(state, session, route).await?;
     }
     emit_collaboration_engine_artifact(state, session, &runtime.topology.engine).await?;
     emit_collaboration_runtime_bundle_artifact(state, session, &runtime_bundle).await?;
@@ -154,6 +157,23 @@ async fn emit_collaboration_audio_artifact(
     route: &CollaborationAudioRoute,
 ) -> AppResult<()> {
     let relative_path = collaboration_audio_relative_path(session, route);
+    let path = media_path_for_relative(state, &relative_path);
+    ensure_parent_dir(&path).await?;
+    tokio::fs::write(
+        &path,
+        serde_json::to_vec_pretty(route).map_err(|error| AppError::Internal(error.to_string()))?,
+    )
+    .await
+    .map_err(AppError::Io)?;
+    Ok(())
+}
+
+async fn emit_collaboration_return_artifact(
+    state: &SharedState,
+    session: &LiveIngestSession,
+    route: &crate::models::CollaborationMediaReturn,
+) -> AppResult<()> {
+    let relative_path = collaboration_return_relative_path(session, route);
     let path = media_path_for_relative(state, &relative_path);
     ensure_parent_dir(&path).await?;
     tokio::fs::write(

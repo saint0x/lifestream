@@ -15,7 +15,8 @@ use collab::{build_live_runtime_collaboration_spec, sync_runtime_target_dependen
 pub(in crate::api::control::artifacts) use collab::{
     collaboration_audio_relative_path, collaboration_bundle_relative_path,
     collaboration_engine_relative_path, collaboration_media_relative_path,
-    collaboration_program_relative_path, collaboration_route_relative_path,
+    collaboration_program_relative_path, collaboration_return_relative_path,
+    collaboration_route_relative_path,
 };
 use doc::{LiveRuntimeCollaborationSpec, LiveRuntimeSpecDocument};
 use health::build_live_runtime_health_spec;

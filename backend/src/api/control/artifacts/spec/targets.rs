@@ -28,7 +28,22 @@ pub(super) fn build_live_runtime_targets(
             collaboration,
             &now,
         ));
+        targets.extend(build_collaboration_return_targets(
+            session,
+            collaboration,
+            &now,
+        ));
         targets.push(build_collaboration_engine_target(
+            session,
+            collaboration,
+            &now,
+        ));
+        targets.push(build_collaboration_bundle_target(
+            session,
+            collaboration,
+            &now,
+        ));
+        targets.push(build_collaboration_media_target(
             session,
             collaboration,
             &now,
@@ -186,6 +201,45 @@ fn build_collaboration_audio_targets(
         .collect()
 }
 
+fn build_collaboration_return_targets(
+    session: &LiveIngestSession,
+    collaboration: &LiveRuntimeCollaborationSpec,
+    now: &str,
+) -> Vec<LiveRuntimeTarget> {
+    collaboration
+        .media
+        .return_targets
+        .iter()
+        .map(|route| {
+            let audio = collaboration
+                .audio
+                .iter()
+                .find(|audio| audio.participant_id == route.participant_id);
+            LiveRuntimeTarget {
+                id: format!("lrt-return-{}-{}", session.id, route.participant_id),
+                session_id: session.id.clone(),
+                creator_id: session.creator_id.clone(),
+                broadcast_id: session.broadcast_id.clone(),
+                target_kind: "return".to_string(),
+                target_key: route.participant_id.clone(),
+                target_label: "audio return".to_string(),
+                route_state: route.route_state.clone(),
+                target_creator_id: audio.and_then(|item| item.creator_id.clone()),
+                target_broadcast_id: Some(session.broadcast_id.clone()),
+                playback_enabled: false,
+                recording_enabled: false,
+                mix_minus_required: route.mix_minus_required,
+                relative_path: Some(collaboration_return_relative_path(session, route)),
+                source_participant_ids: audio
+                    .map(|item| item.upstream_participant_ids.clone())
+                    .unwrap_or_default(),
+                created_at: now.to_string(),
+                updated_at: now.to_string(),
+            }
+        })
+        .collect()
+}
+
 fn build_collaboration_engine_target(
     session: &LiveIngestSession,
     collaboration: &LiveRuntimeCollaborationSpec,
@@ -216,6 +270,62 @@ fn build_collaboration_engine_target(
     }
 }
 
+fn build_collaboration_bundle_target(
+    session: &LiveIngestSession,
+    collaboration: &LiveRuntimeCollaborationSpec,
+    now: &str,
+) -> LiveRuntimeTarget {
+    LiveRuntimeTarget {
+        id: format!("lrt-bundle-{}", session.id),
+        session_id: session.id.clone(),
+        creator_id: session.creator_id.clone(),
+        broadcast_id: session.broadcast_id.clone(),
+        target_kind: "bundle".to_string(),
+        target_key: collaboration.bundle.bundle_mode.clone(),
+        target_label: "collaboration bundle".to_string(),
+        route_state: bundle_state(collaboration),
+        target_creator_id: Some(session.creator_id.clone()),
+        target_broadcast_id: Some(session.broadcast_id.clone()),
+        playback_enabled: false,
+        recording_enabled: false,
+        mix_minus_required: collaboration.mix_minus_required,
+        relative_path: Some(collaboration_bundle_relative_path(session)),
+        source_participant_ids: collaboration
+            .contributions
+            .iter()
+            .map(|item| item.participant_id.clone())
+            .collect(),
+        created_at: now.to_string(),
+        updated_at: now.to_string(),
+    }
+}
+
+fn build_collaboration_media_target(
+    session: &LiveIngestSession,
+    collaboration: &LiveRuntimeCollaborationSpec,
+    now: &str,
+) -> LiveRuntimeTarget {
+    LiveRuntimeTarget {
+        id: format!("lrt-media-{}", session.id),
+        session_id: session.id.clone(),
+        creator_id: session.creator_id.clone(),
+        broadcast_id: session.broadcast_id.clone(),
+        target_kind: "media".to_string(),
+        target_key: collaboration.media.runtime_mode.clone(),
+        target_label: "collaboration media runtime".to_string(),
+        route_state: media_runtime_state(collaboration),
+        target_creator_id: Some(session.creator_id.clone()),
+        target_broadcast_id: Some(session.broadcast_id.clone()),
+        playback_enabled: false,
+        recording_enabled: false,
+        mix_minus_required: collaboration.mix_minus_required,
+        relative_path: Some(collaboration_media_relative_path(session)),
+        source_participant_ids: collaboration.media.input_participant_ids.clone(),
+        created_at: now.to_string(),
+        updated_at: now.to_string(),
+    }
+}
+
 fn collaboration_engine_state(collaboration: &LiveRuntimeCollaborationSpec) -> String {
     if collaboration.engine.edges.is_empty() {
         "inactive".to_string()
@@ -236,4 +346,67 @@ fn collaboration_engine_state(collaboration: &LiveRuntimeCollaborationSpec) -> S
     } else {
         "armed".to_string()
     }
+}
+
+fn bundle_state(collaboration: &LiveRuntimeCollaborationSpec) -> String {
+    route_state_from_iter(
+        collaboration
+            .bundle
+            .fanouts
+            .iter()
+            .map(|item| item.route_state.as_str())
+            .chain(
+                collaboration
+                    .bundle
+                    .returns
+                    .iter()
+                    .map(|item| item.route_state.as_str()),
+            ),
+    )
+}
+
+fn media_runtime_state(collaboration: &LiveRuntimeCollaborationSpec) -> String {
+    route_state_from_iter(
+        collaboration
+            .media
+            .output_targets
+            .iter()
+            .map(|item| item.route_state.as_str())
+            .chain(
+                collaboration
+                    .media
+                    .return_targets
+                    .iter()
+                    .map(|item| item.route_state.as_str()),
+            ),
+    )
+}
+
+fn route_state_from_iter<'a>(states: impl Iterator<Item = &'a str>) -> String {
+    let states = states.collect::<Vec<_>>();
+    if states.is_empty() {
+        return "inactive".to_string();
+    }
+    if states
+        .iter()
+        .any(|state| matches!(*state, "active" | "live" | "attached"))
+    {
+        return "active".to_string();
+    }
+    if states.iter().any(|state| *state == "degraded") {
+        return "degraded".to_string();
+    }
+    if states.iter().any(|state| *state == "armed") {
+        return "armed".to_string();
+    }
+    if states.iter().any(|state| *state == "pending_source") {
+        return "pending_source".to_string();
+    }
+    if states.iter().any(|state| *state == "issued") {
+        return "issued".to_string();
+    }
+    if states.iter().any(|state| *state == "standby") {
+        return "standby".to_string();
+    }
+    states.into_iter().next().unwrap_or("inactive").to_string()
 }

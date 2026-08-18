@@ -1,4 +1,6 @@
 use super::*;
+use crate::api::control::artifacts::spec::collaboration_return_relative_path;
+use crate::api::media::build_collaboration_media_runtime;
 use std::collections::HashSet;
 
 #[derive(Clone, Debug, Default)]
@@ -25,6 +27,8 @@ pub(super) async fn inspect_live_runtime_collaboration_artifacts(
     let bundle_relative_path = collaboration_bundle_relative_path(session);
     let media_relative_path = collaboration_media_relative_path(session);
     let runtime_output = fetch_live_runtime_output_for_session(&state.pool, &session.id).await?;
+    let runtime_bundle = build_collaboration_runtime_bundle(session, &runtime.topology)?;
+    let media_runtime = build_collaboration_media_runtime(&runtime_bundle)?;
     let mut issues = Vec::new();
 
     validate_execution_plan_consistency(&runtime.topology.engine, &mut issues);
@@ -70,6 +74,16 @@ pub(super) async fn inspect_live_runtime_collaboration_artifacts(
         )
         .await?;
     }
+    for route in &media_runtime.return_targets {
+        let relative_path = collaboration_return_relative_path(session, route);
+        validate_required_artifact_path(
+            state,
+            &relative_path,
+            &format!("collaboration return {}", route.participant_id),
+            &mut issues,
+        )
+        .await?;
+    }
     for route in &runtime.topology.outputs {
         let Some(relative_path) = collaboration_route_relative_path(session, route) else {
             continue;
@@ -99,7 +113,7 @@ pub(super) async fn inspect_live_runtime_collaboration_artifacts(
     Ok(CollaborationArtifactInspection {
         present: true,
         valid: issues.is_empty(),
-        engine_relative_path: Some(media_relative_path),
+        engine_relative_path: Some(engine_relative_path),
         issues,
     })
 }

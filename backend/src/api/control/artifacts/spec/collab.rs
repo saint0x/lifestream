@@ -271,6 +271,16 @@ pub(in crate::api::control::artifacts) fn collaboration_audio_relative_path(
     )
 }
 
+pub(in crate::api::control::artifacts) fn collaboration_return_relative_path(
+    session: &LiveIngestSession,
+    route: &crate::models::CollaborationMediaReturn,
+) -> String {
+    format!(
+        "runtime/{}/{}/{}/collaboration/returns/{}.json",
+        session.creator_id, session.broadcast_id, session.id, route.participant_id
+    )
+}
+
 pub(in crate::api::control::artifacts) fn collaboration_engine_relative_path(
     session: &LiveIngestSession,
 ) -> String {
