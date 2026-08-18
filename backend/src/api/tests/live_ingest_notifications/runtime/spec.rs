@@ -496,6 +496,26 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         .iter()
         .filter(|target| target.route_state == "pending_source")
         .count() as i64;
+    let engine_node_count = ready_spec["collaboration"]["engine"]["nodes"]
+        .as_array()
+        .expect("engine nodes array")
+        .len() as i64;
+    let engine_edge_count = ready_spec["collaboration"]["engine"]["edges"]
+        .as_array()
+        .expect("engine edges array")
+        .len() as i64;
+    let mix_minus_edge_count = ready_spec["collaboration"]["engine"]["edges"]
+        .as_array()
+        .expect("engine edges array")
+        .iter()
+        .filter(|edge| edge["edgeKind"] == "program_to_audio_return")
+        .count() as i64;
+    let mirror_fanout_edge_count = ready_spec["collaboration"]["engine"]["edges"]
+        .as_array()
+        .expect("engine edges array")
+        .iter()
+        .filter(|edge| edge["edgeKind"] == "program_to_output")
+        .count() as i64;
     assert_eq!(
         runtime.telemetry_summary.peak_runtime_target_count,
         runtime.active_runtime_targets.len() as i64
@@ -527,6 +547,22 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
     assert_eq!(
         runtime.telemetry_summary.peak_engine_target_count,
         engine_targets
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_engine_node_count,
+        engine_node_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_engine_edge_count,
+        engine_edge_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_mix_minus_edge_count,
+        mix_minus_edge_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_mirror_fanout_edge_count,
+        mirror_fanout_edge_count
     );
     assert_eq!(
         runtime.telemetry_summary.peak_host_channel_count,
@@ -601,6 +637,22 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         Some(engine_targets)
     );
     assert_eq!(
+        runtime.telemetry_summary.last_engine_node_count,
+        Some(engine_node_count)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_engine_edge_count,
+        Some(engine_edge_count)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_mix_minus_edge_count,
+        Some(mix_minus_edge_count)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_mirror_fanout_edge_count,
+        Some(mirror_fanout_edge_count)
+    );
+    assert_eq!(
         runtime.telemetry_summary.last_host_channel_count,
         Some(host_channel_targets)
     );
@@ -644,6 +696,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         sample.sample_kind == "runtime_report"
             && sample.detail["collaboration"]["present"] == true
             && sample.detail["collaboration"]["sessionId"] == collaboration_session.id
+            && sample.detail["collaboration"]["engineNodeCount"] == engine_node_count
+            && sample.detail["collaboration"]["engineEdgeCount"] == engine_edge_count
+            && sample.detail["collaboration"]["mixMinusEdgeCount"] == mix_minus_edge_count
+            && sample.detail["collaboration"]["mirrorFanoutEdgeCount"] == mirror_fanout_edge_count
             && sample.detail["outputs"]["activeRouteCount"] == 1
             && sample.detail["delivery"]["runtimeClass"] == "standard_hls"
             && sample.detail["delivery"]["segmentFormat"] == "mpegts"

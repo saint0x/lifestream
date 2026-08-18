@@ -112,6 +112,14 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
                 AS peak_collaboration_participants,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.outputs.activeRouteCount') AS INTEGER), 0))
                 AS peak_active_output_routes,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.engineNodeCount') AS INTEGER), 0))
+                AS peak_engine_node_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.engineEdgeCount') AS INTEGER), 0))
+                AS peak_engine_edge_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mixMinusEdgeCount') AS INTEGER), 0))
+                AS peak_mix_minus_edge_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mirrorFanoutEdgeCount') AS INTEGER), 0))
+                AS peak_mirror_fanout_edge_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.count') AS INTEGER), 0))
                 AS peak_runtime_target_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.playbackEnabledCount') AS INTEGER), 0))
@@ -236,6 +244,18 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         peak_active_output_routes: total_row
             .get::<Option<i64>, _>("peak_active_output_routes")
             .unwrap_or(0),
+        peak_engine_node_count: total_row
+            .get::<Option<i64>, _>("peak_engine_node_count")
+            .unwrap_or(0),
+        peak_engine_edge_count: total_row
+            .get::<Option<i64>, _>("peak_engine_edge_count")
+            .unwrap_or(0),
+        peak_mix_minus_edge_count: total_row
+            .get::<Option<i64>, _>("peak_mix_minus_edge_count")
+            .unwrap_or(0),
+        peak_mirror_fanout_edge_count: total_row
+            .get::<Option<i64>, _>("peak_mirror_fanout_edge_count")
+            .unwrap_or(0),
         peak_runtime_target_count: total_row
             .get::<Option<i64>, _>("peak_runtime_target_count")
             .unwrap_or(0),
@@ -332,6 +352,18 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         last_audio_mix_mode: latest_row
             .as_ref()
             .and_then(|row| row.get("audio_mix_mode")),
+        last_engine_node_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("engine_node_count")),
+        last_engine_edge_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("engine_edge_count")),
+        last_mix_minus_edge_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("mix_minus_edge_count")),
+        last_mirror_fanout_edge_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("mirror_fanout_edge_count")),
         last_runtime_target_count: latest_row
             .as_ref()
             .and_then(|row| row.get("runtime_target_count")),
@@ -417,6 +449,10 @@ async fn fetch_latest_telemetry_row(
                 AS collaboration_participant_count,
             CAST(json_extract(detail_json, '$.outputs.activeRouteCount') AS INTEGER) AS active_output_routes,
             json_extract(detail_json, '$.collaboration.audioMixMode') AS audio_mix_mode,
+            CAST(json_extract(detail_json, '$.collaboration.engineNodeCount') AS INTEGER) AS engine_node_count,
+            CAST(json_extract(detail_json, '$.collaboration.engineEdgeCount') AS INTEGER) AS engine_edge_count,
+            CAST(json_extract(detail_json, '$.collaboration.mixMinusEdgeCount') AS INTEGER) AS mix_minus_edge_count,
+            CAST(json_extract(detail_json, '$.collaboration.mirrorFanoutEdgeCount') AS INTEGER) AS mirror_fanout_edge_count,
             CAST(json_extract(detail_json, '$.targets.count') AS INTEGER) AS runtime_target_count,
             CAST(json_extract(detail_json, '$.targets.playbackEnabledCount') AS INTEGER) AS playback_target_count,
             CAST(json_extract(detail_json, '$.targets.recordingEnabledCount') AS INTEGER) AS recording_target_count,

@@ -1,5 +1,7 @@
 use super::*;
-use crate::api::collab::fetch_active_collaboration_session_for_broadcast;
+use crate::api::collab::{
+    build_collaboration_runtime_response_for_host, fetch_active_collaboration_session_for_broadcast,
+};
 use crate::api::ingestctl::queries::fetch_live_runtime_targets_for_session;
 use crate::api::ingestctl::build_live_runtime_advisory;
 use crate::api::ingestctl::{
@@ -84,6 +86,10 @@ struct LiveRuntimeTelemetryCollaboration {
     armed_archive_route_count: i64,
     shared_program_mirror_route_count: i64,
     guest_isolated_mirror_route_count: i64,
+    engine_node_count: i64,
+    engine_edge_count: i64,
+    mix_minus_edge_count: i64,
+    mirror_fanout_edge_count: i64,
 }
 
 async fn build_live_runtime_telemetry_collaboration(
@@ -95,77 +101,94 @@ async fn build_live_runtime_telemetry_collaboration(
     else {
         return Ok(None);
     };
+    let runtime = build_collaboration_runtime_response_for_host(pool, session.clone()).await?;
+    let topology = runtime.topology;
 
-    let participant_count = session.participants.len() as i64;
-    let live_participant_count = session
+    let participant_count = runtime.session.participants.len() as i64;
+    let live_participant_count = runtime
+        .session
         .participants
         .iter()
         .filter(|participant| participant.state == "live")
         .count() as i64;
-    let backstage_participant_count = session
+    let backstage_participant_count = runtime
+        .session
         .participants
         .iter()
         .filter(|participant| participant.state == "backstage")
         .count() as i64;
-    let mirror_participant_count = session
+    let mirror_participant_count = runtime
+        .session
         .participants
         .iter()
         .filter(|participant| participant.role != "host" && participant.mirror_to_guest_channel)
         .count() as i64;
-    let mix_minus_required = session.participants.iter().any(|participant| {
-        participant.role != "host" && participant.publish_to_host && participant.state == "live"
-    });
+    let mix_minus_required = topology.mix_minus_required;
     let active_grant_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM collaboration_mirror_grants WHERE session_id = ? AND state = 'active'",
     )
-    .bind(&session.id)
+    .bind(&runtime.session.id)
     .fetch_one(pool)
     .await?;
     let issued_grant_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM collaboration_mirror_grants WHERE session_id = ? AND state = 'issued'",
     )
-    .bind(&session.id)
+    .bind(&runtime.session.id)
     .fetch_one(pool)
     .await?;
     let active_pickup_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM collaboration_mirror_pickups WHERE session_id = ? AND state = 'active'",
     )
-    .bind(&session.id)
+    .bind(&runtime.session.id)
     .fetch_one(pool)
     .await?;
-    let shared_program_mirror_route_count = session
-        .participants
+    let shared_program_mirror_route_count = topology
+        .outputs
         .iter()
-        .filter(|participant| {
-            participant.role != "host"
-                && participant.mirror_to_guest_channel
-                && participant.publish_to_host
-                && participant.state == "live"
+        .filter(|route| {
+            route.output_kind == "mirror_channel"
+                && route.mix_minus_required
+                && route.source_participant_ids.len() > 1
         })
         .count() as i64;
-    let guest_isolated_mirror_route_count = session
-        .participants
+    let guest_isolated_mirror_route_count = topology
+        .outputs
         .iter()
-        .filter(|participant| {
-            participant.role != "host"
-                && participant.mirror_to_guest_channel
-                && (!participant.publish_to_host || participant.state != "live")
+        .filter(|route| {
+            route.output_kind == "mirror_channel"
+                && !(route.mix_minus_required && route.source_participant_ids.len() > 1)
         })
         .count() as i64;
-    let host_route_active = 1_i64;
-    let mirror_route_active = active_pickup_count;
-    let active_route_count = host_route_active + mirror_route_active;
-    let armed_archive_route_count = match session.recording_policy.as_str() {
-        "host_archive" => 1,
-        "split_archive" => 1 + mirror_participant_count,
-        _ => 0,
-    };
+    let active_route_count = topology
+        .outputs
+        .iter()
+        .filter(|route| matches!(route.route_state.as_str(), "active" | "degraded"))
+        .count() as i64;
+    let armed_archive_route_count = topology
+        .outputs
+        .iter()
+        .filter(|route| route.output_kind == "archive" && route.recording_enabled)
+        .count() as i64;
+    let engine_node_count = topology.engine.nodes.len() as i64;
+    let engine_edge_count = topology.engine.edges.len() as i64;
+    let mix_minus_edge_count = topology
+        .engine
+        .edges
+        .iter()
+        .filter(|edge| edge.edge_kind == "program_to_audio_return" && !edge.excluded_participant_ids.is_empty())
+        .count() as i64;
+    let mirror_fanout_edge_count = topology
+        .engine
+        .edges
+        .iter()
+        .filter(|edge| edge.edge_kind == "program_to_output")
+        .count() as i64;
 
     Ok(Some(LiveRuntimeTelemetryCollaboration {
-        session_id: session.id,
-        status: session.status,
-        chat_mode: session.chat_mode,
-        recording_policy: session.recording_policy,
+        session_id: runtime.session.id,
+        status: runtime.session.status,
+        chat_mode: runtime.session.chat_mode,
+        recording_policy: runtime.session.recording_policy,
         participant_count,
         live_participant_count,
         backstage_participant_count,
@@ -183,6 +206,10 @@ async fn build_live_runtime_telemetry_collaboration(
         armed_archive_route_count,
         shared_program_mirror_route_count,
         guest_isolated_mirror_route_count,
+        engine_node_count,
+        engine_edge_count,
+        mix_minus_edge_count,
+        mirror_fanout_edge_count,
     }))
 }
 
@@ -329,6 +356,10 @@ fn build_live_runtime_telemetry_detail(
                     "audioMixMode": item.audio_mix_mode,
                     "sharedProgramMirrorRouteCount": item.shared_program_mirror_route_count,
                     "guestIsolatedMirrorRouteCount": item.guest_isolated_mirror_route_count,
+                    "engineNodeCount": item.engine_node_count,
+                    "engineEdgeCount": item.engine_edge_count,
+                    "mixMinusEdgeCount": item.mix_minus_edge_count,
+                    "mirrorFanoutEdgeCount": item.mirror_fanout_edge_count,
                 })
             })
             .unwrap_or_else(|| json!({ "present": false })),
