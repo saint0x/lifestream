@@ -6,7 +6,7 @@ pub(super) fn router(state: SharedState) -> Router {
         .merge(public::routes())
         .merge(me::routes())
         .merge(creator::routes())
-        .merge(collaboration::routes())
+        .merge(collabs::routes())
         .merge(ingest::routes())
         .merge(playback::routes())
         .merge(realtime::routes())

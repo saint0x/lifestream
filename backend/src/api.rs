@@ -96,8 +96,8 @@ mod api_runtime;
 mod api_surface;
 mod app_request;
 mod collab;
-mod collaboration;
 mod collaboration_events;
+mod collabs;
 mod control;
 mod creator;
 mod dashboard;
@@ -142,8 +142,13 @@ use collab::{
     reconcile_single_collaboration_session, reconcile_single_collaboration_socket_session,
     resolve_collaboration_broadcast, validate_collaboration_participant_access,
 };
+use collaboration_events::{
+    collaboration_channel_id, publish_collaboration_event,
+    publish_collaboration_invite_revoked_events, publish_collaboration_invite_revoked_events_raw,
+    publish_collaboration_reconciliation_event,
+};
 #[cfg(test)]
-use collaboration::{
+use collabs::{
     accept_collaboration_invite, create_collaboration_invite, create_collaboration_session,
     end_collaboration_session, get_creator_collaboration_control,
     get_creator_collaboration_runtime, get_creator_collaboration_session,
@@ -153,12 +158,7 @@ use collaboration::{
     remove_collaboration_participant, revoke_collaboration_invite,
     update_collaboration_participant,
 };
-use collaboration::{apply_collaboration_participant_update, revoke_collaboration_invite_internal};
-use collaboration_events::{
-    collaboration_channel_id, publish_collaboration_event,
-    publish_collaboration_invite_revoked_events, publish_collaboration_invite_revoked_events_raw,
-    publish_collaboration_reconciliation_event,
-};
+use collabs::{apply_collaboration_participant_update, revoke_collaboration_invite_internal};
 #[cfg(test)]
 use control::{
     canonical_live_runtime_archive_relative_path, canonical_live_runtime_manifest_relative_path,
