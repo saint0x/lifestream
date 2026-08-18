@@ -154,7 +154,11 @@ fn live_runtime_variant_spec_from_plan(
     plan: HlsVariantPlan,
     segment_format: &str,
 ) -> LiveRuntimeVariantSpec {
-    let segment_extension = if segment_format == "fmp4" { "m4s" } else { "ts" };
+    let segment_extension = if segment_format == "fmp4" {
+        "m4s"
+    } else {
+        "ts"
+    };
     LiveRuntimeVariantSpec {
         label: plan.label.clone(),
         width: plan.width,

@@ -356,14 +356,22 @@ pub(crate) async fn metrics(State(state): State<SharedState>) -> AppResult<Respo
             body,
             "# TYPE lifestream_live_ingest_last_host_channel_targets gauge"
         );
-        let _ = writeln!(body, "lifestream_live_ingest_last_host_channel_targets {}", value);
+        let _ = writeln!(
+            body,
+            "lifestream_live_ingest_last_host_channel_targets {}",
+            value
+        );
     }
     if let Some(value) = live_ingest_overview.last_mirror_channel_count {
         let _ = writeln!(
             body,
             "# TYPE lifestream_live_ingest_last_mirror_channel_targets gauge"
         );
-        let _ = writeln!(body, "lifestream_live_ingest_last_mirror_channel_targets {}", value);
+        let _ = writeln!(
+            body,
+            "lifestream_live_ingest_last_mirror_channel_targets {}",
+            value
+        );
     }
     if let Some(value) = live_ingest_overview.last_shared_program_mirror_channel_count {
         let _ = writeln!(
@@ -392,7 +400,11 @@ pub(crate) async fn metrics(State(state): State<SharedState>) -> AppResult<Respo
             body,
             "# TYPE lifestream_live_ingest_last_archive_targets gauge"
         );
-        let _ = writeln!(body, "lifestream_live_ingest_last_archive_targets {}", value);
+        let _ = writeln!(
+            body,
+            "lifestream_live_ingest_last_archive_targets {}",
+            value
+        );
     }
     if let Some(value) = live_ingest_overview.last_active_target_count {
         let _ = writeln!(
@@ -406,7 +418,11 @@ pub(crate) async fn metrics(State(state): State<SharedState>) -> AppResult<Respo
             body,
             "# TYPE lifestream_live_ingest_last_degraded_targets gauge"
         );
-        let _ = writeln!(body, "lifestream_live_ingest_last_degraded_targets {}", value);
+        let _ = writeln!(
+            body,
+            "lifestream_live_ingest_last_degraded_targets {}",
+            value
+        );
     }
     if let Some(value) = live_ingest_overview.last_armed_target_count {
         let _ = writeln!(

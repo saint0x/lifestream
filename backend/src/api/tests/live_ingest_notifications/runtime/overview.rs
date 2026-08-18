@@ -69,9 +69,7 @@ async fn admin_live_ingest_overview_aggregates_latency_and_creator_breakdown() -
     assert!(overview.ready_outputs >= baseline.ready_outputs + 1);
     assert!(overview.archive_finalizing_outputs >= baseline.archive_finalizing_outputs + 1);
     assert!(overview.artifact_attention_outputs >= baseline.artifact_attention_outputs + 1);
-    assert!(
-        overview.manifest_path_missing_outputs >= baseline.manifest_path_missing_outputs + 1
-    );
+    assert!(overview.manifest_path_missing_outputs >= baseline.manifest_path_missing_outputs + 1);
     assert!(overview.archive_path_missing_outputs >= baseline.archive_path_missing_outputs + 1);
     assert_eq!(overview.unique_creators, 1);
     assert!(overview.total_samples >= baseline.total_samples + 1);

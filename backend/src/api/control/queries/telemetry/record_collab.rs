@@ -2,6 +2,9 @@ use super::*;
 use crate::api::collab::{
     build_collaboration_runtime_response_for_host, fetch_active_collaboration_session_for_broadcast,
 };
+use crate::api::control::artifacts::build_collaboration_runtime_bundle;
+use crate::api::control::fetch_terminalizable_live_ingest_sessions_for_broadcast;
+use crate::api::media::build_collaboration_media_runtime;
 
 #[derive(Clone, Debug)]
 pub(super) struct LiveRuntimeTelemetryCollaboration {
@@ -26,6 +29,14 @@ pub(super) struct LiveRuntimeTelemetryCollaboration {
     pub engine_edge_count: i64,
     pub mix_minus_edge_count: i64,
     pub mirror_fanout_edge_count: i64,
+    pub bundle_attachment_count: i64,
+    pub bundle_mixer_count: i64,
+    pub bundle_fanout_count: i64,
+    pub bundle_return_count: i64,
+    pub media_stage_count: i64,
+    pub media_output_target_count: i64,
+    pub media_input_participant_count: i64,
+    pub media_mix_minus_participant_count: i64,
 }
 
 pub(super) async fn build_live_runtime_telemetry_collaboration(
@@ -37,8 +48,23 @@ pub(super) async fn build_live_runtime_telemetry_collaboration(
     else {
         return Ok(None);
     };
+    let live_session = fetch_terminalizable_live_ingest_sessions_for_broadcast(
+        pool,
+        &session.host_creator_id,
+        &session.source_broadcast_id,
+    )
+    .await?
+    .into_iter()
+    .next()
+    .ok_or_else(|| {
+        AppError::Internal(
+            "active collaboration session missing corresponding live ingest session".to_string(),
+        )
+    })?;
     let runtime = build_collaboration_runtime_response_for_host(pool, session.clone()).await?;
     let topology = runtime.topology;
+    let bundle = build_collaboration_runtime_bundle(&live_session, &topology)?;
+    let media_runtime = build_collaboration_media_runtime(&bundle)?;
 
     let participant_count = runtime.session.participants.len() as i64;
     let live_participant_count = runtime
@@ -124,6 +150,14 @@ pub(super) async fn build_live_runtime_telemetry_collaboration(
         .iter()
         .filter(|edge| edge.edge_kind == "program_to_output")
         .count() as i64;
+    let bundle_attachment_count = bundle.attachments.len() as i64;
+    let bundle_mixer_count = bundle.mixers.len() as i64;
+    let bundle_fanout_count = bundle.fanouts.len() as i64;
+    let bundle_return_count = bundle.returns.len() as i64;
+    let media_stage_count = media_runtime.stage_count;
+    let media_output_target_count = media_runtime.output_targets.len() as i64;
+    let media_input_participant_count = media_runtime.input_participant_ids.len() as i64;
+    let media_mix_minus_participant_count = media_runtime.mix_minus_participant_ids.len() as i64;
 
     Ok(Some(LiveRuntimeTelemetryCollaboration {
         session_id: runtime.session.id,
@@ -151,6 +185,14 @@ pub(super) async fn build_live_runtime_telemetry_collaboration(
         engine_edge_count,
         mix_minus_edge_count,
         mirror_fanout_edge_count,
+        bundle_attachment_count,
+        bundle_mixer_count,
+        bundle_fanout_count,
+        bundle_return_count,
+        media_stage_count,
+        media_output_target_count,
+        media_input_participant_count,
+        media_mix_minus_participant_count,
     }))
 }
 

@@ -68,10 +68,7 @@ fn derive_content_class_and_ladder_policy(
         );
     }
     if height >= 1080 {
-        return (
-            "cinematic".to_string(),
-            "probe_cinematic_1080p".to_string(),
-        );
+        return ("cinematic".to_string(), "probe_cinematic_1080p".to_string());
     }
     if height >= 720 {
         return ("general_hd".to_string(), "probe_general_hd".to_string());

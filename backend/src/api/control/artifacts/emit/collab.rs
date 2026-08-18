@@ -16,7 +16,8 @@ pub(super) async fn emit_collaboration_route_artifacts(
     output: &LiveRuntimeOutput,
 ) -> AppResult<()> {
     let Some(collaboration_session) =
-        fetch_active_collaboration_session_for_broadcast(&state.pool, &session.broadcast_id).await?
+        fetch_active_collaboration_session_for_broadcast(&state.pool, &session.broadcast_id)
+            .await?
     else {
         return Ok(());
     };
@@ -35,12 +36,7 @@ pub(super) async fn emit_collaboration_route_artifacts(
     emit_collaboration_engine_artifact(state, session, &runtime.topology.engine).await?;
     let runtime_bundle = build_collaboration_runtime_bundle(session, &runtime.topology)?;
     let media_runtime = build_collaboration_media_runtime(&runtime_bundle)?;
-    emit_collaboration_runtime_bundle_artifact(
-        state,
-        session,
-        &runtime_bundle,
-    )
-    .await?;
+    emit_collaboration_runtime_bundle_artifact(state, session, &runtime_bundle).await?;
     emit_collaboration_media_runtime_artifact(state, session, &media_runtime).await?;
     Ok(())
 }
@@ -129,9 +125,12 @@ async fn emit_routed_variant_playlist(
 ) -> AppResult<()> {
     let playlist_path = media_path_for_relative(state, &variant.relative_playlist_path);
     ensure_parent_dir(&playlist_path).await?;
-    tokio::fs::write(&playlist_path, render_routed_variant_playlist(variant, output))
-        .await
-        .map_err(AppError::Io)?;
+    tokio::fs::write(
+        &playlist_path,
+        render_routed_variant_playlist(variant, output),
+    )
+    .await
+    .map_err(AppError::Io)?;
     Ok(())
 }
 
@@ -188,7 +187,8 @@ async fn emit_collaboration_program_artifact(
     ensure_parent_dir(&path).await?;
     tokio::fs::write(
         &path,
-        serde_json::to_vec_pretty(program).map_err(|error| AppError::Internal(error.to_string()))?,
+        serde_json::to_vec_pretty(program)
+            .map_err(|error| AppError::Internal(error.to_string()))?,
     )
     .await
     .map_err(AppError::Io)?;
@@ -256,7 +256,8 @@ async fn emit_collaboration_media_runtime_artifact(
     ensure_parent_dir(&path).await?;
     tokio::fs::write(
         &path,
-        serde_json::to_vec_pretty(runtime).map_err(|error| AppError::Internal(error.to_string()))?,
+        serde_json::to_vec_pretty(runtime)
+            .map_err(|error| AppError::Internal(error.to_string()))?,
     )
     .await
     .map_err(AppError::Io)?;

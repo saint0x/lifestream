@@ -169,13 +169,18 @@ async fn runtime_report_reconciles_missing_manifest_into_packaging_drift() -> Ap
             .any(|sample| sample.sample_kind == "runtime_artifact_reconciled")
     );
     assert_eq!(
-        record.telemetry_summary.runtime_artifact_reconciliation_samples,
+        record
+            .telemetry_summary
+            .runtime_artifact_reconciliation_samples,
         1
     );
     assert_eq!(record.telemetry_summary.artifact_attention_samples, 1);
     assert_eq!(record.telemetry_summary.manifest_path_missing_samples, 1);
     assert_eq!(
-        record.telemetry_summary.last_manifest_artifact_state.as_deref(),
+        record
+            .telemetry_summary
+            .last_manifest_artifact_state
+            .as_deref(),
         Some("missing")
     );
     assert_eq!(
@@ -489,11 +494,17 @@ async fn background_runtime_reconciliation_promotes_archive_finalizing_to_comple
         1
     );
     assert_eq!(
-        record.telemetry_summary.last_manifest_artifact_state.as_deref(),
+        record
+            .telemetry_summary
+            .last_manifest_artifact_state
+            .as_deref(),
         Some("declared")
     );
     assert_eq!(
-        record.telemetry_summary.last_archive_artifact_state.as_deref(),
+        record
+            .telemetry_summary
+            .last_archive_artifact_state
+            .as_deref(),
         Some("declared")
     );
     let published = tokio::time::timeout(Duration::from_secs(1), subscription.recv())
@@ -574,8 +585,7 @@ async fn runtime_termination_closes_session_with_distinct_terminal_event() -> Ap
             .recent_telemetry
             .iter()
             .any(|sample| sample.sample_kind == "session_state"
-                && sample.detail["eventType"]
-                    == Value::String("runtime_terminated".to_string()))
+                && sample.detail["eventType"] == Value::String("runtime_terminated".to_string()))
     );
 
     Ok(())
@@ -649,7 +659,9 @@ async fn background_runtime_artifact_reconciliation_repairs_missing_manifest_wit
             .any(|event| event.event_type == "runtime_artifact_reconciled")
     );
     assert_eq!(
-        record.telemetry_summary.runtime_artifact_reconciliation_samples,
+        record
+            .telemetry_summary
+            .runtime_artifact_reconciliation_samples,
         1
     );
 

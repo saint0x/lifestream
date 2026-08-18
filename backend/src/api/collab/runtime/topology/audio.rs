@@ -34,17 +34,19 @@ pub(super) fn build_topology_audio(
                 "inactive"
             };
             let receive_program_audio = participant.role != "host" && participant.publish_to_host;
-            let mix_minus_required =
-                participant.role != "host" && participant.publish_to_host && participant.state == "live";
-            let upstream_participant_ids = if participant.role == "host" || !participant.publish_to_host {
-                if contribution.attached_output_ids.is_empty() {
-                    Vec::new()
+            let mix_minus_required = participant.role != "host"
+                && participant.publish_to_host
+                && participant.state == "live";
+            let upstream_participant_ids =
+                if participant.role == "host" || !participant.publish_to_host {
+                    if contribution.attached_output_ids.is_empty() {
+                        Vec::new()
+                    } else {
+                        vec![participant.id.clone()]
+                    }
                 } else {
-                    vec![participant.id.clone()]
-                }
-            } else {
-                host_output_participant_ids.to_vec()
-            };
+                    host_output_participant_ids.to_vec()
+                };
             let excluded_participant_ids = if mix_minus_required {
                 vec![participant.id.clone()]
             } else {

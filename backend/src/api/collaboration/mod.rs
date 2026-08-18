@@ -3,7 +3,9 @@ use super::*;
 mod host;
 mod member;
 
-pub(crate) use host::{apply_collaboration_participant_update, revoke_collaboration_invite_internal};
+pub(crate) use host::{
+    apply_collaboration_participant_update, revoke_collaboration_invite_internal,
+};
 #[cfg(test)]
 pub(crate) use host::{
     create_collaboration_invite, create_collaboration_session, end_collaboration_session,

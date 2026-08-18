@@ -1,7 +1,7 @@
-use super::*;
-use crate::api::control::queries::fetch_live_runtime_targets_for_session;
 use super::record_collab::build_live_runtime_telemetry_collaboration;
 use super::record_detail::build_live_runtime_telemetry_detail;
+use super::*;
+use crate::api::control::queries::fetch_live_runtime_targets_for_session;
 
 pub(crate) async fn record_live_runtime_telemetry(
     pool: &SqlitePool,

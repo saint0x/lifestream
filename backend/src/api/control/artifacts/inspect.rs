@@ -1,9 +1,9 @@
-use super::*;
 use super::spec::{
-    collaboration_audio_relative_path, collaboration_engine_relative_path,
+    collaboration_audio_relative_path, collaboration_bundle_relative_path,
+    collaboration_engine_relative_path, collaboration_media_relative_path,
     collaboration_program_relative_path, collaboration_route_relative_path,
-    collaboration_bundle_relative_path, collaboration_media_relative_path,
 };
+use super::*;
 use crate::api::collab::{
     build_collaboration_runtime_response_for_host, fetch_active_collaboration_session_for_broadcast,
 };
@@ -165,20 +165,26 @@ pub(crate) async fn describe_live_runtime_artifact_health(
         valid: inspection.archive_valid,
         issue: archive_issue,
     };
-    let collaboration = inspection.collaboration_present.then(|| LiveRuntimeArtifactState {
-        expected_relative_path: inspection.collaboration_expected_relative_path.clone(),
-        persisted_relative_path: inspection.collaboration_expected_relative_path.clone(),
-        state: artifact_state_label(
-            if inspection.collaboration_present { "ready" } else { "pending" },
-            inspection.collaboration_valid,
-            inspection.collaboration_invalid,
-            inspection.collaboration_expected_relative_path.as_deref(),
-            inspection.collaboration_expected_relative_path.as_deref(),
-        ),
-        ready: inspection.collaboration_present,
-        valid: inspection.collaboration_valid,
-        issue: collaboration_issue,
-    });
+    let collaboration = inspection
+        .collaboration_present
+        .then(|| LiveRuntimeArtifactState {
+            expected_relative_path: inspection.collaboration_expected_relative_path.clone(),
+            persisted_relative_path: inspection.collaboration_expected_relative_path.clone(),
+            state: artifact_state_label(
+                if inspection.collaboration_present {
+                    "ready"
+                } else {
+                    "pending"
+                },
+                inspection.collaboration_valid,
+                inspection.collaboration_invalid,
+                inspection.collaboration_expected_relative_path.as_deref(),
+                inspection.collaboration_expected_relative_path.as_deref(),
+            ),
+            ready: inspection.collaboration_present,
+            valid: inspection.collaboration_valid,
+            issue: collaboration_issue,
+        });
     let status = if inspection.archive_invalid
         || inspection.manifest_invalid
         || inspection.collaboration_invalid
@@ -283,7 +289,8 @@ async fn inspect_live_runtime_collaboration_artifacts(
     session: &LiveIngestSession,
 ) -> AppResult<CollaborationArtifactInspection> {
     let Some(collaboration_session) =
-        fetch_active_collaboration_session_for_broadcast(&state.pool, &session.broadcast_id).await?
+        fetch_active_collaboration_session_for_broadcast(&state.pool, &session.broadcast_id)
+            .await?
     else {
         return Ok(CollaborationArtifactInspection::default());
     };
@@ -295,8 +302,13 @@ async fn inspect_live_runtime_collaboration_artifacts(
     let mut issues = Vec::new();
 
     validate_execution_plan_consistency(&runtime.topology.engine, &mut issues);
-    validate_required_artifact_path(state, &engine_relative_path, "collaboration engine", &mut issues)
-        .await?;
+    validate_required_artifact_path(
+        state,
+        &engine_relative_path,
+        "collaboration engine",
+        &mut issues,
+    )
+    .await?;
     validate_required_artifact_path(
         state,
         &bundle_relative_path,
@@ -389,8 +401,16 @@ fn validate_execution_plan_consistency(
     engine: &crate::models::CollaborationExecutionPlan,
     issues: &mut Vec<String>,
 ) {
-    let node_ids = engine.nodes.iter().map(|node| node.id.clone()).collect::<HashSet<_>>();
-    let bus_ids = engine.buses.iter().map(|bus| bus.id.clone()).collect::<HashSet<_>>();
+    let node_ids = engine
+        .nodes
+        .iter()
+        .map(|node| node.id.clone())
+        .collect::<HashSet<_>>();
+    let bus_ids = engine
+        .buses
+        .iter()
+        .map(|bus| bus.id.clone())
+        .collect::<HashSet<_>>();
     if engine.operations.is_empty() && !engine.edges.is_empty() {
         issues.push("collaboration engine compiled plan missing execution operations".to_string());
     }

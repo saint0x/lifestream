@@ -1,7 +1,7 @@
-use super::*;
 use super::summary_rows::{
     fetch_latest_failure_row, fetch_latest_telemetry_row, fetch_summary_row,
 };
+use super::*;
 
 pub(crate) async fn fetch_live_runtime_telemetry_summary(
     pool: &SqlitePool,
@@ -111,6 +111,30 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         peak_mirror_fanout_edge_count: total_row
             .get::<Option<i64>, _>("peak_mirror_fanout_edge_count")
             .unwrap_or(0),
+        peak_bundle_attachment_count: total_row
+            .get::<Option<i64>, _>("peak_bundle_attachment_count")
+            .unwrap_or(0),
+        peak_bundle_mixer_count: total_row
+            .get::<Option<i64>, _>("peak_bundle_mixer_count")
+            .unwrap_or(0),
+        peak_bundle_fanout_count: total_row
+            .get::<Option<i64>, _>("peak_bundle_fanout_count")
+            .unwrap_or(0),
+        peak_bundle_return_count: total_row
+            .get::<Option<i64>, _>("peak_bundle_return_count")
+            .unwrap_or(0),
+        peak_media_stage_count: total_row
+            .get::<Option<i64>, _>("peak_media_stage_count")
+            .unwrap_or(0),
+        peak_media_output_target_count: total_row
+            .get::<Option<i64>, _>("peak_media_output_target_count")
+            .unwrap_or(0),
+        peak_media_input_participant_count: total_row
+            .get::<Option<i64>, _>("peak_media_input_participant_count")
+            .unwrap_or(0),
+        peak_media_mix_minus_participant_count: total_row
+            .get::<Option<i64>, _>("peak_media_mix_minus_participant_count")
+            .unwrap_or(0),
         peak_runtime_target_count: total_row
             .get::<Option<i64>, _>("peak_runtime_target_count")
             .unwrap_or(0),
@@ -219,6 +243,30 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         last_mirror_fanout_edge_count: latest_row
             .as_ref()
             .and_then(|row| row.get("mirror_fanout_edge_count")),
+        last_bundle_attachment_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("bundle_attachment_count")),
+        last_bundle_mixer_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("bundle_mixer_count")),
+        last_bundle_fanout_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("bundle_fanout_count")),
+        last_bundle_return_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("bundle_return_count")),
+        last_media_stage_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("media_stage_count")),
+        last_media_output_target_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("media_output_target_count")),
+        last_media_input_participant_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("media_input_participant_count")),
+        last_media_mix_minus_participant_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("media_mix_minus_participant_count")),
         last_runtime_target_count: latest_row
             .as_ref()
             .and_then(|row| row.get("runtime_target_count")),
@@ -271,7 +319,9 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
             .as_ref()
             .and_then(|row| row.get("pending_source_target_count")),
         last_runtime_class: latest_row.as_ref().and_then(|row| row.get("runtime_class")),
-        last_latency_profile: latest_row.as_ref().and_then(|row| row.get("latency_profile")),
+        last_latency_profile: latest_row
+            .as_ref()
+            .and_then(|row| row.get("latency_profile")),
         last_ladder_policy: latest_row.as_ref().and_then(|row| row.get("ladder_policy")),
         last_content_class: latest_row.as_ref().and_then(|row| row.get("content_class")),
         last_failure_at: failure_row.as_ref().map(|row| row.get("collected_at")),

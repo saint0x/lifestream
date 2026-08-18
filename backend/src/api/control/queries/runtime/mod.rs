@@ -26,8 +26,8 @@ use profile::derive_live_runtime_profile;
 pub(crate) use repair::{
     repair_live_runtime_output, set_live_runtime_output_session_state, update_live_runtime_output,
 };
+use store::upsert_live_runtime_output;
 pub(crate) use targets::{
     fetch_current_live_runtime_targets, fetch_live_runtime_targets_for_session,
     fetch_recent_live_runtime_targets, sync_live_runtime_targets,
 };
-use store::upsert_live_runtime_output;

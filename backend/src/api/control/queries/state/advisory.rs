@@ -38,22 +38,24 @@ pub(crate) fn build_live_runtime_advisory(
     }
 
     if let Some(output) = output {
-        if matches!(output.runtime_state.as_str(), "failed" | "packaging_degraded")
-            || output.packaging_status == "failed"
+        if matches!(
+            output.runtime_state.as_str(),
+            "failed" | "packaging_degraded"
+        ) || output.packaging_status == "failed"
         {
             actions.push(LiveRuntimeAdvisoryAction {
                 code: "runtime_packaging_attention".to_string(),
-                severity: if output.packaging_status == "failed" || output.runtime_state == "failed" {
+                severity: if output.packaging_status == "failed" || output.runtime_state == "failed"
+                {
                     "error".to_string()
                 } else {
                     "warn".to_string()
                 },
                 repairable: true,
                 title: "Packaging path needs attention".to_string(),
-                detail: output
-                    .last_error
-                    .clone()
-                    .unwrap_or_else(|| "The runtime reported degraded or failed packaging state.".to_string()),
+                detail: output.last_error.clone().unwrap_or_else(|| {
+                    "The runtime reported degraded or failed packaging state.".to_string()
+                }),
             });
         }
         if output.archive_status == "failed" {
@@ -62,10 +64,9 @@ pub(crate) fn build_live_runtime_advisory(
                 severity: "error".to_string(),
                 repairable: true,
                 title: "Archive finalization failed".to_string(),
-                detail: output
-                    .last_error
-                    .clone()
-                    .unwrap_or_else(|| "The archive output failed and needs operator repair.".to_string()),
+                detail: output.last_error.clone().unwrap_or_else(|| {
+                    "The archive output failed and needs operator repair.".to_string()
+                }),
             });
         }
         if matches!(output.packaging_status.as_str(), "ready" | "complete")
@@ -87,7 +88,9 @@ pub(crate) fn build_live_runtime_advisory(
             severity: "warn".to_string(),
             repairable: true,
             title: "Ingest heartbeat is stale".to_string(),
-            detail: "The ingest session has stopped heartbeating and should reconnect or be terminated.".to_string(),
+            detail:
+                "The ingest session has stopped heartbeating and should reconnect or be terminated."
+                    .to_string(),
         });
     }
 
@@ -124,9 +127,14 @@ pub(crate) fn build_live_runtime_advisory(
                 "The live runtime has blocking issues that require operator action.".to_string()
             }
         }
-        "repairable" => "The live runtime is serviceable but has repairable ingest or packaging issues.".to_string(),
+        "repairable" => {
+            "The live runtime is serviceable but has repairable ingest or packaging issues."
+                .to_string()
+        }
         "observe" => "The live runtime is not fully healthy and should be observed.".to_string(),
-        _ => "The live runtime is healthy and no operator repair is currently required.".to_string(),
+        _ => {
+            "The live runtime is healthy and no operator repair is currently required.".to_string()
+        }
     };
 
     LiveRuntimeAdvisory {

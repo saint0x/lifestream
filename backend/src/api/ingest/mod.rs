@@ -11,13 +11,13 @@ pub(crate) use admin::{
     get_admin_live_ingest_overview, get_admin_live_ingest_session,
     reconcile_admin_live_ingest_session, repair_admin_live_runtime_output,
 };
+pub(crate) use creator::update_creator_live;
 #[cfg(test)]
 pub(crate) use creator::{
     end_broadcast, get_creator_live_ingest_session_by_id, list_creator_live_ingest_events,
     reconcile_creator_live_ingest_session, repair_creator_live_runtime_output,
     terminate_creator_live_ingest,
 };
-pub(crate) use creator::update_creator_live;
 #[cfg(test)]
 pub(crate) use ingest::{
     connect_live_ingest, disconnect_live_ingest, heartbeat_live_ingest, report_live_runtime,

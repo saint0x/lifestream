@@ -106,6 +106,22 @@ pub(super) async fn fetch_summary_row(
                 AS peak_mix_minus_edge_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mirrorFanoutEdgeCount') AS INTEGER), 0))
                 AS peak_mirror_fanout_edge_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.bundleAttachmentCount') AS INTEGER), 0))
+                AS peak_bundle_attachment_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.bundleMixerCount') AS INTEGER), 0))
+                AS peak_bundle_mixer_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.bundleFanoutCount') AS INTEGER), 0))
+                AS peak_bundle_fanout_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.bundleReturnCount') AS INTEGER), 0))
+                AS peak_bundle_return_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mediaStageCount') AS INTEGER), 0))
+                AS peak_media_stage_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mediaOutputTargetCount') AS INTEGER), 0))
+                AS peak_media_output_target_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mediaInputParticipantCount') AS INTEGER), 0))
+                AS peak_media_input_participant_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.collaboration.mediaMixMinusParticipantCount') AS INTEGER), 0))
+                AS peak_media_mix_minus_participant_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.count') AS INTEGER), 0))
                 AS peak_runtime_target_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.playbackEnabledCount') AS INTEGER), 0))
@@ -185,6 +201,22 @@ pub(super) async fn fetch_latest_telemetry_row(
             CAST(json_extract(detail_json, '$.collaboration.engineEdgeCount') AS INTEGER) AS engine_edge_count,
             CAST(json_extract(detail_json, '$.collaboration.mixMinusEdgeCount') AS INTEGER) AS mix_minus_edge_count,
             CAST(json_extract(detail_json, '$.collaboration.mirrorFanoutEdgeCount') AS INTEGER) AS mirror_fanout_edge_count,
+            CAST(json_extract(detail_json, '$.collaboration.bundleAttachmentCount') AS INTEGER)
+                AS bundle_attachment_count,
+            CAST(json_extract(detail_json, '$.collaboration.bundleMixerCount') AS INTEGER)
+                AS bundle_mixer_count,
+            CAST(json_extract(detail_json, '$.collaboration.bundleFanoutCount') AS INTEGER)
+                AS bundle_fanout_count,
+            CAST(json_extract(detail_json, '$.collaboration.bundleReturnCount') AS INTEGER)
+                AS bundle_return_count,
+            CAST(json_extract(detail_json, '$.collaboration.mediaStageCount') AS INTEGER)
+                AS media_stage_count,
+            CAST(json_extract(detail_json, '$.collaboration.mediaOutputTargetCount') AS INTEGER)
+                AS media_output_target_count,
+            CAST(json_extract(detail_json, '$.collaboration.mediaInputParticipantCount') AS INTEGER)
+                AS media_input_participant_count,
+            CAST(json_extract(detail_json, '$.collaboration.mediaMixMinusParticipantCount') AS INTEGER)
+                AS media_mix_minus_participant_count,
             CAST(json_extract(detail_json, '$.targets.count') AS INTEGER) AS runtime_target_count,
             CAST(json_extract(detail_json, '$.targets.playbackEnabledCount') AS INTEGER) AS playback_target_count,
             CAST(json_extract(detail_json, '$.targets.recordingEnabledCount') AS INTEGER) AS recording_target_count,

@@ -73,7 +73,7 @@ pub(super) async fn build_live_runtime_collaboration_spec(
     }))
 }
 
-pub(in crate::api::control::artifacts) fn build_collaboration_runtime_bundle(
+pub(crate) fn build_collaboration_runtime_bundle(
     session: &LiveIngestSession,
     topology: &crate::models::CollaborationRuntimeTopology,
 ) -> AppResult<CollaborationRuntimeBundle> {
@@ -95,7 +95,8 @@ pub(in crate::api::control::artifacts) fn build_collaboration_runtime_bundle(
                     contribution_bus_id: format!("bus-contrib-{}", contribution.participant_id),
                     program_bus_id: format!("bus-program-{}", program.id),
                     route_state: program.route_state.clone(),
-                    mix_minus_required: contribution.mix_minus_required || program.mix_minus_required,
+                    mix_minus_required: contribution.mix_minus_required
+                        || program.mix_minus_required,
                 })
         })
         .collect::<Vec<_>>();

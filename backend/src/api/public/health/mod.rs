@@ -3,11 +3,11 @@ use super::*;
 mod checks;
 mod metrics;
 
-pub(crate) use checks::{health, health_live, health_ready};
 #[cfg(test)]
 pub(crate) use checks::{
     check_binary_available, check_media_root_writable, check_runtime_dependencies_with_binaries,
 };
+pub(crate) use checks::{health, health_live, health_ready};
 pub(crate) use metrics::metrics;
 
 #[derive(Clone, Debug)]

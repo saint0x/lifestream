@@ -658,13 +658,11 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
     .bind(&now)
     .execute(&state.pool)
     .await?;
-    sqlx::query(
-        "UPDATE live_streams SET playback_relative_path = ? WHERE id = ?",
-    )
-    .bind(&mirror_manifest_relative_path)
-    .bind(&guest_stream_id)
-    .execute(&state.pool)
-    .await?;
+    sqlx::query("UPDATE live_streams SET playback_relative_path = ? WHERE id = ?")
+        .bind(&mirror_manifest_relative_path)
+        .bind(&guest_stream_id)
+        .execute(&state.pool)
+        .await?;
     let target = fetch_live_stream_playback_target(&state.pool, &guest_stream_id).await?;
     assert_eq!(target.playback_relative_path, mirror_manifest_relative_path);
 

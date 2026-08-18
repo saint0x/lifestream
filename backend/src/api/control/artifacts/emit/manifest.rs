@@ -7,7 +7,11 @@ pub(super) fn render_master_manifest(
 ) -> String {
     let mut body = format!(
         "#EXTM3U\n#EXT-X-VERSION:{}\n",
-        if output.segment_format == "fmp4" { 9 } else { 3 }
+        if output.segment_format == "fmp4" {
+            9
+        } else {
+            3
+        }
     );
     if variants.is_empty() {
         body.push_str("# backend-owned live runtime manifest awaiting probe-derived variants\n");
@@ -46,7 +50,11 @@ pub(super) fn render_routed_master_manifest(
 ) -> String {
     let mut body = format!(
         "#EXTM3U\n#EXT-X-VERSION:{}\n",
-        if output.segment_format == "fmp4" { 9 } else { 3 }
+        if output.segment_format == "fmp4" {
+            9
+        } else {
+            3
+        }
     );
     if variants.is_empty() {
         body.push_str("# collaboration route manifest awaiting source ladder\n");
@@ -72,7 +80,11 @@ pub(super) fn render_variant_playlist(
 ) -> String {
     let mut body = format!(
         "#EXTM3U\n#EXT-X-VERSION:{}\n#EXT-X-TARGETDURATION:{}\n#EXT-X-PLAYLIST-TYPE:EVENT\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-DISCONTINUITY-SEQUENCE:{}\n",
-        if output.segment_format == "fmp4" { 9 } else { 3 },
+        if output.segment_format == "fmp4" {
+            9
+        } else {
+            3
+        },
         output.target_segment_duration_sec,
         output.discontinuity_sequence
     );
@@ -122,7 +134,11 @@ pub(super) fn render_routed_variant_playlist(
 ) -> String {
     let mut body = format!(
         "#EXTM3U\n#EXT-X-VERSION:{}\n#EXT-X-TARGETDURATION:{}\n#EXT-X-PLAYLIST-TYPE:EVENT\n#EXT-X-MEDIA-SEQUENCE:0\n#EXT-X-DISCONTINUITY-SEQUENCE:{}\n",
-        if output.segment_format == "fmp4" { 9 } else { 3 },
+        if output.segment_format == "fmp4" {
+            9
+        } else {
+            3
+        },
         output.target_segment_duration_sec,
         output.discontinuity_sequence
     );
@@ -183,11 +199,7 @@ pub(super) fn build_live_archive_payload(
 
 pub(super) fn build_minimal_mp4_bytes(summary: &str) -> Vec<u8> {
     let mut bytes = Vec::new();
-    push_mp4_box(
-        &mut bytes,
-        b"ftyp",
-        b"isom\x00\x00\x02\x00isomiso2mp41",
-    );
+    push_mp4_box(&mut bytes, b"ftyp", b"isom\x00\x00\x02\x00isomiso2mp41");
     push_mp4_box(&mut bytes, b"free", summary.as_bytes());
     push_mp4_box(&mut bytes, b"mdat", b"lifestream");
     bytes
@@ -264,7 +276,11 @@ fn segment_relative_path(output_relative_dir: &str, output: &LiveRuntimeOutput) 
     format!(
         "{}/segment_000.{}",
         output_relative_dir,
-        if output.segment_format == "fmp4" { "m4s" } else { "ts" }
+        if output.segment_format == "fmp4" {
+            "m4s"
+        } else {
+            "ts"
+        }
     )
 }
 

@@ -96,9 +96,10 @@ async fn ll_hls_delivery_profile_persists_into_runtime_output_spec_and_telemetry
     assert_eq!(output.hold_back_segments, 2);
     assert_eq!(output.ladder_policy, "probe_general_hd");
     assert_eq!(output.content_class, "general_hd");
-    let manifest = tokio::fs::read_to_string(media_path_for_relative(&state, &manifest_relative_path))
-        .await
-        .map_err(AppError::Io)?;
+    let manifest =
+        tokio::fs::read_to_string(media_path_for_relative(&state, &manifest_relative_path))
+            .await
+            .map_err(AppError::Io)?;
     let variant_playlist = tokio::fs::read_to_string(media_path_for_relative(
         &state,
         &variant_playlist_relative_path,
@@ -264,13 +265,10 @@ async fn live_media_playlist_rewrites_tokenized_ll_hls_uris_and_honors_blocking_
     )
     .await?;
 
-    let playback = create_live_playback_session(
-        State(state.clone()),
-        HeaderMap::new(),
-        Path(stream_id),
-    )
-    .await?
-    .0;
+    let playback =
+        create_live_playback_session(State(state.clone()), HeaderMap::new(), Path(stream_id))
+            .await?
+            .0;
 
     let first_response = serve_media_file(
         State(state.clone()),
@@ -326,7 +324,9 @@ async fn live_media_playlist_rewrites_tokenized_ll_hls_uris_and_honors_blocking_
                 &state_for_update,
                 &format!(
                     "live/{}/{}/{}/720p/part_001_000.m4s",
-                    connected.session.creator_id, connected.session.broadcast_id, connected.session.id
+                    connected.session.creator_id,
+                    connected.session.broadcast_id,
+                    connected.session.id
                 ),
             ),
             b"updated-part",
@@ -337,7 +337,9 @@ async fn live_media_playlist_rewrites_tokenized_ll_hls_uris_and_honors_blocking_
                 &state_for_update,
                 &format!(
                     "live/{}/{}/{}/720p/segment_001.m4s",
-                    connected.session.creator_id, connected.session.broadcast_id, connected.session.id
+                    connected.session.creator_id,
+                    connected.session.broadcast_id,
+                    connected.session.id
                 ),
             ),
             b"updated-segment",
@@ -451,9 +453,10 @@ async fn runtime_report_emits_backend_owned_hls_and_archive_artifacts() -> AppRe
     .0;
     assert_eq!(output.packaging_status, "ready");
 
-    let manifest = tokio::fs::read_to_string(media_path_for_relative(&state, &manifest_relative_path))
-        .await
-        .map_err(AppError::Io)?;
+    let manifest =
+        tokio::fs::read_to_string(media_path_for_relative(&state, &manifest_relative_path))
+            .await
+            .map_err(AppError::Io)?;
     let variant_playlist = tokio::fs::read_to_string(media_path_for_relative(
         &state,
         &variant_playlist_relative_path,
@@ -510,4 +513,3 @@ async fn runtime_report_emits_backend_owned_hls_and_archive_artifacts() -> AppRe
 
     Ok(())
 }
-

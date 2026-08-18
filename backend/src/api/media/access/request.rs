@@ -136,23 +136,31 @@ async fn load_playback_manifest_body(
         let session =
             validate_playback_session_token_for_path(&state.pool, playback_token, relative_path)
                 .await?;
-        load_hls_manifest_with_optional_blocking_reload(state, query, &session, relative_path, full_path)
-            .await?
+        load_hls_manifest_with_optional_blocking_reload(
+            state,
+            query,
+            &session,
+            relative_path,
+            full_path,
+        )
+        .await?
     } else {
-        tokio::fs::read_to_string(full_path).await.map_err(|error| {
-            warn!(
-                relative_path = %relative_path,
-                full_path = %full_path.display(),
-                file_exists,
-                error = %error,
-                "media manifest read failed"
-            );
-            if error.kind() == std::io::ErrorKind::NotFound {
-                AppError::NotFound
-            } else {
-                AppError::Io(error)
-            }
-        })?
+        tokio::fs::read_to_string(full_path)
+            .await
+            .map_err(|error| {
+                warn!(
+                    relative_path = %relative_path,
+                    full_path = %full_path.display(),
+                    file_exists,
+                    error = %error,
+                    "media manifest read failed"
+                );
+                if error.kind() == std::io::ErrorKind::NotFound {
+                    AppError::NotFound
+                } else {
+                    AppError::Io(error)
+                }
+            })?
     };
 
     if let Some(playback_token) = query.playback_token.as_deref() {
@@ -190,7 +198,9 @@ async fn load_hls_manifest_with_optional_blocking_reload(
     relative_path: &str,
     full_path: &FsPath,
 ) -> AppResult<String> {
-    let mut body = tokio::fs::read_to_string(full_path).await.map_err(AppError::Io)?;
+    let mut body = tokio::fs::read_to_string(full_path)
+        .await
+        .map_err(AppError::Io)?;
     if session.content_kind != "live" {
         return Ok(body);
     }
@@ -221,12 +231,13 @@ async fn load_hls_manifest_with_optional_blocking_reload(
 
     let deadline = std::time::Instant::now()
         + std::time::Duration::from_millis(
-            (target.runtime_output.target_segment_duration_sec.max(1) as u64 * 1_000)
-                .min(3_000),
+            (target.runtime_output.target_segment_duration_sec.max(1) as u64 * 1_000).min(3_000),
         );
     while std::time::Instant::now() < deadline {
         tokio::time::sleep(std::time::Duration::from_millis(125)).await;
-        let next_body = tokio::fs::read_to_string(full_path).await.map_err(AppError::Io)?;
+        let next_body = tokio::fs::read_to_string(full_path)
+            .await
+            .map_err(AppError::Io)?;
         let next_cursor = parse_live_manifest_cursor(&next_body);
         body = next_body;
         if !requested_manifest_cursor_is_ahead(requested, next_cursor) {
@@ -248,8 +259,7 @@ fn requested_manifest_cursor_is_ahead(
     if requested.0 > current.0 {
         return true;
     }
-    requested.0 == current.0
-        && requested.1.unwrap_or(0) > current.1.unwrap_or(0)
+    requested.0 == current.0 && requested.1.unwrap_or(0) > current.1.unwrap_or(0)
 }
 
 fn parse_live_manifest_cursor(body: &str) -> (i64, Option<i64>) {

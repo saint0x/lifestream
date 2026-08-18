@@ -9,13 +9,13 @@ mod runtime;
 mod snapshot;
 mod sockets;
 
-pub(crate) use handlers::routes;
 pub(crate) use handlers::get_creator_live;
+pub(crate) use handlers::routes;
 #[cfg(test)]
 pub(crate) use handlers::{get_creator_live_socket_session, reconcile_creator_live_socket_session};
 pub(crate) use publishing::{
-    creator_live_channel_id, publish_authoritative_creator_live_state,
-    publish_creator_live_state, publish_current_creator_live_state,
+    creator_live_channel_id, publish_authoritative_creator_live_state, publish_creator_live_state,
+    publish_current_creator_live_state,
 };
 pub(crate) use runtime::{
     fetch_authoritative_creator_live_control_response,

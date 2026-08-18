@@ -122,9 +122,7 @@ pub(crate) async fn fetch_live_runtime_targets_for_session(
     .fetch_all(pool)
     .await?;
 
-    rows.into_iter()
-        .map(live_runtime_target_from_row)
-        .collect()
+    rows.into_iter().map(live_runtime_target_from_row).collect()
 }
 
 pub(crate) async fn fetch_current_live_runtime_targets(
@@ -159,9 +157,7 @@ pub(crate) async fn fetch_recent_live_runtime_targets(
     .fetch_all(pool)
     .await?;
 
-    rows.into_iter()
-        .map(live_runtime_target_from_row)
-        .collect()
+    rows.into_iter().map(live_runtime_target_from_row).collect()
 }
 
 fn live_runtime_target_from_row(row: sqlx::sqlite::SqliteRow) -> AppResult<LiveRuntimeTarget> {

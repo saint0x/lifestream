@@ -1,7 +1,5 @@
 use super::*;
-use crate::api::control::{
-    build_live_runtime_advisory, describe_live_runtime_artifact_health,
-};
+use crate::api::control::{build_live_runtime_advisory, describe_live_runtime_artifact_health};
 use doc::{
     LiveRuntimeArchiveSpec, LiveRuntimeCollaborationSpec, LiveRuntimePackagingSpec,
     LiveRuntimeReconnectSpec, LiveRuntimeSpecDocument, LiveRuntimeSpecPaths,
@@ -107,7 +105,9 @@ pub(super) async fn build_live_runtime_spec(
             live_edge_hold_back_segments: output.hold_back_segments,
             partial_segments_enabled: output.partial_segments_enabled,
             blocking_reload_enabled: output.blocking_reload_enabled,
-            target_latency_ms: output.target_segment_duration_sec * output.hold_back_segments * 1000,
+            target_latency_ms: output.target_segment_duration_sec
+                * output.hold_back_segments
+                * 1000,
             variant_strategy: if variants.is_empty() {
                 "awaiting_probe".to_string()
             } else {

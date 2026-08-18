@@ -5,9 +5,7 @@ use super::presence::{
 };
 use super::*;
 use crate::api::collab::fetch_collaboration_invites_for_session;
-use crate::models::{
-    CollaborationContributionAttachment, CollaborationRuntimeTopology,
-};
+use crate::models::{CollaborationContributionAttachment, CollaborationRuntimeTopology};
 
 mod audio;
 mod engine;

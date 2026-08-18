@@ -54,9 +54,10 @@ async fn sync_mirror_pickup_playback_metadata(
         )
         .bind(row.get::<Option<String>, _>("playback_asset_id"))
         .bind(row.get::<Option<String>, _>("poster_relative_path"))
-        .bind(mirrored_playback_relative_path.or_else(|| {
-            row.get::<Option<String>, _>("playback_relative_path")
-        }))
+        .bind(
+            mirrored_playback_relative_path
+                .or_else(|| row.get::<Option<String>, _>("playback_relative_path")),
+        )
         .bind(format!("lv-{}-live", guest_handle))
         .execute(pool)
         .await?;
@@ -85,8 +86,7 @@ async fn resolve_mirror_pickup_playback_relative_path(
             target.target_kind == "mirror_channel"
                 && target.playback_enabled
                 && target.target_creator_id.as_deref() == Some(pickup.guest_creator_id.as_str())
-                && target.target_broadcast_id.as_deref()
-                    == Some(pickup.guest_broadcast_id.as_str())
+                && target.target_broadcast_id.as_deref() == Some(pickup.guest_broadcast_id.as_str())
         })
         .and_then(|target| target.relative_path))
 }

@@ -148,11 +148,12 @@ fn validate_runtime_bundle(bundle: &CollaborationRuntimeBundle) -> AppResult<()>
             "collaboration media runtime fanout missing relative output path".to_string(),
         ));
     }
-    if bundle
-        .attachments
-        .iter()
-        .any(|attachment| !bundle.mixers.iter().any(|mixer| mixer.output_bus_id == attachment.program_bus_id))
-    {
+    if bundle.attachments.iter().any(|attachment| {
+        !bundle
+            .mixers
+            .iter()
+            .any(|mixer| mixer.output_bus_id == attachment.program_bus_id)
+    }) {
         return Err(AppError::Internal(
             "collaboration media runtime attachment references missing mixer bus".to_string(),
         ));

@@ -10,18 +10,16 @@ mod targets;
 mod variant;
 
 use build::build_live_runtime_spec;
+pub(crate) use collab::build_collaboration_runtime_bundle;
 use collab::{build_live_runtime_collaboration_spec, sync_runtime_target_dependents};
-use doc::{
-    LiveRuntimeCollaborationSpec, LiveRuntimeSpecDocument,
+pub(in crate::api::control::artifacts) use collab::{
+    collaboration_audio_relative_path, collaboration_bundle_relative_path,
+    collaboration_engine_relative_path, collaboration_media_relative_path,
+    collaboration_program_relative_path, collaboration_route_relative_path,
 };
+use doc::{LiveRuntimeCollaborationSpec, LiveRuntimeSpecDocument};
 use health::build_live_runtime_health_spec;
 use targets::build_live_runtime_targets;
-pub(in crate::api::control::artifacts) use collab::{
-    build_collaboration_runtime_bundle,
-    collaboration_audio_relative_path, collaboration_engine_relative_path,
-    collaboration_program_relative_path, collaboration_route_relative_path,
-    collaboration_bundle_relative_path, collaboration_media_relative_path,
-};
 pub(in crate::api::control::artifacts) use variant::{
     LiveRuntimeVariantSpec, build_live_runtime_variant_specs,
 };

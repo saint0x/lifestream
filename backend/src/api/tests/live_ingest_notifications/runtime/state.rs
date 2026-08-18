@@ -1,6 +1,5 @@
 use super::*;
 
-
 #[tokio::test]
 async fn runtime_reports_persist_output_state_for_creator_and_terminal_session() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
@@ -84,10 +83,19 @@ async fn runtime_reports_persist_output_state_for_creator_and_terminal_session()
     assert_eq!(runtime.telemetry_summary.peak_variant_target_count, 0);
     assert_eq!(runtime.telemetry_summary.peak_collaboration_target_count, 1);
     assert_eq!(runtime.telemetry_summary.last_runtime_target_count, Some(1));
-    assert_eq!(runtime.telemetry_summary.last_playback_target_count, Some(0));
-    assert_eq!(runtime.telemetry_summary.last_recording_target_count, Some(1));
+    assert_eq!(
+        runtime.telemetry_summary.last_playback_target_count,
+        Some(0)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_recording_target_count,
+        Some(1)
+    );
     assert_eq!(runtime.telemetry_summary.last_variant_target_count, Some(0));
-    assert_eq!(runtime.telemetry_summary.last_collaboration_target_count, Some(1));
+    assert_eq!(
+        runtime.telemetry_summary.last_collaboration_target_count,
+        Some(1)
+    );
     assert!(!runtime.recent_runtime_outputs.is_empty());
     assert_eq!(
         runtime.recent_runtime_outputs[0].session_id,
@@ -111,7 +119,10 @@ async fn runtime_reports_persist_output_state_for_creator_and_terminal_session()
         runtime.recent_telemetry[0].detail["targets"]["playbackEnabledCount"],
         0
     );
-    assert_eq!(runtime.recent_telemetry[0].detail["targets"]["variantCount"], 0);
+    assert_eq!(
+        runtime.recent_telemetry[0].detail["targets"]["variantCount"],
+        0
+    );
 
     let record =
         fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
@@ -201,4 +212,3 @@ async fn runtime_reports_persist_output_state_for_creator_and_terminal_session()
 
     Ok(())
 }
-

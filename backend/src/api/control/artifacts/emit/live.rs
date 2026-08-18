@@ -85,9 +85,12 @@ async fn emit_variant_media_placeholders(
 
         let segment_relative_path = format!("{}/segment_000.m4s", variant.output_relative_dir);
         let segment_path = media_path_for_relative(state, &segment_relative_path);
-        tokio::fs::write(&segment_path, build_minimal_mp4_fragment_bytes("runtime-segment"))
-            .await
-            .map_err(AppError::Io)?;
+        tokio::fs::write(
+            &segment_path,
+            build_minimal_mp4_fragment_bytes("runtime-segment"),
+        )
+        .await
+        .map_err(AppError::Io)?;
 
         if output.partial_segments_enabled {
             let part_relative_path = format!("{}/part_000_000.m4s", variant.output_relative_dir);

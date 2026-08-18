@@ -234,7 +234,10 @@ async fn ingest_heartbeat_persists_source_probe_and_normalized_contribution_stat
     assert_eq!(record.telemetry_summary.last_ingest_latency_ms, Some(480));
     assert!(record.telemetry_summary.last_source_probe_present);
     assert_eq!(
-        record.telemetry_summary.last_source_validation_state.as_deref(),
+        record
+            .telemetry_summary
+            .last_source_validation_state
+            .as_deref(),
         Some("valid")
     );
     assert_eq!(
@@ -269,7 +272,10 @@ async fn ingest_heartbeat_persists_source_probe_and_normalized_contribution_stat
         record.recent_telemetry[0].detail["session"]["sourceValidation"]["state"],
         "valid"
     );
-    assert_eq!(record.recent_telemetry[0].detail["advisory"]["status"], "healthy");
+    assert_eq!(
+        record.recent_telemetry[0].detail["advisory"]["status"],
+        "healthy"
+    );
     assert_eq!(
         record.recent_telemetry[0].detail["runtimeOutput"]["state"],
         "pending_attach"
@@ -399,7 +405,10 @@ async fn ingest_heartbeat_marks_unsupported_source_validation_as_degraded() -> A
     assert_eq!(record.telemetry_summary.validation_issue_samples, 1);
     assert_eq!(record.telemetry_summary.repairable_validation_samples, 0);
     assert_eq!(
-        record.telemetry_summary.last_source_validation_state.as_deref(),
+        record
+            .telemetry_summary
+            .last_source_validation_state
+            .as_deref(),
         Some("unsupported")
     );
     assert_eq!(
@@ -410,16 +419,20 @@ async fn ingest_heartbeat_marks_unsupported_source_validation_as_degraded() -> A
     assert_eq!(record.telemetry_summary.advisory_repairable_samples, 0);
     assert_eq!(record.runtime_advisory.status, "critical");
     assert!(record.runtime_advisory.requires_operator_action);
-    assert!(record
-        .runtime_advisory
-        .recommended_actions
-        .iter()
-        .any(|action| action.code == "container_format"));
-    assert!(record
-        .runtime_advisory
-        .recommended_actions
-        .iter()
-        .any(|action| action.code == "video_codec"));
+    assert!(
+        record
+            .runtime_advisory
+            .recommended_actions
+            .iter()
+            .any(|action| action.code == "container_format")
+    );
+    assert!(
+        record
+            .runtime_advisory
+            .recommended_actions
+            .iter()
+            .any(|action| action.code == "video_codec")
+    );
     assert!(record.recent_telemetry.iter().any(|sample| {
         sample.detail["session"]["contributionState"] == "degraded"
             && sample.detail["session"]["sourceValidation"]["state"] == "unsupported"
@@ -527,7 +540,10 @@ async fn ingest_heartbeat_surfaces_repairable_source_validation_to_operator_view
     assert_eq!(record.telemetry_summary.advisory_critical_samples, 0);
     assert_eq!(record.telemetry_summary.advisory_repairable_samples, 1);
     assert_eq!(
-        record.telemetry_summary.last_source_validation_state.as_deref(),
+        record
+            .telemetry_summary
+            .last_source_validation_state
+            .as_deref(),
         Some("repairable")
     );
     assert_eq!(
@@ -536,21 +552,27 @@ async fn ingest_heartbeat_surfaces_repairable_source_validation_to_operator_view
     );
     assert_eq!(record.runtime_advisory.status, "repairable");
     assert!(!record.runtime_advisory.requires_operator_action);
-    assert!(record
-        .runtime_advisory
-        .recommended_actions
-        .iter()
-        .any(|action| action.code == "frame_rate_out_of_range"));
-    assert!(record
-        .runtime_advisory
-        .recommended_actions
-        .iter()
-        .any(|action| action.code == "audio_sample_rate_nonstandard"));
-    assert!(record
-        .runtime_advisory
-        .recommended_actions
-        .iter()
-        .any(|action| action.code == "audio_channels_excessive"));
+    assert!(
+        record
+            .runtime_advisory
+            .recommended_actions
+            .iter()
+            .any(|action| action.code == "frame_rate_out_of_range")
+    );
+    assert!(
+        record
+            .runtime_advisory
+            .recommended_actions
+            .iter()
+            .any(|action| action.code == "audio_sample_rate_nonstandard")
+    );
+    assert!(
+        record
+            .runtime_advisory
+            .recommended_actions
+            .iter()
+            .any(|action| action.code == "audio_channels_excessive")
+    );
 
     let runtime = fetch_creator_live_runtime_response(&state.pool, &creator.id).await?;
     assert_eq!(runtime.runtime_advisory.status, "repairable");
@@ -561,7 +583,10 @@ async fn ingest_heartbeat_surfaces_repairable_source_validation_to_operator_view
             .map(|health| health.status.as_str()),
         Some("pending")
     );
-    assert_eq!(runtime.telemetry_summary.last_advisory_status.as_deref(), Some("repairable"));
+    assert_eq!(
+        runtime.telemetry_summary.last_advisory_status.as_deref(),
+        Some("repairable")
+    );
     assert!(runtime.recent_telemetry.iter().any(|sample| {
         sample.detail["session"]["sourceValidation"]["state"] == "repairable"
             && sample.detail["advisory"]["status"] == "repairable"
@@ -701,7 +726,10 @@ async fn creator_contract_surfaces_do_not_leak_ready_statuses() -> AppResult<()>
         bootstrap_payload["creator"]["profile"]["liveStatus"],
         Value::String("starting".to_string())
     );
-    assert_eq!(bootstrap_payload["creator"]["currentBroadcast"], Value::Null);
+    assert_eq!(
+        bootstrap_payload["creator"]["currentBroadcast"],
+        Value::Null
+    );
     assert_eq!(
         bootstrap_payload["creator"]["scheduledBroadcasts"][0]["status"],
         Value::String("scheduled".to_string())

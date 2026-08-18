@@ -1,6 +1,6 @@
 use crate::models::{
-    CollaborationAudioRoute, CollaborationContributionAttachment, CollaborationExecutionEdge,
-    CollaborationExecutionBus, CollaborationExecutionNode, CollaborationExecutionOperation,
+    CollaborationAudioRoute, CollaborationContributionAttachment, CollaborationExecutionBus,
+    CollaborationExecutionEdge, CollaborationExecutionNode, CollaborationExecutionOperation,
     CollaborationExecutionPlan, CollaborationOutputRoute, CollaborationProgramRoute,
 };
 
@@ -221,7 +221,10 @@ fn push_audio_return_edge(
 ) {
     if let Some(host_program_id) = host_program_id {
         edges.push(CollaborationExecutionEdge {
-            id: format!("edge-program-{host_program_id}-audio-{}", route.participant_id),
+            id: format!(
+                "edge-program-{host_program_id}-audio-{}",
+                route.participant_id
+            ),
             edge_kind: "program_to_audio_return".to_string(),
             from_node_id: host_program_id.clone(),
             to_node_id: format!("audio-{}", route.participant_id),

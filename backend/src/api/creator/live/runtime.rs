@@ -1,11 +1,9 @@
 use super::*;
 use crate::api::control::{
     build_live_runtime_advisory, describe_declared_live_runtime_artifact_health,
-    describe_live_runtime_artifact_health,
-    fetch_current_live_runtime_targets,
-    fetch_live_runtime_telemetry_summary,
-    fetch_recent_live_runtime_targets, fetch_recent_live_runtime_telemetry,
-    reconcile_live_runtime_output_artifacts,
+    describe_live_runtime_artifact_health, fetch_current_live_runtime_targets,
+    fetch_live_runtime_telemetry_summary, fetch_recent_live_runtime_targets,
+    fetch_recent_live_runtime_telemetry, reconcile_live_runtime_output_artifacts,
 };
 
 pub(crate) async fn fetch_creator_live_control_response(
@@ -72,9 +70,9 @@ pub(crate) async fn fetch_creator_live_runtime_response(
         Some(&telemetry_summary),
     );
     let artifact_health = match (active_session.as_ref(), active_runtime_output.as_ref()) {
-        (Some(session), Some(output)) => {
-            Some(describe_declared_live_runtime_artifact_health(session, output))
-        }
+        (Some(session), Some(output)) => Some(describe_declared_live_runtime_artifact_health(
+            session, output,
+        )),
         _ => None,
     };
 

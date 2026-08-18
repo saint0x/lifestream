@@ -1,6 +1,6 @@
-use super::*;
 use super::overview_creators::fetch_creator_breakdown;
 use super::overview_metrics::{fetch_latency_row, fetch_overview_row, fetch_telemetry_row};
+use super::*;
 
 pub(crate) async fn fetch_admin_live_ingest_overview(
     pool: &SqlitePool,
@@ -117,8 +117,7 @@ pub(crate) async fn fetch_admin_live_ingest_overview(
         last_active_target_count: telemetry_row.get("last_active_target_count"),
         last_degraded_target_count: telemetry_row.get("last_degraded_target_count"),
         last_armed_target_count: telemetry_row.get("last_armed_target_count"),
-        last_pending_source_target_count: telemetry_row
-            .get("last_pending_source_target_count"),
+        last_pending_source_target_count: telemetry_row.get("last_pending_source_target_count"),
         creator_breakdown,
     })
 }

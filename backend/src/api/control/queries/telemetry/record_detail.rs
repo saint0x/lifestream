@@ -28,9 +28,21 @@ pub(super) fn build_live_runtime_telemetry_detail(
         }
     };
 
-    maybe_insert_output_path(&mut detail, "manifestRelativePath", output.and_then(|item| item.manifest_relative_path.clone()));
-    maybe_insert_output_path(&mut detail, "archiveRelativePath", output.and_then(|item| item.archive_relative_path.clone()));
-    maybe_insert_output_path(&mut detail, "lastError", output.and_then(|item| item.last_error.clone()));
+    maybe_insert_output_path(
+        &mut detail,
+        "manifestRelativePath",
+        output.and_then(|item| item.manifest_relative_path.clone()),
+    );
+    maybe_insert_output_path(
+        &mut detail,
+        "archiveRelativePath",
+        output.and_then(|item| item.archive_relative_path.clone()),
+    );
+    maybe_insert_output_path(
+        &mut detail,
+        "lastError",
+        output.and_then(|item| item.last_error.clone()),
+    );
 
     detail.insert(
         "session".to_string(),
@@ -55,12 +67,26 @@ pub(super) fn build_live_runtime_telemetry_detail(
     );
     detail.insert(
         "artifacts".to_string(),
-        build_live_runtime_telemetry_artifact_detail(session, packaging_status, archive_status, output),
+        build_live_runtime_telemetry_artifact_detail(
+            session,
+            packaging_status,
+            archive_status,
+            output,
+        ),
     );
-    detail.insert("runtimeOutput".to_string(), build_runtime_output_detail(runtime_state, packaging_status, archive_status, output));
-    detail.insert("metrics".to_string(), build_metric_detail(session, cpu_percent, free_disk_gb));
+    detail.insert(
+        "runtimeOutput".to_string(),
+        build_runtime_output_detail(runtime_state, packaging_status, archive_status, output),
+    );
+    detail.insert(
+        "metrics".to_string(),
+        build_metric_detail(session, cpu_percent, free_disk_gb),
+    );
     detail.insert("delivery".to_string(), build_delivery_detail(output));
-    detail.insert("collaboration".to_string(), build_collaboration_detail(collaboration));
+    detail.insert(
+        "collaboration".to_string(),
+        build_collaboration_detail(collaboration),
+    );
     detail.insert("targets".to_string(), build_target_detail(targets));
     detail.insert(
         "outputs".to_string(),
@@ -148,9 +174,7 @@ fn build_delivery_detail(output: Option<&LiveRuntimeOutput>) -> Value {
     })
 }
 
-fn build_collaboration_detail(
-    collaboration: Option<&LiveRuntimeTelemetryCollaboration>,
-) -> Value {
+fn build_collaboration_detail(collaboration: Option<&LiveRuntimeTelemetryCollaboration>) -> Value {
     collaboration
         .map(|item| {
             json!({
@@ -174,6 +198,14 @@ fn build_collaboration_detail(
                 "engineEdgeCount": item.engine_edge_count,
                 "mixMinusEdgeCount": item.mix_minus_edge_count,
                 "mirrorFanoutEdgeCount": item.mirror_fanout_edge_count,
+                "bundleAttachmentCount": item.bundle_attachment_count,
+                "bundleMixerCount": item.bundle_mixer_count,
+                "bundleFanoutCount": item.bundle_fanout_count,
+                "bundleReturnCount": item.bundle_return_count,
+                "mediaStageCount": item.media_stage_count,
+                "mediaOutputTargetCount": item.media_output_target_count,
+                "mediaInputParticipantCount": item.media_input_participant_count,
+                "mediaMixMinusParticipantCount": item.media_mix_minus_participant_count,
             })
         })
         .unwrap_or_else(|| json!({ "present": false }))

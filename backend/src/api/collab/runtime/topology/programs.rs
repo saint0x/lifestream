@@ -39,7 +39,10 @@ pub(super) fn build_topology_programs(
         target_broadcast_id: Some(session.source_broadcast_id.clone()),
         playback_enabled: outputs.iter().any(|output| {
             output.output_kind == "host_channel"
-                && matches!(output.route_state.as_str(), "active" | "degraded" | "issued")
+                && matches!(
+                    output.route_state.as_str(),
+                    "active" | "degraded" | "issued"
+                )
         }),
         recording_enabled: outputs.iter().any(|output| {
             output.recording_enabled
@@ -79,10 +82,14 @@ pub(super) fn build_topology_programs(
                 .and_then(|output| output.target_broadcast_id.clone()),
             playback_enabled: outputs.iter().any(|output| {
                 output.id == format!("col-out-mirror-{}", participant.id)
-                    && matches!(output.route_state.as_str(), "active" | "degraded" | "issued")
+                    && matches!(
+                        output.route_state.as_str(),
+                        "active" | "degraded" | "issued"
+                    )
             }),
             recording_enabled: outputs.iter().any(|output| {
-                output.id == format!("col-out-archive-{}", participant.id) && output.recording_enabled
+                output.id == format!("col-out-archive-{}", participant.id)
+                    && output.recording_enabled
             }),
             mix_minus_required: false,
         });

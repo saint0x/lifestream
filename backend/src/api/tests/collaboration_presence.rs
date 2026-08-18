@@ -451,27 +451,23 @@ async fn collaboration_runtime_topology_exposes_contributions_and_split_archive_
     assert_eq!(guest_contribution.transport_class, "collaboration_socket");
     assert_eq!(guest_contribution.contribution_state, "awaiting_socket");
     assert!(runtime.topology.mix_minus_required);
-    assert!(
-        runtime.topology.programs.iter().any(|program| {
-            program.program_kind == "host_program"
-                && program
-                    .source_participant_ids
-                    .contains(&runtime.session.participant.id)
-                && program
-                    .output_ids
-                    .iter()
-                    .any(|output_id| output_id == &format!("col-out-host-{}", session.id))
-        })
-    );
-    assert!(
-        runtime.topology.programs.iter().any(|program| {
-            program.program_kind == "guest_program"
-                && program
-                    .output_ids
-                    .iter()
-                    .any(|output_id| output_id == &format!("col-out-mirror-{}", participant.id))
-        })
-    );
+    assert!(runtime.topology.programs.iter().any(|program| {
+        program.program_kind == "host_program"
+            && program
+                .source_participant_ids
+                .contains(&runtime.session.participant.id)
+            && program
+                .output_ids
+                .iter()
+                .any(|output_id| output_id == &format!("col-out-host-{}", session.id))
+    }));
+    assert!(runtime.topology.programs.iter().any(|program| {
+        program.program_kind == "guest_program"
+            && program
+                .output_ids
+                .iter()
+                .any(|output_id| output_id == &format!("col-out-mirror-{}", participant.id))
+    }));
     assert!(runtime.topology.audio.iter().any(|route| {
         route.participant_id == participant.id
             && route.route_kind == "mix_minus_return"
@@ -508,7 +504,11 @@ async fn collaboration_runtime_topology_exposes_contributions_and_split_archive_
             .source_participant_ids
             .contains(&runtime.session.participant.id)
     );
-    assert!(mirror_output.source_participant_ids.contains(&participant.id));
+    assert!(
+        mirror_output
+            .source_participant_ids
+            .contains(&participant.id)
+    );
     assert!(
         runtime
             .topology
@@ -637,7 +637,11 @@ async fn collaboration_event_syncs_runtime_targets_for_active_ingest() -> AppRes
     .0;
 
     let before = fetch_live_runtime_targets_for_session(&state.pool, &connected.session.id).await?;
-    assert!(before.iter().any(|target| target.target_kind == "host_channel"));
+    assert!(
+        before
+            .iter()
+            .any(|target| target.target_kind == "host_channel")
+    );
     assert!(before.iter().all(|target| {
         !(target.target_kind == "mirror_channel"
             && target.target_creator_id.as_deref() == Some("crt-atlas"))

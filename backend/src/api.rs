@@ -40,9 +40,8 @@ use crate::{
         CollaborationEventsQuery, CollaborationHostSummary, CollaborationInvite,
         CollaborationMirrorGrant, CollaborationMirrorPickup, CollaborationParticipant,
         CollaborationReconciliationAction, CollaborationReconciliationReport,
-        CollaborationRuntimeResponse, CollaborationSession,
-        CollaborationSessionView, CollaborationSocketPresence,
-        CollaborationSocketPresenceReconciliationAction,
+        CollaborationRuntimeResponse, CollaborationSession, CollaborationSessionView,
+        CollaborationSocketPresence, CollaborationSocketPresenceReconciliationAction,
         CollaborationSocketPresenceReconciliationReport, CollaborationTopologyMember,
         ConnectedAccount, ContentPurchase, ContentPurchaseReconciliationReport,
         ContinueWatchingEntry, CreateCollaborationInviteRequest, CreateCollaborationSessionRequest,
@@ -99,18 +98,18 @@ mod app_request;
 mod collab;
 mod collaboration;
 mod collaboration_events;
-mod mirror;
+mod control;
 mod creator;
 mod dashboard;
 mod discovery;
 mod ingest;
-mod control;
 mod me;
 mod media;
+mod mirror;
 mod moderation;
 mod notifications;
-mod playback;
 mod playauth;
+mod playback;
 mod presence;
 mod public;
 mod realtime;
@@ -121,6 +120,28 @@ mod validation;
 
 pub(super) use app_request::{enforce_rate_limit, validate_request_origin};
 
+use collab::{
+    build_collaboration_runtime_response_for_host,
+    build_collaboration_runtime_response_for_participant, build_collaboration_runtime_topology,
+    build_creator_collaboration_control_response_for_host,
+    collaboration_event_is_visible_to_session, collaboration_session_view_for_host,
+    disconnect_stale_collaboration_socket_sessions_for_session, end_collaboration_session_internal,
+    expire_collaboration_mirror_grants_for_session,
+    expire_pending_collaboration_invites_for_session,
+    fetch_active_collaboration_session_for_broadcast, fetch_collaboration_events,
+    fetch_collaboration_host_summary, fetch_collaboration_invite_by_id,
+    fetch_collaboration_invites_for_user, fetch_collaboration_participant_by_id,
+    fetch_collaboration_participant_for_user, fetch_collaboration_session_by_id,
+    fetch_collaboration_session_for_host, fetch_collaboration_session_for_participant,
+    fetch_collaboration_sessions_for_host, fetch_collaboration_sessions_for_participant,
+    fetch_collaboration_socket_presence_by_id_raw, fetch_creator_live_collaboration_summary,
+    fetch_visible_collaboration_mirror_grants_for_session_view,
+    fetch_visible_collaboration_mirror_pickups_for_session_view,
+    filter_visible_collaboration_events_for_session, has_pending_collaboration_invite_for_user,
+    load_collaboration_socket_event_bootstrap, publish_collaboration_topology,
+    reconcile_single_collaboration_session, reconcile_single_collaboration_socket_session,
+    resolve_collaboration_broadcast, validate_collaboration_participant_access,
+};
 #[cfg(test)]
 use collaboration::{
     accept_collaboration_invite, create_collaboration_invite, create_collaboration_session,
@@ -133,95 +154,10 @@ use collaboration::{
     update_collaboration_participant,
 };
 use collaboration::{apply_collaboration_participant_update, revoke_collaboration_invite_internal};
-use collab::{
-    collaboration_event_is_visible_to_session, collaboration_session_view_for_host,
-    build_collaboration_runtime_response_for_host,
-    build_collaboration_runtime_response_for_participant, build_collaboration_runtime_topology,
-    build_creator_collaboration_control_response_for_host,
-    disconnect_stale_collaboration_socket_sessions_for_session,
-    end_collaboration_session_internal,
-    expire_collaboration_mirror_grants_for_session,
-    expire_pending_collaboration_invites_for_session,
-    fetch_active_collaboration_session_for_broadcast, fetch_collaboration_events,
-    fetch_collaboration_host_summary, fetch_collaboration_invite_by_id,
-    fetch_collaboration_invites_for_user,
-    fetch_collaboration_participant_by_id, fetch_collaboration_participant_for_user,
-    fetch_collaboration_socket_presence_by_id_raw,
-    fetch_collaboration_session_by_id, fetch_collaboration_session_for_host,
-    fetch_collaboration_session_for_participant, fetch_collaboration_sessions_for_host,
-    fetch_collaboration_sessions_for_participant, fetch_creator_live_collaboration_summary,
-    fetch_visible_collaboration_mirror_grants_for_session_view,
-    fetch_visible_collaboration_mirror_pickups_for_session_view,
-    filter_visible_collaboration_events_for_session, has_pending_collaboration_invite_for_user,
-    load_collaboration_socket_event_bootstrap, publish_collaboration_topology,
-    reconcile_single_collaboration_session, reconcile_single_collaboration_socket_session,
-    resolve_collaboration_broadcast, validate_collaboration_participant_access,
-};
 use collaboration_events::{
     collaboration_channel_id, publish_collaboration_event,
     publish_collaboration_invite_revoked_events, publish_collaboration_invite_revoked_events_raw,
     publish_collaboration_reconciliation_event,
-};
-#[cfg(test)]
-use mirror::fetch_collaboration_mirror_grant_by_id;
-use mirror::{
-    deactivate_collaboration_mirror_pickups_for_grants,
-    fetch_collaboration_mirror_grants_for_participant,
-    fetch_collaboration_mirror_grants_for_session,
-    fetch_collaboration_mirror_pickups_for_participant,
-    fetch_collaboration_mirror_pickups_for_session, issue_mirror_grant_for_participant,
-    redeem_collaboration_mirror_grant_internal, revoke_collaboration_mirror_grants_for_participant,
-    revoke_collaboration_mirror_grants_for_session,
-    revoke_collaboration_mirror_grants_for_session_raw,
-    sync_active_collaboration_mirror_pickups_for_session,
-    sync_active_collaboration_mirror_pickups_for_session_and_publish,
-};
-pub(crate) use creator::{
-    fetch_creator_catalog_film_by_id, fetch_creator_catalog_film_by_slug,
-    fetch_creator_catalog_films, fetch_creator_catalog_series, fetch_creator_catalog_series_by_id,
-    fetch_creator_catalog_series_by_slug, fetch_content_purchase_by_id,
-    fetch_creator_membership, fetch_current_content_purchase, fetch_user_entitlements,
-    purchase_belongs_to_user, reconcile_single_membership_entitlement,
-    reconcile_single_purchase_entitlement,
-};
-use dashboard::{
-    creator_dashboard_payload, derive_upload_lifecycle_status, ensure_creator_series_season,
-    fetch_analytics, fetch_broadcast_by_id, fetch_broadcasts, fetch_creator_app_state,
-    fetch_creator_series_title, fetch_creator_upload_operations_response, fetch_revenue_entries,
-    fetch_upload_by_id, fetch_uploads, filter_creator_uploads, summarize_creator_analytics,
-    summarize_creator_content, summarize_creator_revenue, validate_bulk_upload_action,
-    validate_upload_job_kind, validate_upload_job_source_type, validate_upload_visibility,
-};
-pub(crate) use creator::{
-    fetch_creator_enforcement_action_by_id_raw, fetch_creator_live_settings,
-    fetch_creator_operational_state, fetch_creator_profile, fetch_creator_profile_by_stream_key,
-    fetch_creator_subscriber_tier_by_id, fetch_creator_subscriber_tiers,
-};
-pub(crate) use creator::{
-    build_creator_live_snapshot, contract_broadcast, contract_broadcasts, contract_creator_profile,
-    contract_live_status, creator_live_channel_id,
-    fetch_authoritative_creator_live_control_response,
-    fetch_authoritative_creator_live_runtime_response, fetch_creator_live_socket_presence_by_id_raw,
-    normalize_creator_live_profile, publish_authoritative_creator_live_state,
-    publish_current_creator_live_state,
-    publish_creator_live_state,
-};
-#[cfg(test)]
-use creator::{fetch_creator_live_control_response, fetch_creator_live_runtime_response};
-#[cfg(test)]
-use creator::{get_creator_live_socket_session, reconcile_creator_live_socket_session};
-use discovery::{
-    fetch_creator_id_for_user, fetch_live_stream_by_id, fetch_live_streams,
-    fetch_streamer_by_handle,
-};
-#[cfg(test)]
-use ingest::{
-    connect_live_ingest, disconnect_live_ingest, end_broadcast, get_admin_live_ingest_overview,
-    get_admin_live_ingest_session, get_creator_live_ingest_session_by_id, heartbeat_live_ingest,
-    list_creator_live_ingest_events, reconcile_admin_live_ingest_session,
-    reconcile_creator_live_ingest_session, repair_admin_live_runtime_output,
-    repair_creator_live_runtime_output, report_live_runtime, terminate_creator_live_ingest,
-    terminate_live_ingest,
 };
 #[cfg(test)]
 use control::{
@@ -244,6 +180,53 @@ use control::{
     reset_creator_live_operational_metrics, transition_broadcast_to_live,
     update_live_runtime_output, validate_live_ingest_session,
     validate_live_ingest_session_any_status, write_live_ingest_event,
+};
+pub(crate) use creator::{
+    build_creator_live_snapshot, contract_broadcast, contract_broadcasts, contract_creator_profile,
+    contract_live_status, creator_live_channel_id,
+    fetch_authoritative_creator_live_control_response,
+    fetch_authoritative_creator_live_runtime_response,
+    fetch_creator_live_socket_presence_by_id_raw, normalize_creator_live_profile,
+    publish_authoritative_creator_live_state, publish_creator_live_state,
+    publish_current_creator_live_state,
+};
+pub(crate) use creator::{
+    fetch_content_purchase_by_id, fetch_creator_catalog_film_by_id,
+    fetch_creator_catalog_film_by_slug, fetch_creator_catalog_films, fetch_creator_catalog_series,
+    fetch_creator_catalog_series_by_id, fetch_creator_catalog_series_by_slug,
+    fetch_creator_membership, fetch_current_content_purchase, fetch_user_entitlements,
+    purchase_belongs_to_user, reconcile_single_membership_entitlement,
+    reconcile_single_purchase_entitlement,
+};
+pub(crate) use creator::{
+    fetch_creator_enforcement_action_by_id_raw, fetch_creator_live_settings,
+    fetch_creator_operational_state, fetch_creator_profile, fetch_creator_profile_by_stream_key,
+    fetch_creator_subscriber_tier_by_id, fetch_creator_subscriber_tiers,
+};
+#[cfg(test)]
+use creator::{fetch_creator_live_control_response, fetch_creator_live_runtime_response};
+#[cfg(test)]
+use creator::{get_creator_live_socket_session, reconcile_creator_live_socket_session};
+use dashboard::{
+    creator_dashboard_payload, derive_upload_lifecycle_status, ensure_creator_series_season,
+    fetch_analytics, fetch_broadcast_by_id, fetch_broadcasts, fetch_creator_app_state,
+    fetch_creator_series_title, fetch_creator_upload_operations_response, fetch_revenue_entries,
+    fetch_upload_by_id, fetch_uploads, filter_creator_uploads, summarize_creator_analytics,
+    summarize_creator_content, summarize_creator_revenue, validate_bulk_upload_action,
+    validate_upload_job_kind, validate_upload_job_source_type, validate_upload_visibility,
+};
+use discovery::{
+    fetch_creator_id_for_user, fetch_live_stream_by_id, fetch_live_streams,
+    fetch_streamer_by_handle,
+};
+#[cfg(test)]
+use ingest::{
+    connect_live_ingest, disconnect_live_ingest, end_broadcast, get_admin_live_ingest_overview,
+    get_admin_live_ingest_session, get_creator_live_ingest_session_by_id, heartbeat_live_ingest,
+    list_creator_live_ingest_events, reconcile_admin_live_ingest_session,
+    reconcile_creator_live_ingest_session, repair_admin_live_runtime_output,
+    repair_creator_live_runtime_output, report_live_runtime, terminate_creator_live_ingest,
+    terminate_live_ingest,
 };
 #[cfg(test)]
 use me::{
@@ -276,6 +259,20 @@ use media::pipeline::{
     reconcile_stale_media_processing_jobs, requeue_media_job_for_processing,
     schedule_media_processing,
 };
+#[cfg(test)]
+use mirror::fetch_collaboration_mirror_grant_by_id;
+use mirror::{
+    deactivate_collaboration_mirror_pickups_for_grants,
+    fetch_collaboration_mirror_grants_for_participant,
+    fetch_collaboration_mirror_grants_for_session,
+    fetch_collaboration_mirror_pickups_for_participant,
+    fetch_collaboration_mirror_pickups_for_session, issue_mirror_grant_for_participant,
+    redeem_collaboration_mirror_grant_internal, revoke_collaboration_mirror_grants_for_participant,
+    revoke_collaboration_mirror_grants_for_session,
+    revoke_collaboration_mirror_grants_for_session_raw,
+    sync_active_collaboration_mirror_pickups_for_session,
+    sync_active_collaboration_mirror_pickups_for_session_and_publish,
+};
 use moderation::{
     creator_enforcement_action_from_row, fetch_active_live_moderation_action,
     fetch_live_moderation_action_by_id, fetch_live_moderation_action_by_id_raw,
@@ -288,12 +285,6 @@ use notifications::{
     fetch_live_notification_recipient_user_ids, fetch_notification_deliveries,
     fetch_notification_delivery_by_id, fetch_notification_delivery_by_id_raw,
     fetch_notifications_rows, fetch_user_notifications, reconcile_single_notification_delivery,
-};
-#[cfg(test)]
-use playback::{
-    create_content_playback_session, create_live_playback_session, get_admin_playback_session,
-    get_playback_manifest, get_playback_session, reconcile_admin_playback_session,
-    refresh_playback_session,
 };
 use playauth::{
     PlaybackSessionRecord, build_media_audio_tracks, build_media_caption_tracks,
@@ -308,6 +299,12 @@ use playauth::{
     resolve_upload_access_terms, resolve_upload_playback_access,
     validate_existing_playback_session_access, validate_playback_session_record,
     validate_playback_session_record_for_path,
+};
+#[cfg(test)]
+use playback::{
+    create_content_playback_session, create_live_playback_session, get_admin_playback_session,
+    get_playback_manifest, get_playback_session, reconcile_admin_playback_session,
+    refresh_playback_session,
 };
 #[cfg(test)]
 use presence::count_active_live_viewer_sessions;

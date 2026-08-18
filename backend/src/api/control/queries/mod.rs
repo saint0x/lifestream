@@ -23,8 +23,8 @@ pub(crate) use runtime::{
     fetch_current_live_runtime_output, fetch_current_live_runtime_targets,
     fetch_live_runtime_output_for_session, fetch_live_runtime_targets_for_session,
     fetch_recent_live_runtime_outputs, fetch_recent_live_runtime_targets,
-    initialize_live_runtime_output, repair_live_runtime_output, sync_live_runtime_targets,
-    set_live_runtime_output_session_state, update_live_runtime_output,
+    initialize_live_runtime_output, repair_live_runtime_output,
+    set_live_runtime_output_session_state, sync_live_runtime_targets, update_live_runtime_output,
 };
 pub(crate) use sessions::live_ingest_session_from_row;
 pub(crate) use sessions::{
@@ -35,8 +35,8 @@ pub(crate) use sessions::{
     fetch_terminalizable_live_ingest_sessions_for_broadcast,
 };
 pub(crate) use state::{
-    build_live_runtime_advisory, validate_runtime_output_model,
-    validate_runtime_report_transition, validate_runtime_state_input,
+    build_live_runtime_advisory, validate_runtime_output_model, validate_runtime_report_transition,
+    validate_runtime_state_input,
 };
 pub(crate) use telemetry::{
     fetch_current_operational_telemetry, fetch_live_runtime_telemetry_for_session,

@@ -34,8 +34,14 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
     assert_eq!(initial_spec["session"]["sessionOrdinal"], 1);
     assert_eq!(initial_spec["session"]["reconnectSession"], false);
     assert_eq!(initial_spec["artifactHealth"]["status"], "pending");
-    assert_eq!(initial_spec["artifactHealth"]["manifest"]["state"], "pending");
-    assert_eq!(initial_spec["artifactHealth"]["archive"]["state"], "pending");
+    assert_eq!(
+        initial_spec["artifactHealth"]["manifest"]["state"],
+        "pending"
+    );
+    assert_eq!(
+        initial_spec["artifactHealth"]["archive"]["state"],
+        "pending"
+    );
     assert_eq!(initial_spec["runtime"]["state"], "pending_attach");
     assert_eq!(initial_spec["runtime"]["runtimeClass"], "standard_hls");
     assert_eq!(initial_spec["runtime"]["latencyProfile"], "standard");
@@ -234,7 +240,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
     assert_eq!(ready_spec["runtime"]["runtimeClass"], "standard_hls");
     assert_eq!(ready_spec["runtime"]["latencyProfile"], "standard");
     assert_eq!(ready_spec["runtime"]["segmentFormat"], "mpegts");
-    assert_eq!(ready_spec["runtime"]["ladderPolicy"], "probe_high_motion_1080p");
+    assert_eq!(
+        ready_spec["runtime"]["ladderPolicy"],
+        "probe_high_motion_1080p"
+    );
     assert_eq!(ready_spec["runtime"]["contentClass"], "high_motion");
     assert_eq!(
         ready_spec["runtime"]["manifestRelativePath"],
@@ -249,7 +258,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
     assert_eq!(ready_spec["packaging"]["latencyProfile"], "standard");
     assert_eq!(ready_spec["packaging"]["segmentFormat"], "mpegts");
     assert_eq!(ready_spec["packaging"]["variantStrategy"], "probe_derived");
-    assert_eq!(ready_spec["packaging"]["ladderPolicy"], "probe_high_motion_1080p");
+    assert_eq!(
+        ready_spec["packaging"]["ladderPolicy"],
+        "probe_high_motion_1080p"
+    );
     assert_eq!(ready_spec["packaging"]["contentClass"], "high_motion");
     assert_eq!(ready_spec["packaging"]["variants"][0]["label"], "240p");
     assert_eq!(ready_spec["packaging"]["variants"][4]["label"], "1080p");
@@ -310,17 +322,15 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             .iter()
             .any(|program| {
                 program["programKind"] == "host_program"
-                    && program["outputIds"]
-                        .as_array()
-                        .is_some_and(|outputs| {
-                            outputs.iter().any(|output_id| {
-                                output_id
-                                    == &Value::String(format!(
-                                        "col-out-host-{}",
-                                        collaboration_session.id
-                                    ))
-                            })
+                    && program["outputIds"].as_array().is_some_and(|outputs| {
+                        outputs.iter().any(|output_id| {
+                            output_id
+                                == &Value::String(format!(
+                                    "col-out-host-{}",
+                                    collaboration_session.id
+                                ))
                         })
+                    })
             })
     );
     assert!(
@@ -516,6 +526,38 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         .iter()
         .filter(|edge| edge["edgeKind"] == "program_to_output")
         .count() as i64;
+    let bundle_attachment_count = ready_spec["collaboration"]["bundle"]["attachments"]
+        .as_array()
+        .expect("bundle attachments array")
+        .len() as i64;
+    let bundle_mixer_count = ready_spec["collaboration"]["bundle"]["mixers"]
+        .as_array()
+        .expect("bundle mixers array")
+        .len() as i64;
+    let bundle_fanout_count = ready_spec["collaboration"]["bundle"]["fanouts"]
+        .as_array()
+        .expect("bundle fanouts array")
+        .len() as i64;
+    let bundle_return_count = ready_spec["collaboration"]["bundle"]["returns"]
+        .as_array()
+        .expect("bundle returns array")
+        .len() as i64;
+    let media_stage_count = ready_spec["collaboration"]["media"]["stageCount"]
+        .as_i64()
+        .expect("media stage count");
+    let media_output_target_count = ready_spec["collaboration"]["media"]["outputTargets"]
+        .as_array()
+        .expect("media output targets array")
+        .len() as i64;
+    let media_input_participant_count = ready_spec["collaboration"]["media"]["inputParticipantIds"]
+        .as_array()
+        .expect("media input participant ids array")
+        .len() as i64;
+    let media_mix_minus_participant_count =
+        ready_spec["collaboration"]["media"]["mixMinusParticipantIds"]
+            .as_array()
+            .expect("media mix minus participant ids array")
+            .len() as i64;
     assert_eq!(
         runtime.telemetry_summary.peak_runtime_target_count,
         runtime.active_runtime_targets.len() as i64
@@ -563,6 +605,40 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
     assert_eq!(
         runtime.telemetry_summary.peak_mirror_fanout_edge_count,
         mirror_fanout_edge_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_bundle_attachment_count,
+        bundle_attachment_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_bundle_mixer_count,
+        bundle_mixer_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_bundle_fanout_count,
+        bundle_fanout_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_bundle_return_count,
+        bundle_return_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_media_stage_count,
+        media_stage_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_media_output_target_count,
+        media_output_target_count
+    );
+    assert_eq!(
+        runtime.telemetry_summary.peak_media_input_participant_count,
+        media_input_participant_count
+    );
+    assert_eq!(
+        runtime
+            .telemetry_summary
+            .peak_media_mix_minus_participant_count,
+        media_mix_minus_participant_count
     );
     assert_eq!(
         runtime.telemetry_summary.peak_host_channel_count,
@@ -653,6 +729,40 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         Some(mirror_fanout_edge_count)
     );
     assert_eq!(
+        runtime.telemetry_summary.last_bundle_attachment_count,
+        Some(bundle_attachment_count)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_bundle_mixer_count,
+        Some(bundle_mixer_count)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_bundle_fanout_count,
+        Some(bundle_fanout_count)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_bundle_return_count,
+        Some(bundle_return_count)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_media_stage_count,
+        Some(media_stage_count)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_media_output_target_count,
+        Some(media_output_target_count)
+    );
+    assert_eq!(
+        runtime.telemetry_summary.last_media_input_participant_count,
+        Some(media_input_participant_count)
+    );
+    assert_eq!(
+        runtime
+            .telemetry_summary
+            .last_media_mix_minus_participant_count,
+        Some(media_mix_minus_participant_count)
+    );
+    assert_eq!(
         runtime.telemetry_summary.last_host_channel_count,
         Some(host_channel_targets)
     );
@@ -700,6 +810,16 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             && sample.detail["collaboration"]["engineEdgeCount"] == engine_edge_count
             && sample.detail["collaboration"]["mixMinusEdgeCount"] == mix_minus_edge_count
             && sample.detail["collaboration"]["mirrorFanoutEdgeCount"] == mirror_fanout_edge_count
+            && sample.detail["collaboration"]["bundleAttachmentCount"] == bundle_attachment_count
+            && sample.detail["collaboration"]["bundleMixerCount"] == bundle_mixer_count
+            && sample.detail["collaboration"]["bundleFanoutCount"] == bundle_fanout_count
+            && sample.detail["collaboration"]["bundleReturnCount"] == bundle_return_count
+            && sample.detail["collaboration"]["mediaStageCount"] == media_stage_count
+            && sample.detail["collaboration"]["mediaOutputTargetCount"] == media_output_target_count
+            && sample.detail["collaboration"]["mediaInputParticipantCount"]
+                == media_input_participant_count
+            && sample.detail["collaboration"]["mediaMixMinusParticipantCount"]
+                == media_mix_minus_participant_count
             && sample.detail["outputs"]["activeRouteCount"] == 1
             && sample.detail["delivery"]["runtimeClass"] == "standard_hls"
             && sample.detail["delivery"]["segmentFormat"] == "mpegts"
@@ -791,7 +911,8 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         target.target_kind == "host_channel"
             && target.route_state == "active"
             && target.relative_path.as_deref() == Some(manifest_relative_path.as_str())
-            && target.target_broadcast_id.as_deref() == Some(connected.session.broadcast_id.as_str())
+            && target.target_broadcast_id.as_deref()
+                == Some(connected.session.broadcast_id.as_str())
     }));
     assert!(runtime.active_runtime_targets.iter().any(|target| {
         target.target_kind == "mirror_channel"
@@ -829,9 +950,12 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             && target.relative_path.as_deref() == Some(expected_engine.as_str())
             && target.mix_minus_required
     }));
-    assert!(!runtime.active_runtime_targets.iter().any(|target| {
-        target.target_kind == "archive" && target.target_key == "primary"
-    }));
+    assert!(
+        !runtime
+            .active_runtime_targets
+            .iter()
+            .any(|target| { target.target_kind == "archive" && target.target_key == "primary" })
+    );
     assert!(
         tokio::fs::metadata(media_path_for_relative(&state, &expected_mirror_playlist))
             .await
@@ -840,10 +964,13 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             > 0
     );
     assert!(
-        tokio::fs::metadata(media_path_for_relative(&state, &expected_host_route_archive))
-            .await
-            .map_err(AppError::Io)?
-            .len()
+        tokio::fs::metadata(media_path_for_relative(
+            &state,
+            &expected_host_route_archive
+        ))
+        .await
+        .map_err(AppError::Io)?
+        .len()
             > 0
     );
     assert!(

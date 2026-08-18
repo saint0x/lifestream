@@ -12,9 +12,9 @@ pub(crate) use derivatives::{
     generate_thumbnail, generate_timeline_preview_track, scaled_dimensions_for_rung,
     subtitle_codec_supported_for_normalization,
 };
-pub(crate) use hls::{generate_hls, plan_hls_variants};
 #[cfg(test)]
 pub(crate) use hls::write_hls_master_manifest;
+pub(crate) use hls::{generate_hls, plan_hls_variants};
 pub(crate) use types::{
     GeneratedHlsAudioTrack, GeneratedHlsPackage, GeneratedHlsSubtitleTrack, GeneratedHlsVariant,
     HlsVariantPlan, ImageDerivativePlan,
