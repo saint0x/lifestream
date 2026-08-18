@@ -37,6 +37,31 @@ pub(super) async fn bootstrap_socket(
     let session_pickups = fetch_collaboration_mirror_pickups_for_session(&state.pool, session_id)
         .await
         .unwrap_or_default();
+    let connected_participants =
+        count_active_collaboration_socket_sessions(&state.pool, session_id)
+            .await
+            .unwrap_or_default();
+    let topology = match build_collaboration_runtime_topology(
+        &state.pool,
+        &session,
+        &session_grants,
+        &session_pickups,
+        connected_participants,
+    )
+    .await
+    {
+        Ok(topology) => topology,
+        Err(_) => {
+            let _ = disconnect_collaboration_socket_session(
+                &state.pool,
+                session_id,
+                &presence_session_token,
+                &last_seen_at,
+            )
+            .await;
+            return None;
+        }
+    };
     let visible_grants =
         fetch_visible_collaboration_mirror_grants_for_session_view(&state.pool, &session)
             .await
@@ -54,19 +79,6 @@ pub(super) async fn bootstrap_socket(
         .realtime
         .join(&auth_session_channel_id(&identity.session_id))
         .await;
-    let connected_participants =
-        count_active_collaboration_socket_sessions(&state.pool, session_id)
-            .await
-            .unwrap_or_default();
-    let topology = build_collaboration_runtime_topology(
-        &state.pool,
-        &session,
-        &session_grants,
-        &session_pickups,
-        connected_participants,
-    )
-    .await
-    .unwrap_or_else(|_| fallback_topology(&session, connected_participants));
     let visible_snapshot_events =
         filter_visible_collaboration_events_for_session(&session, snapshot_events);
     let visible_replay_events =
@@ -129,27 +141,4 @@ pub(super) async fn bootstrap_socket(
         subscription,
         auth_subscription,
     })
-}
-
-fn fallback_topology(
-    session: &CollaborationSessionView,
-    connected_participants: i64,
-) -> CollaborationRuntimeTopology {
-    CollaborationRuntimeTopology {
-        session_id: session.id.clone(),
-        source_broadcast_id: session.source_broadcast_id.clone(),
-        chat_mode: session.chat_mode.clone(),
-        recording_policy: session.recording_policy.clone(),
-        shared_chat: session.chat_mode == "shared",
-        mix_minus_required: false,
-        recording_owner_creator_id: None,
-        connected_participants,
-        host_output_participant_ids: Vec::new(),
-        backstage_participant_ids: Vec::new(),
-        live_participant_ids: Vec::new(),
-        mirrored_creator_ids: Vec::new(),
-        contributions: Vec::new(),
-        outputs: Vec::new(),
-        members: Vec::new(),
-    }
 }
