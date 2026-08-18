@@ -1,56 +1,6 @@
 use super::*;
 
-struct MediaProcessingAttempt {
-    job: UploadJob,
-    session: UploadIngestSession,
-    asset: MediaAsset,
-    source_path: PathBuf,
-    lease_updated_at: String,
-}
-
-struct GeneratedDerivativeBundle {
-    poster_relative_path: Option<String>,
-    image_derivatives_relative_paths: Vec<(String, String, i64, i64)>,
-    timeline_preview_track: Option<NewMediaPreviewTrack>,
-    subtitle_variants: Vec<(String, String, String, i64, bool)>,
-    generated_package: GeneratedHlsPackage,
-    hls_relative_path: String,
-}
-
-pub(crate) async fn process_media_job(
-    state: SharedState,
-    creator_id: &str,
-    job_id: &str,
-) -> Result<(), (AppError, String)> {
-    let Some(attempt) = begin_media_processing_attempt(&state, creator_id, job_id)
-        .await
-        .map_err(|error| (error, String::new()))?
-    else {
-        return Ok(());
-    };
-
-    let probed = run_probe_stage(&state, creator_id, job_id, &attempt).await?;
-    run_integrity_stage(&state, creator_id, job_id, &attempt, &probed).await?;
-    let generated =
-        generate_derivatives_and_package(&state, creator_id, job_id, &attempt, &probed).await?;
-
-    if !job_control::media_processing_lease_is_active(
-        &state.pool,
-        creator_id,
-        job_id,
-        &attempt.lease_updated_at,
-    )
-    .await
-    .map_err(|error| (error, attempt.lease_updated_at.clone()))?
-    {
-        return Ok(());
-    }
-
-    persist_media_variants(&state, &attempt, &probed, &generated).await?;
-    finalize_media_processing(&state, creator_id, job_id, &attempt, &probed, &generated).await
-}
-
-async fn begin_media_processing_attempt(
+pub(crate) async fn begin_media_processing_attempt(
     state: &SharedState,
     creator_id: &str,
     job_id: &str,
@@ -87,7 +37,7 @@ async fn begin_media_processing_attempt(
     }))
 }
 
-async fn run_probe_stage(
+pub(crate) async fn run_probe_stage(
     state: &SharedState,
     creator_id: &str,
     job_id: &str,
@@ -141,7 +91,7 @@ async fn run_probe_stage(
     }
 }
 
-async fn run_integrity_stage(
+pub(crate) async fn run_integrity_stage(
     state: &SharedState,
     creator_id: &str,
     job_id: &str,
@@ -192,7 +142,7 @@ async fn run_integrity_stage(
     }
 }
 
-async fn generate_derivatives_and_package(
+pub(crate) async fn generate_derivatives_and_package(
     state: &SharedState,
     creator_id: &str,
     job_id: &str,
@@ -661,204 +611,4 @@ async fn generate_hls_package(
         }
     };
     Ok((generated_package, hls_relative_path))
-}
-
-async fn persist_media_variants(
-    state: &SharedState,
-    attempt: &MediaProcessingAttempt,
-    probed: &ProbedMedia,
-    generated: &GeneratedDerivativeBundle,
-) -> Result<(), (AppError, String)> {
-    replace_media_variants(&state.pool, &attempt.asset.id, &{
-        let mut variants = vec![NewMediaVariant {
-            variant_type: "source",
-            label: "source".to_string(),
-            relative_path: attempt.session.relative_path.clone(),
-            mime_type: attempt.job.mime_type.clone(),
-            width: probed.width,
-            height: probed.height,
-            bitrate_bps: probed.bitrate_bps,
-            file_size_bytes: attempt.job.bytes_expected,
-            is_default: false,
-        }];
-        for (label, relative_path, width, height) in &generated.image_derivatives_relative_paths {
-            let full_path = media_path_for_relative(state, relative_path);
-            let metadata = std::fs::metadata(&full_path)
-                .map_err(AppError::from)
-                .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
-            variants.push(NewMediaVariant {
-                variant_type: "thumbnail",
-                label: label.clone(),
-                relative_path: relative_path.clone(),
-                mime_type: "image/jpeg".to_string(),
-                width: Some(*width),
-                height: Some(*height),
-                bitrate_bps: None,
-                file_size_bytes: metadata.len() as i64,
-                is_default: label == "card_thumbnail",
-            });
-        }
-        for (label, relative_path, language, file_size_bytes, is_default) in
-            generated.subtitle_variants.iter().cloned()
-        {
-            variants.push(NewMediaVariant {
-                variant_type: "caption",
-                label: format!("{label}:{language}"),
-                relative_path,
-                mime_type: "text/vtt".to_string(),
-                width: None,
-                height: None,
-                bitrate_bps: None,
-                file_size_bytes,
-                is_default,
-            });
-        }
-        for track in &generated.generated_package.audio_tracks {
-            variants.push(NewMediaVariant {
-                variant_type: "audio",
-                label: format!(
-                    "{}:{}:{}:{}:{}",
-                    track.label,
-                    track.language,
-                    "source-provided",
-                    if track.is_dubbed { 1 } else { 0 },
-                    track.codec
-                ),
-                relative_path: format!(
-                    "{}/{}",
-                    PathBuf::from(&generated.hls_relative_path)
-                        .parent()
-                        .map(|path| path.to_string_lossy().to_string())
-                        .unwrap_or_else(|| "processed".to_string()),
-                    track.relative_playlist_path
-                ),
-                mime_type: "application/vnd.apple.mpegurl".to_string(),
-                width: None,
-                height: None,
-                bitrate_bps: Some(track.bitrate_bps),
-                file_size_bytes: track.file_size_bytes,
-                is_default: track.is_default,
-            });
-        }
-        let highest_height = generated
-            .generated_package
-            .variants
-            .iter()
-            .map(|variant| variant.plan.height)
-            .max()
-            .unwrap_or_default();
-        for variant in &generated.generated_package.variants {
-            variants.push(NewMediaVariant {
-                variant_type: "playback",
-                label: variant.plan.label.clone(),
-                relative_path: format!(
-                    "{}/{}",
-                    PathBuf::from(&generated.hls_relative_path)
-                        .parent()
-                        .map(|path| path.to_string_lossy().to_string())
-                        .unwrap_or_else(|| "processed".to_string()),
-                    variant.relative_playlist_path
-                ),
-                mime_type: "application/vnd.apple.mpegurl".to_string(),
-                width: Some(variant.plan.width),
-                height: Some(variant.plan.height),
-                bitrate_bps: Some(variant.plan.bandwidth_bps),
-                file_size_bytes: variant.file_size_bytes,
-                is_default: variant.plan.height == highest_height,
-            });
-        }
-        variants
-    })
-    .await
-    .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
-    replace_media_preview_tracks(
-        &state.pool,
-        &attempt.asset.id,
-        &generated
-            .timeline_preview_track
-            .iter()
-            .cloned()
-            .collect::<Vec<_>>(),
-    )
-    .await
-    .map_err(|error| (error, attempt.lease_updated_at.clone()))
-}
-
-async fn finalize_media_processing(
-    state: &SharedState,
-    creator_id: &str,
-    job_id: &str,
-    attempt: &MediaProcessingAttempt,
-    probed: &ProbedMedia,
-    generated: &GeneratedDerivativeBundle,
-) -> Result<(), (AppError, String)> {
-    let completed_at = Utc::now().to_rfc3339();
-    let asset_update = sqlx::query(
-        r#"
-        UPDATE media_assets
-        SET status = 'ready',
-            source_relative_path = ?,
-            poster_relative_path = ?,
-            playback_relative_path = ?,
-            mime_type = ?,
-            checksum_sha256 = ?,
-            container_format = ?,
-            file_size_bytes = ?,
-            duration_sec = ?,
-            width = ?,
-            height = ?,
-            frame_rate = ?,
-            video_codec = ?,
-            audio_codec = ?,
-            has_video = ?,
-            has_audio = ?,
-            updated_at = ?,
-            processed_at = ?
-        WHERE upload_job_id = ? AND creator_id = ?
-          AND status = 'processing'
-          AND updated_at = ?
-        "#,
-    )
-    .bind(&attempt.session.relative_path)
-    .bind(generated.poster_relative_path.clone())
-    .bind(&generated.hls_relative_path)
-    .bind(&attempt.job.mime_type)
-    .bind(attempt.job.checksum_sha256.clone())
-    .bind(probed.container_format.clone())
-    .bind(attempt.job.bytes_expected)
-    .bind(probed.duration_sec)
-    .bind(probed.width)
-    .bind(probed.height)
-    .bind(probed.frame_rate)
-    .bind(probed.video_codec.clone())
-    .bind(probed.audio_codec.clone())
-    .bind(probed.has_video as i64)
-    .bind(probed.has_audio as i64)
-    .bind(&completed_at)
-    .bind(&completed_at)
-    .bind(job_id)
-    .bind(creator_id)
-    .bind(&attempt.lease_updated_at)
-    .execute(&state.pool)
-    .await
-    .map_err(|error| (AppError::from(error), attempt.lease_updated_at.clone()))?;
-    if asset_update.rows_affected() == 0 {
-        return Ok(());
-    }
-
-    let job_update = sqlx::query(
-        "UPDATE upload_jobs SET status = 'ready', updated_at = ?, last_processing_error = NULL, last_failed_at = NULL WHERE id = ? AND creator_id = ? AND status = 'processing' AND updated_at = ?",
-    )
-    .bind(&completed_at)
-    .bind(job_id)
-    .bind(creator_id)
-    .bind(&attempt.lease_updated_at)
-    .execute(&state.pool)
-    .await
-    .map_err(|error| (AppError::from(error), attempt.lease_updated_at.clone()))?;
-    if job_update.rows_affected() == 0 {
-        return Ok(());
-    }
-
-    Ok(())
 }
