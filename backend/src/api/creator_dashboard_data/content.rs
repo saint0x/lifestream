@@ -1,83 +1,6 @@
 use super::*;
 
-pub(super) async fn creator_dashboard_payload(
-    pool: &SqlitePool,
-    identity: &RequestIdentity,
-) -> AppResult<CreatorDashboard> {
-    let creator_id = identity.require_creator_scope()?;
-    let profile = fetch_creator_profile(pool, creator_id).await?;
-    let operational_state = fetch_creator_operational_state(pool, &profile).await?;
-    let broadcasts = fetch_broadcasts(pool, creator_id).await?;
-    let analytics = fetch_analytics(pool, creator_id).await?;
-    let analytics_summary = summarize_creator_analytics(&analytics);
-    let traffic_sources = fetch_traffic_sources(pool, creator_id).await?;
-    let top_content = fetch_top_content(pool, creator_id).await?;
-    let revenue = fetch_revenue_entries(pool, creator_id).await?;
-    let subscriber_tiers = fetch_creator_subscriber_tiers(pool, creator_id).await?;
-    let revenue_summary = summarize_creator_revenue(&analytics, &revenue, &subscriber_tiers);
-    let notifications = fetch_notifications_rows(pool, creator_id).await?;
-    let uploads = fetch_uploads(pool, creator_id).await?;
-
-    let current_broadcast = broadcasts
-        .iter()
-        .find(|item| item.status == "live")
-        .cloned();
-    let scheduled_broadcasts = broadcasts
-        .iter()
-        .filter(|item| item.status == "scheduled" || item.status == "ready")
-        .cloned()
-        .collect();
-    let recent_broadcasts = broadcasts
-        .iter()
-        .filter(|item| item.status == "ended")
-        .cloned()
-        .collect();
-
-    Ok(CreatorDashboard {
-        profile: contract_creator_profile(profile),
-        current_broadcast: current_broadcast.map(contract_broadcast),
-        scheduled_broadcasts: contract_broadcasts(scheduled_broadcasts),
-        recent_broadcasts: contract_broadcasts(recent_broadcasts),
-        analytics,
-        traffic_sources,
-        top_content,
-        revenue,
-        analytics_summary,
-        revenue_summary,
-        subscriber_tiers,
-        operational_state,
-        notifications,
-        uploads,
-    })
-}
-
-pub(super) async fn fetch_creator_app_state(
-    pool: &SqlitePool,
-    identity: &RequestIdentity,
-    content_query: &CreatorContentQuery,
-) -> AppResult<CreatorAppState> {
-    let creator_id = identity.require_creator_scope()?;
-    let dashboard = creator_dashboard_payload(pool, identity).await?;
-    let live_control = fetch_creator_live_control_response(pool, creator_id).await?;
-    let live_runtime = fetch_creator_live_runtime_response(pool, creator_id).await?;
-    let uploads = fetch_uploads(pool, creator_id).await?;
-    let filtered_uploads = filter_creator_uploads(uploads.clone(), content_query)?;
-    let content = CreatorContentResponse {
-        summary: summarize_creator_content(&uploads, filtered_uploads.len() as i64),
-        uploads: filtered_uploads,
-    };
-    let upload_operations = fetch_creator_upload_operations_response(pool, creator_id).await?;
-
-    Ok(CreatorAppState {
-        dashboard,
-        live_control,
-        live_runtime,
-        content,
-        upload_operations,
-    })
-}
-
-pub(super) fn validate_upload_visibility(visibility: &str) -> AppResult<()> {
+pub(crate) fn validate_upload_visibility(visibility: &str) -> AppResult<()> {
     match visibility {
         "public" | "unlisted" | "private" => Ok(()),
         _ => Err(AppError::BadRequest(
@@ -86,7 +9,7 @@ pub(super) fn validate_upload_visibility(visibility: &str) -> AppResult<()> {
     }
 }
 
-pub(super) fn validate_upload_job_kind(kind: &str) -> AppResult<()> {
+pub(crate) fn validate_upload_job_kind(kind: &str) -> AppResult<()> {
     match kind {
         "film" | "episode" | "clip" | "trailer" | "video" | "vod" | "live_archive" => Ok(()),
         other => Err(AppError::BadRequest(format!(
@@ -95,7 +18,7 @@ pub(super) fn validate_upload_job_kind(kind: &str) -> AppResult<()> {
     }
 }
 
-pub(super) fn validate_upload_job_source_type(source_type: &str) -> AppResult<()> {
+pub(crate) fn validate_upload_job_source_type(source_type: &str) -> AppResult<()> {
     match source_type {
         "resumable-upload" | "live-archive" | "studio-export" => Ok(()),
         other => Err(AppError::BadRequest(format!(
@@ -104,7 +27,7 @@ pub(super) fn validate_upload_job_source_type(source_type: &str) -> AppResult<()
     }
 }
 
-pub(super) fn derive_upload_lifecycle_status(
+pub(crate) fn derive_upload_lifecycle_status(
     current_status: &str,
     visibility: &str,
     release_at: Option<&str>,
@@ -128,7 +51,7 @@ pub(super) fn derive_upload_lifecycle_status(
     }
 }
 
-pub(super) fn validate_bulk_upload_action(upload: &Upload, action: &str) -> AppResult<()> {
+pub(crate) fn validate_bulk_upload_action(upload: &Upload, action: &str) -> AppResult<()> {
     match action {
         "archive" => {
             if upload.status == "processing" {
@@ -163,7 +86,7 @@ pub(super) fn validate_bulk_upload_action(upload: &Upload, action: &str) -> AppR
     }
 }
 
-pub(super) fn filter_creator_uploads(
+pub(crate) fn filter_creator_uploads(
     mut uploads: Vec<Upload>,
     query: &CreatorContentQuery,
 ) -> AppResult<Vec<Upload>> {
@@ -201,7 +124,7 @@ pub(super) fn filter_creator_uploads(
     Ok(uploads)
 }
 
-pub(super) fn summarize_creator_content(
+pub(crate) fn summarize_creator_content(
     uploads: &[Upload],
     filtered_count: i64,
 ) -> CreatorContentSummary {
@@ -234,7 +157,7 @@ pub(super) fn summarize_creator_content(
     }
 }
 
-pub(super) async fn fetch_broadcasts(
+pub(crate) async fn fetch_broadcasts(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<Vec<Broadcast>> {
@@ -268,7 +191,7 @@ pub(super) async fn fetch_broadcasts(
         .collect())
 }
 
-pub(super) async fn fetch_broadcast_by_id(
+pub(crate) async fn fetch_broadcast_by_id(
     pool: &SqlitePool,
     creator_id: &str,
     id: &str,
@@ -301,7 +224,7 @@ pub(super) async fn fetch_broadcast_by_id(
     })
 }
 
-pub(super) async fn fetch_uploads(pool: &SqlitePool, creator_id: &str) -> AppResult<Vec<Upload>> {
+pub(crate) async fn fetch_uploads(pool: &SqlitePool, creator_id: &str) -> AppResult<Vec<Upload>> {
     publish_due_scheduled_upload_releases(pool, Some(creator_id), None).await?;
     let rows = sqlx::query(
         "SELECT id, slug, title, description, kind, duration_sec, uploaded_at, published_at, release_at, status, visibility, access_policy, access_tier_id, price_cents, currency, rental_window_hours, views, likes, comments, watch_hours, thumbnail, series_title, season_number, episode_number, size_bytes, resolution, transcode_progress FROM uploads WHERE creator_id = ? ORDER BY uploaded_at DESC",
@@ -344,7 +267,7 @@ pub(super) async fn fetch_uploads(pool: &SqlitePool, creator_id: &str) -> AppRes
         .collect())
 }
 
-pub(super) async fn fetch_upload_by_id(
+pub(crate) async fn fetch_upload_by_id(
     pool: &SqlitePool,
     creator_id: &str,
     id: &str,
@@ -389,7 +312,7 @@ pub(super) async fn fetch_upload_by_id(
     })
 }
 
-pub(super) async fn fetch_creator_upload_operations_response(
+pub(crate) async fn fetch_creator_upload_operations_response(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<CreatorUploadOperationsResponse> {
@@ -447,7 +370,7 @@ pub(super) async fn fetch_creator_upload_operations_response(
     Ok(CreatorUploadOperationsResponse { summary, records })
 }
 
-pub(super) fn summarize_creator_upload_operations(
+pub(crate) fn summarize_creator_upload_operations(
     records: &[CreatorUploadOperationRecord],
 ) -> CreatorUploadOperationsSummary {
     let mut summary = CreatorUploadOperationsSummary {
@@ -504,223 +427,4 @@ pub(super) fn summarize_creator_upload_operations(
     }
 
     summary
-}
-
-pub(super) async fn fetch_analytics(
-    pool: &SqlitePool,
-    creator_id: &str,
-) -> AppResult<Vec<AnalyticsPoint>> {
-    let rows = sqlx::query(
-        "SELECT date, viewers, watch_minutes, revenue, new_followers FROM analytics_points WHERE creator_id = ? ORDER BY date ASC",
-    )
-    .bind(creator_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(rows
-        .into_iter()
-        .map(|row| AnalyticsPoint {
-            date: row.get("date"),
-            viewers: row.get("viewers"),
-            watch_minutes: row.get("watch_minutes"),
-            revenue: row.get("revenue"),
-            new_followers: row.get("new_followers"),
-        })
-        .collect())
-}
-
-pub(super) async fn fetch_traffic_sources(
-    pool: &SqlitePool,
-    creator_id: &str,
-) -> AppResult<Vec<TrafficSource>> {
-    let rows =
-        sqlx::query("SELECT source, sessions, share FROM traffic_sources WHERE creator_id = ? ORDER BY sessions DESC")
-            .bind(creator_id)
-            .fetch_all(pool)
-            .await?;
-    Ok(rows
-        .into_iter()
-        .map(|row| TrafficSource {
-            source: row.get("source"),
-            sessions: row.get("sessions"),
-            share: row.get("share"),
-        })
-        .collect())
-}
-
-pub(super) async fn fetch_top_content(
-    pool: &SqlitePool,
-    creator_id: &str,
-) -> AppResult<Vec<TopContent>> {
-    let rows = sqlx::query(
-        "SELECT id, title, kind, views, watch_hours, trend, thumbnail FROM top_content WHERE creator_id = ? ORDER BY views DESC",
-    )
-    .bind(creator_id)
-    .fetch_all(pool)
-    .await?;
-    Ok(rows
-        .into_iter()
-        .map(|row| TopContent {
-            id: row.get("id"),
-            title: row.get("title"),
-            kind: row.get("kind"),
-            views: row.get("views"),
-            watch_hours: row.get("watch_hours"),
-            trend: row.get("trend"),
-            thumbnail: row.get("thumbnail"),
-        })
-        .collect())
-}
-
-pub(super) async fn fetch_revenue_entries(
-    pool: &SqlitePool,
-    creator_id: &str,
-) -> AppResult<Vec<RevenueEntry>> {
-    let rows = sqlx::query(
-        "SELECT id, date, source, description, amount FROM revenue_entries WHERE creator_id = ? ORDER BY date DESC",
-    )
-    .bind(creator_id)
-    .fetch_all(pool)
-    .await?;
-    Ok(rows
-        .into_iter()
-        .map(|row| RevenueEntry {
-            id: row.get("id"),
-            date: row.get("date"),
-            source: row.get("source"),
-            description: row.get("description"),
-            amount: row.get("amount"),
-        })
-        .collect())
-}
-
-pub(super) fn summarize_creator_analytics(analytics: &[AnalyticsPoint]) -> CreatorAnalyticsSummary {
-    CreatorAnalyticsSummary {
-        window_days: analytics.len() as i64,
-        total_viewers: analytics.iter().map(|point| point.viewers).sum(),
-        total_watch_minutes: analytics.iter().map(|point| point.watch_minutes).sum(),
-        total_revenue: analytics.iter().map(|point| point.revenue).sum(),
-        total_new_followers: analytics.iter().map(|point| point.new_followers).sum(),
-    }
-}
-
-pub(super) fn summarize_creator_revenue(
-    analytics: &[AnalyticsPoint],
-    revenue: &[RevenueEntry],
-    subscriber_tiers: &[CreatorSubscriberTier],
-) -> CreatorRevenueSummary {
-    let total_subscribers = subscriber_tiers
-        .iter()
-        .map(|tier| tier.subscriber_count)
-        .sum::<i64>();
-    let weighted_price_total = subscriber_tiers
-        .iter()
-        .map(|tier| tier.monthly_price * tier.subscriber_count as f64)
-        .sum::<f64>();
-    let blended_monthly_price = if total_subscribers > 0 {
-        weighted_price_total / total_subscribers as f64
-    } else {
-        0.0
-    };
-
-    let positive_total = revenue
-        .iter()
-        .filter(|entry| entry.amount > 0.0)
-        .map(|entry| entry.amount)
-        .sum::<f64>();
-    let payout_total = revenue
-        .iter()
-        .filter(|entry| entry.source == "payout")
-        .map(|entry| entry.amount.abs())
-        .sum::<f64>();
-    let total_earnings_30d = analytics.iter().map(|point| point.revenue).sum::<f64>();
-    let estimated_next_payout = (total_earnings_30d - payout_total).max(0.0);
-
-    let mut breakdown = Vec::new();
-    for source in ["subscriptions", "ads", "tips", "clips", "payout"] {
-        let amount = revenue
-            .iter()
-            .filter(|entry| entry.source == source && entry.amount > 0.0)
-            .map(|entry| entry.amount)
-            .sum::<f64>();
-        let share = if positive_total > 0.0 {
-            amount / positive_total
-        } else {
-            0.0
-        };
-        breakdown.push(CreatorRevenueBreakdownEntry {
-            source: source.to_string(),
-            amount,
-            share,
-        });
-    }
-
-    CreatorRevenueSummary {
-        total_earnings_30d,
-        total_subscribers,
-        blended_monthly_price,
-        estimated_next_payout,
-        breakdown,
-    }
-}
-
-pub(super) async fn fetch_creator_series_title(
-    pool: &SqlitePool,
-    creator_id: &str,
-    series_id: &str,
-) -> AppResult<Option<String>> {
-    Ok(
-        sqlx::query("SELECT title FROM creator_series_projects WHERE creator_id = ? AND id = ?")
-            .bind(creator_id)
-            .bind(series_id)
-            .fetch_optional(pool)
-            .await?
-            .map(|row| row.get("title")),
-    )
-}
-
-pub(super) async fn ensure_creator_series_season(
-    pool: &SqlitePool,
-    creator_id: &str,
-    series_id: &str,
-    season_number: i64,
-    title: String,
-    synopsis: String,
-) -> AppResult<()> {
-    let exists =
-        sqlx::query("SELECT 1 FROM creator_series_projects WHERE creator_id = ? AND id = ?")
-            .bind(creator_id)
-            .bind(series_id)
-            .fetch_optional(pool)
-            .await?
-            .is_some();
-    if !exists {
-        return Err(AppError::BadRequest(
-            "seriesId does not belong to creator".to_string(),
-        ));
-    }
-
-    let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        r#"
-        INSERT INTO creator_series_seasons (
-            id, series_id, season_number, title, synopsis, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(series_id, season_number) DO UPDATE SET
-            title = excluded.title,
-            synopsis = excluded.synopsis,
-            updated_at = excluded.updated_at
-        "#,
-    )
-    .bind(format!("season-{series_id}-{season_number}"))
-    .bind(series_id)
-    .bind(season_number)
-    .bind(title)
-    .bind(synopsis)
-    .bind(&now)
-    .bind(&now)
-    .execute(pool)
-    .await?;
-
-    Ok(())
 }

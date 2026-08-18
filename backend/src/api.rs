@@ -281,7 +281,7 @@ use notifications::{
     enqueue_notification_event, fetch_live_notification_recipient_user_ids,
     fetch_notification_deliveries, fetch_notification_delivery_by_id,
     fetch_notification_delivery_by_id_raw, fetch_notifications_rows, fetch_user_notifications,
-    list_my_notifications, mark_my_notification_read, reconcile_single_notification_delivery,
+    reconcile_single_notification_delivery,
 };
 use playback::{
     create_content_playback_session, create_live_playback_session, get_admin_playback_session,
