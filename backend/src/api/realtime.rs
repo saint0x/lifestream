@@ -1,15 +1,15 @@
 use super::*;
 
 mod chat;
-mod collaboration;
+mod collab;
 mod sockets;
 
 pub(super) use chat::persist_chat_message;
 #[cfg(test)]
-pub(super) use collaboration::{
+pub(super) use collab::{
     CollaborationSocketCommand, fetch_current_collaboration_socket_session_view,
 };
-pub(super) use collaboration::{
+pub(super) use collab::{
     execute_collaboration_socket_command, reconcile_collaboration_expiry_for_host_read,
     reconcile_collaboration_expiry_for_participant_read,
     reconcile_collaboration_session_expiry_for_read,

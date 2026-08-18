@@ -1,5 +1,5 @@
 use super::chat::{persist_chat_message, send_chat_message_rejected};
-use super::collaboration::{
+use super::collab::{
     CollaborationSocketCommand, collaboration_socket_command_name,
     fetch_current_collaboration_socket_session_view, send_collaboration_command_accepted,
     send_collaboration_command_rejected,
@@ -10,7 +10,7 @@ use futures_util::{sink::SinkExt, stream::StreamExt};
 use serde::Deserialize;
 use serde_json::Value;
 
-mod collaboration;
+mod collab;
 mod creator_live;
 mod shared;
 mod viewer_live;
@@ -93,12 +93,12 @@ pub(crate) async fn ws_collaboration(
         let host =
             fetch_collaboration_host_summary(&state.pool, &host_session.host_creator_id).await?;
         let host_view = collaboration_session_view_for_host(host_session, host)?;
-        super::collaboration::validate_collaboration_socket_access(&host_view)?;
+        super::collab::validate_collaboration_socket_access(&host_view)?;
     } else if let Ok(session) = &participant_access {
-        super::collaboration::validate_collaboration_socket_access(session)?;
+        super::collab::validate_collaboration_socket_access(session)?;
     }
     Ok(ws.on_upgrade(move |socket| {
-        collaboration::handle_collaboration_socket(
+        collab::handle_collaboration_socket(
             socket,
             state,
             session_id,
