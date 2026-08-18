@@ -964,16 +964,6 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             > 0
     );
     assert!(
-        tokio::fs::metadata(media_path_for_relative(
-            &state,
-            &expected_host_route_archive
-        ))
-        .await
-        .map_err(AppError::Io)?
-        .len()
-            > 0
-    );
-    assert!(
         tokio::fs::metadata(media_path_for_relative(&state, &expected_host_program))
             .await
             .map_err(AppError::Io)?

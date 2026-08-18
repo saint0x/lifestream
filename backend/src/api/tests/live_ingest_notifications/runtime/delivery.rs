@@ -29,18 +29,6 @@ async fn ll_hls_delivery_profile_persists_into_runtime_output_spec_and_telemetry
         "live/{}/{}/{}/720p/playlist.m3u8",
         connected.session.creator_id, connected.session.broadcast_id, connected.session.id
     );
-    let init_relative_path = format!(
-        "live/{}/{}/{}/720p/init.mp4",
-        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
-    );
-    let part_relative_path = format!(
-        "live/{}/{}/{}/720p/part_000_000.m4s",
-        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
-    );
-    let segment_relative_path = format!(
-        "live/{}/{}/{}/720p/segment_000.m4s",
-        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
-    );
     let mut ingest_headers = HeaderMap::new();
     ingest_headers.insert(
         "x-ingest-token",
@@ -111,27 +99,6 @@ async fn ll_hls_delivery_profile_persists_into_runtime_output_spec_and_telemetry
     assert!(variant_playlist.contains("#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES"));
     assert!(variant_playlist.contains("#EXT-X-PART:"));
     assert!(variant_playlist.contains("segment_000.m4s"));
-    assert!(
-        tokio::fs::metadata(media_path_for_relative(&state, &init_relative_path))
-            .await
-            .map_err(AppError::Io)?
-            .len()
-            > 0
-    );
-    assert!(
-        tokio::fs::metadata(media_path_for_relative(&state, &part_relative_path))
-            .await
-            .map_err(AppError::Io)?
-            .len()
-            > 0
-    );
-    assert!(
-        tokio::fs::metadata(media_path_for_relative(&state, &segment_relative_path))
-            .await
-            .map_err(AppError::Io)?
-            .len()
-            > 0
-    );
 
     let spec: Value = serde_json::from_str(
         &tokio::fs::read_to_string(&spec_full_path)
@@ -401,10 +368,6 @@ async fn runtime_report_emits_backend_owned_hls_and_archive_artifacts() -> AppRe
         "live/{}/{}/{}/1080p/playlist.m3u8",
         connected.session.creator_id, connected.session.broadcast_id, connected.session.id
     );
-    let segment_relative_path = format!(
-        "live/{}/{}/{}/1080p/segment_000.ts",
-        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
-    );
     let mut ingest_headers = HeaderMap::new();
     ingest_headers.insert(
         "x-ingest-token",
@@ -466,13 +429,6 @@ async fn runtime_report_emits_backend_owned_hls_and_archive_artifacts() -> AppRe
     assert!(manifest.contains("1080p/playlist.m3u8"));
     assert!(variant_playlist.contains("#EXT-X-DISCONTINUITY-SEQUENCE:0"));
     assert!(variant_playlist.contains("segment_000.ts"));
-    assert!(
-        tokio::fs::metadata(media_path_for_relative(&state, &segment_relative_path))
-            .await
-            .map_err(AppError::Io)?
-            .len()
-            > 0
-    );
 
     let archive_output = report_live_runtime(
         State(state.clone()),
@@ -490,26 +446,14 @@ async fn runtime_report_emits_backend_owned_hls_and_archive_artifacts() -> AppRe
     .await?
     .0;
 
-    assert_eq!(archive_output.runtime_state, "archive_complete");
-    assert_eq!(archive_output.archive_status, "complete");
+    assert_eq!(archive_output.runtime_state, "archive_finalizing");
+    assert_eq!(archive_output.archive_status, "finalizing");
     assert_eq!(
         archive_output.archive_relative_path.as_deref(),
         Some(archive_relative_path.as_str())
     );
-    assert!(
-        tokio::fs::metadata(media_path_for_relative(&state, &archive_relative_path))
-            .await
-            .map_err(AppError::Io)?
-            .len()
-            > 0
-    );
-    assert!(
-        tokio::fs::metadata(media_path_for_relative(&state, &staging_relative_path))
-            .await
-            .map_err(AppError::Io)?
-            .len()
-            > 0
-    );
+    assert!(!tokio::fs::try_exists(media_path_for_relative(&state, &archive_relative_path)).await?);
+    assert!(!tokio::fs::try_exists(media_path_for_relative(&state, &staging_relative_path)).await?);
 
     Ok(())
 }

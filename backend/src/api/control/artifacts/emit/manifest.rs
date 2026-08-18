@@ -146,7 +146,10 @@ pub(super) fn render_routed_variant_playlist(
         body.push_str("#EXT-X-INDEPENDENT-SEGMENTS\n");
         body.push_str(&format!(
             "#EXT-X-MAP:URI=\"{}\"\n",
-            relative_reference_from_variant(&format!("{}/init.mp4", variant.output_relative_dir))
+            relative_reference_between(
+                &variant.output_relative_dir,
+                &format!("{}/init.mp4", variant.source_output_relative_dir),
+            )
         ));
     }
     if output.partial_segments_enabled {
@@ -159,10 +162,10 @@ pub(super) fn render_routed_variant_playlist(
         body.push_str(&format!(
             "#EXT-X-PART:DURATION={:.3},URI=\"{}\",INDEPENDENT=YES\n",
             part_target,
-            relative_reference_from_variant(&format!(
-                "{}/part_000_000.m4s",
-                variant.output_relative_dir
-            ))
+            relative_reference_between(
+                &variant.output_relative_dir,
+                &format!("{}/part_000_000.m4s", variant.source_output_relative_dir),
+            )
         ));
     }
     if output.discontinuity_sequence > 0 {
@@ -171,57 +174,15 @@ pub(super) fn render_routed_variant_playlist(
     body.push_str(&format!(
         "#EXTINF:{:.3},\n{}\n",
         output.target_segment_duration_sec as f64,
-        relative_reference_from_variant(&segment_relative_path(
+        relative_reference_between(
             &variant.output_relative_dir,
-            output,
-        ))
+            &segment_relative_path(&variant.source_output_relative_dir, output),
+        )
     ));
     if playlist_is_terminal(output) {
         body.push_str("#EXT-X-ENDLIST\n");
     }
     body
-}
-
-pub(super) fn build_live_archive_payload(
-    session: &LiveIngestSession,
-    output: &LiveRuntimeOutput,
-) -> Vec<u8> {
-    let summary = format!(
-        "lifestream-archive:{}:{}:{}:{}:{}",
-        session.creator_id,
-        session.broadcast_id,
-        session.id,
-        output.runtime_state,
-        output.archive_status
-    );
-    build_minimal_mp4_bytes(&summary)
-}
-
-pub(super) fn build_minimal_mp4_bytes(summary: &str) -> Vec<u8> {
-    let mut bytes = Vec::new();
-    push_mp4_box(&mut bytes, b"ftyp", b"isom\x00\x00\x02\x00isomiso2mp41");
-    push_mp4_box(&mut bytes, b"free", summary.as_bytes());
-    push_mp4_box(&mut bytes, b"mdat", b"lifestream");
-    bytes
-}
-
-pub(super) fn build_minimal_mp4_fragment_bytes(summary: &str) -> Vec<u8> {
-    let mut bytes = Vec::new();
-    push_mp4_box(&mut bytes, b"styp", b"msdh\0\0\0\0msdhmsix");
-    push_mp4_box(&mut bytes, b"mdat", summary.as_bytes());
-    bytes
-}
-
-pub(super) fn build_minimal_ts_segment_bytes() -> Vec<u8> {
-    let mut bytes = vec![0_u8; 188];
-    bytes[0] = 0x47;
-    bytes[1] = 0x40;
-    bytes[2] = 0x00;
-    bytes[3] = 0x10;
-    for byte in &mut bytes[4..] {
-        *byte = 0xff;
-    }
-    bytes
 }
 
 #[derive(Clone, Debug)]
@@ -230,6 +191,7 @@ pub(super) struct RoutedVariantSpec {
     pub(super) height: i64,
     pub(super) bandwidth_bps: i64,
     pub(super) output_relative_dir: String,
+    pub(super) source_output_relative_dir: String,
     pub(super) relative_playlist_path: String,
 }
 
@@ -246,6 +208,7 @@ impl RoutedVariantSpec {
             height: variant.height,
             bandwidth_bps: variant.bandwidth_bps,
             output_relative_dir,
+            source_output_relative_dir: variant.output_relative_dir.clone(),
             relative_playlist_path,
         }
     }
@@ -270,6 +233,31 @@ fn relative_reference_from_variant(path: &str) -> String {
         .file_name()
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_else(|| path.to_string())
+}
+
+fn relative_reference_between(from_dir: &str, to_path: &str) -> String {
+    let from_components = FsPath::new(from_dir).components().collect::<Vec<_>>();
+    let to_components = FsPath::new(to_path).components().collect::<Vec<_>>();
+
+    let mut common_len = 0_usize;
+    while common_len < from_components.len()
+        && common_len < to_components.len()
+        && from_components[common_len] == to_components[common_len]
+    {
+        common_len += 1;
+    }
+
+    let mut relative = PathBuf::new();
+    for _ in common_len..from_components.len() {
+        relative.push("..");
+    }
+    for component in &to_components[common_len..] {
+        if let Component::Normal(segment) = component {
+            relative.push(segment);
+        }
+    }
+
+    relative.to_string_lossy().to_string()
 }
 
 fn segment_relative_path(output_relative_dir: &str, output: &LiveRuntimeOutput) -> String {
@@ -302,11 +290,4 @@ fn live_manifest_codec_string(video_codec: &str, audio_codec: &str) -> String {
         _ => "mp4a.40.2",
     };
     format!("{video},{audio}")
-}
-
-fn push_mp4_box(bytes: &mut Vec<u8>, kind: &[u8; 4], payload: &[u8]) {
-    let size = (8 + payload.len()) as u32;
-    bytes.extend_from_slice(&size.to_be_bytes());
-    bytes.extend_from_slice(kind);
-    bytes.extend_from_slice(payload);
 }

@@ -84,11 +84,20 @@ pub(super) async fn inspect_live_runtime_output_artifacts(
                 issues,
             });
         };
-        if let Some(issue) = validate_archive_artifact(state, archive_relative_path).await? {
-            archive_invalid = true;
-            issues.push(issue);
-        } else {
-            archive_valid = true;
+        if output.archive_status == "complete" {
+            if let Some(issue) = validate_archive_artifact(state, archive_relative_path).await? {
+                archive_invalid = true;
+                issues.push(issue);
+            } else {
+                archive_valid = true;
+            }
+        } else if archive_artifact_exists(state, archive_relative_path).await? {
+            if let Some(issue) = validate_archive_artifact(state, archive_relative_path).await? {
+                archive_invalid = true;
+                issues.push(issue);
+            } else {
+                archive_valid = true;
+            }
         }
     }
 
@@ -299,6 +308,7 @@ async fn inspect_live_runtime_collaboration_artifacts(
     let engine_relative_path = collaboration_engine_relative_path(session);
     let bundle_relative_path = collaboration_bundle_relative_path(session);
     let media_relative_path = collaboration_media_relative_path(session);
+    let runtime_output = fetch_live_runtime_output_for_session(&state.pool, &session.id).await?;
     let mut issues = Vec::new();
 
     validate_execution_plan_consistency(&runtime.topology.engine, &mut issues);
@@ -351,7 +361,12 @@ async fn inspect_live_runtime_collaboration_artifacts(
         let should_exist = match route.output_kind.as_str() {
             "host_channel" => false,
             "mirror_channel" => route.playback_enabled,
-            "archive" => route.recording_enabled,
+            "archive" => {
+                route.recording_enabled
+                    && runtime_output
+                        .as_ref()
+                        .is_some_and(|output| output.archive_status == "complete")
+            }
             _ => false,
         };
         if should_exist {
@@ -371,6 +386,12 @@ async fn inspect_live_runtime_collaboration_artifacts(
         engine_relative_path: Some(media_relative_path),
         issues,
     })
+}
+
+async fn archive_artifact_exists(state: &SharedState, relative_path: &str) -> AppResult<bool> {
+    tokio::fs::try_exists(media_path_for_relative(state, relative_path))
+        .await
+        .map_err(AppError::Io)
 }
 
 async fn validate_required_artifact_path(
