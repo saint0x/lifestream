@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "entitlement-lifecycle-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, os, urllib.request; base=os.environ.get('LIFESTREAM_BASE_URL','http://127.0.0.1:8080'); data=json.load(urllib.request.urlopen(base + '/health')); assert data['status'] == 'ok' and data['database'] is True; print('health-ok')"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "tests/entitlement-lifecycle-check.py"
+      ],
+      "exit_code": 0,
+      "stdout": "entitlements|inspect|reconcile|expired|deduped\n",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": [
+        "tests/entitlement-lifecycle-check.py"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "entitlements|inspect|reconcile|expired|deduped\n"
+    }
+  ]
+}

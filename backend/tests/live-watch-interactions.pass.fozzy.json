@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "name": "live-watch-interactions-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import os, urllib.request; base=os.environ.get('LIFESTREAM_BASE_URL','http://127.0.0.1:8080'); assert urllib.request.urlopen(base + '/health').status == 200; print('health-ok')"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "tests/live-watch-interactions-check.py"
+      ],
+      "exit_code": 0,
+      "stdout": "live-watch|viewers|notify|clip-dedupe|report\n",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": [
+        "tests/live-watch-interactions-check.py"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "live-watch|viewers|notify|clip-dedupe|report\n"
+    }
+  ]
+}
