@@ -687,6 +687,290 @@ Requirements:
 
 This lets storage stay cache-friendly while authority remains revocable.
 
+## Canonical Control Objects
+
+Lattice should standardize on a small number of canonical authority objects that every plane understands:
+
+- `creator`
+- `channel`
+- `broadcast`
+- `upload_job`
+- `media_asset`
+- `playback_session`
+- `collaboration_session`
+- `collaboration_participant`
+- `collaboration_mirror_grant`
+- `entitlement`
+- `moderation_action`
+
+Rules:
+
+- a `broadcast` is the authority object for a live event
+- an `upload_job` is the authority object for recorded ingest and processing
+- a `media_asset` is the canonical processed result, not the raw source file
+- a `playback_session` is the revocable watch grant, not the content itself
+- a `collaboration_session` is the authority graph for multiplayer live behavior
+
+The media runtime may produce many files and transient runtime handles, but those must collapse back into these objects.
+
+## Ingest Session Classes
+
+Lattice should explicitly distinguish ingest session classes because they have different operational and security properties:
+
+### 1. Live Creator Ingest
+
+Used when a creator is originating a live broadcast to their own channel.
+
+Authority requirements:
+
+- bound to one creator
+- bound to one broadcast
+- validated by stream key or equivalent ephemeral ingest token
+- heartbeat-driven liveness
+- explicit transition into `connected`, `stale`, `terminated`, or `completed`
+
+### 2. Collaboration Guest Ingest
+
+Used when a guest or co-host contributes media into a collaboration session.
+
+Authority requirements:
+
+- bound to one collaboration participant
+- bound to one collaboration session
+- may publish to host output, mirrored guest output, or both, according to authority state
+- must be revocable immediately if the participant is removed or downgraded
+
+### 3. Recorded Upload Ingest
+
+Used for films, episodes, clips, and regular creator uploads.
+
+Authority requirements:
+
+- bound to one upload job
+- resumable and checksum-aware
+- immutable after completion
+- never considered publishable until processing produces a valid `media_asset`
+
+## Codec And Packaging Policy
+
+The initial codec stack should optimize for broad device reach and operational predictability rather than premature exotic complexity.
+
+### Contribution Acceptance
+
+Accept at ingest:
+
+- H.264 / AVC
+- H.265 / HEVC
+- ProRes 422 family
+- AAC-LC
+- Opus
+- PCM
+
+Conditionally accept:
+
+- VP9 imports for recorded content
+- AV1 imports for recorded content when runtime validation is strong
+
+### Playback Packaging Baseline
+
+Initial playback baseline:
+
+- HLS as the canonical public playback packaging
+- fragmented MP4 or MPEG-TS depending on target ladder policy
+- AAC-LC for widest playback compatibility
+- WebVTT for normalized captions
+- JPEG or WebP for poster and thumbnail derivatives
+
+### Ladder Policy
+
+The control plane should decide the allowed rendition ladder class, not the frontend.
+
+Suggested baseline ladder classes:
+
+- `mobile_low`
+- `standard_sdr`
+- `premium_sdr`
+- `premium_hdr` when the source and runtime can support it safely
+
+Each ladder class should define:
+
+- maximum resolution
+- maximum bitrate
+- audio bitrate policy
+- allowed frame-rate ceiling
+- HDR eligibility
+- packaging target
+
+### Subtitle Policy
+
+Subtitle normalization rules:
+
+- normalize text-based subtitle streams to WebVTT
+- preserve source language metadata where known
+- explicitly mark default tracks
+- reject silent subtitle corruption as a soft success
+
+## Latency Classes
+
+Lattice should intentionally support more than one latency class instead of pretending every workload is the same.
+
+### Ultra Low Latency Live
+
+Target use:
+
+- creator livestreams
+- multiplayer collaboration sessions
+- live audience chat coupling
+
+Properties:
+
+- smallest safe segment or chunk strategy
+- aggressive session heartbeat windows
+- faster stale-session reconciliation
+- stronger emphasis on transport stability over perfect compression efficiency
+
+### Standard Live
+
+Target use:
+
+- less interaction-sensitive live broadcasts
+- mirrored simulcast outputs
+
+Properties:
+
+- slightly larger buffering budget
+- simpler packaging policy
+- easier CDN behavior
+
+### VOD Playback
+
+Target use:
+
+- films
+- episodes
+- archived live content
+
+Properties:
+
+- broader ladder
+- stronger quality optimization
+- less aggressive latency tradeoffs
+
+These latency classes must be explicit in runtime configuration and surfaced in control-plane state where relevant.
+
+## Collaboration Routing Contract
+
+The collaboration runtime must treat session topology as an authority-driven graph.
+
+Each participant should have explicit booleans or equivalent authority fields for:
+
+- attached to session
+- visible on host output
+- mirrored to guest channel
+- allowed in live chat
+- allowed to keep local archive or recording
+- currently contributing healthy media
+
+The runtime should not infer these from UI state.
+
+### Required Collaboration Paths
+
+The runtime must support these routing paths:
+
+- guest contribution to host program
+- guest contribution to mirrored guest program
+- host program to host audience playback
+- mirrored guest program to guest audience playback
+- isolated backstage contribution without public fanout
+
+### Audio Principles
+
+Audio routing must assume:
+
+- mix-minus or equivalent participant-safe monitoring
+- no feedback loops across mirrored sessions
+- deterministic mute and removal behavior
+- explicit authority for who may be heard on which output
+
+## Reconciliation Contract
+
+Every long-lived authority object should have a reconciler with a narrow, explicit responsibility.
+
+Required reconciler classes:
+
+- live ingest stale-session reconciler
+- collaboration invite expiry reconciler
+- collaboration mirror grant expiry reconciler
+- playback session invalidation reconciler
+- notification delivery reconciler
+- media processing stale-job reconciler
+- scheduled release reconciler
+- moderation expiry reconciler
+- entitlement expiry reconciler
+
+Reconciliation rules:
+
+- reconcilers operate on persisted facts, not frontend hints
+- reconcilers must be idempotent
+- reconcilers must record operator-meaningful reasons
+- reconcilers must never invent product authority outside documented transitions
+
+## WebSocket And Realtime Contract
+
+Realtime transport exists to deliver timely state, not to replace authoritative writes.
+
+Rules:
+
+- websocket commands must map to explicit backend authority mutations
+- commands must reject impossible transitions with typed reasons
+- every accepted realtime mutation should produce a persisted state change or a persisted event
+- reconnect must rebuild state from persisted authority, not from socket-local memory
+- session presence should be treated as ephemeral evidence, never sole authority
+
+## Operator Observability And SLO Signals
+
+The system should expose enough internal signals that operators can tell whether the platform is healthy before users report failure.
+
+Minimum signals:
+
+- pending media jobs
+- stale media jobs
+- active live ingest sessions
+- stale live ingest sessions
+- active collaboration sessions
+- disconnected collaboration sockets
+- mirrored grant issuance versus revocation counts
+- playback session issuance rate
+- playback session invalidation rate
+- notification dead-letter counts
+
+Operator-facing repair surfaces should exist for:
+
+- replaying or retrying a failed media job
+- reconciling a specific playback session
+- reconciling a specific collaboration session
+- forcing live ingest termination
+- revoking mirrored co-stream permissions
+
+## Failure Domains
+
+Lattice should treat these as separate failure domains:
+
+- authority database failure
+- ingest transport failure
+- packaging runtime failure
+- storage write failure
+- websocket presence drift
+- collaboration routing degradation
+- playback manifest authorization failure
+
+Each failure domain should have:
+
+- a direct detection signal
+- a reconciliation or retry path
+- a terminal escalation rule
+- an operator-visible audit trail
+
 ## Persistence Strategy
 
 SQLite remains acceptable for local development and compact production authority slices where:
@@ -798,7 +1082,7 @@ Operator expectations:
 
 ## Current Assessment
 
-As of Monday, August 17, 2026:
+As of Tuesday, August 18, 2026:
 
 - VOD and playback authority are materially real.
 - Single-host live control plane is materially real.

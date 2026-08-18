@@ -13,6 +13,8 @@ frontend/dist/
 
 media/
 backend/media/
+!backend/src/models/media/
+!backend/src/models/media/**
 
 *.db
 *.db-shm
