@@ -6,8 +6,8 @@
 
 Still unfinished:
 
-- actual host-plus-guest media routing
-- mirrored co-stream media fanout
+- media-engine execution of host-plus-guest routing graphs
+- media-engine execution of mirrored co-stream fanout
 - runtime audio graph execution with enforced mix-minus or equivalent echo prevention
 
 Must close:
@@ -27,4 +27,4 @@ Closed in backend control/runtime:
 
 ## Current Backend Closure Order
 
-1. Add executable collaboration media routing and mirrored fanout.
+1. Execute the collaboration routing graph in the media engine.

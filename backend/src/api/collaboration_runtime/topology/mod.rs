@@ -4,7 +4,10 @@ use super::presence::{
     fetch_visible_collaboration_mirror_pickups_for_session_view,
 };
 use super::*;
-use crate::models::CollaborationContributionAttachment;
+use crate::models::{
+    CollaborationAudioRoute, CollaborationContributionAttachment, CollaborationOutputRoute,
+    CollaborationProgramRoute,
+};
 
 mod outputs;
 mod resolve;
@@ -213,6 +216,19 @@ pub(crate) async fn build_collaboration_runtime_topology(
         &host_output_participant_ids,
         mix_minus_required,
     );
+    let programs = build_topology_programs(
+        session,
+        &outputs,
+        &host_output_participant_ids,
+        &live_participant_ids,
+    );
+    let audio = build_topology_audio(
+        session,
+        &host_output_participant_ids,
+        &live_participant_ids,
+        &backstage_participant_ids,
+        &contributions,
+    );
 
     Ok(CollaborationRuntimeTopology {
         session_id: session.id.clone(),
@@ -229,8 +245,217 @@ pub(crate) async fn build_collaboration_runtime_topology(
         mirrored_creator_ids,
         contributions,
         outputs,
+        programs,
+        audio,
         members,
     })
+}
+
+fn build_topology_programs(
+    session: &CollaborationSessionView,
+    outputs: &[CollaborationOutputRoute],
+    host_output_participant_ids: &[String],
+    live_participant_ids: &[String],
+) -> Vec<CollaborationProgramRoute> {
+    let mut programs = Vec::new();
+    let host_participant_ids = host_output_participant_ids.to_vec();
+    let host_output_ids = session
+        .participants
+        .iter()
+        .filter(|participant| participant.role == "host" || participant.publish_to_host)
+        .flat_map(|participant| {
+            planned_output_ids_for_participant(session, participant, outputs, host_output_participant_ids)
+        })
+        .fold(Vec::new(), |mut ids, output_id| {
+            push_unique(&mut ids, output_id);
+            ids
+        });
+    let host_route_state = program_route_state(outputs, &host_output_ids);
+    programs.push(CollaborationProgramRoute {
+        id: format!("col-program-host-{}", session.id),
+        program_kind: "host_program".to_string(),
+        route_state: host_route_state,
+        source_participant_ids: host_participant_ids.clone(),
+        output_ids: host_output_ids,
+        target_creator_id: Some(session.host_creator_id.clone()),
+        target_broadcast_id: Some(session.source_broadcast_id.clone()),
+        playback_enabled: outputs.iter().any(|output| {
+            output.output_kind == "host_channel"
+                && matches!(output.route_state.as_str(), "active" | "degraded" | "issued")
+        }),
+        recording_enabled: outputs.iter().any(|output| {
+            output.recording_enabled
+                && host_participant_ids
+                    .iter()
+                    .all(|participant_id| output.source_participant_ids.contains(participant_id))
+        }),
+        mix_minus_required: session.participants.iter().any(|participant| {
+            participant.role != "host" && participant.publish_to_host && participant.state == "live"
+        }),
+    });
+
+    for participant in &session.participants {
+        if participant.role == "host" || participant.publish_to_host {
+            continue;
+        }
+        let output_ids =
+            planned_output_ids_for_participant(session, participant, outputs, host_output_participant_ids);
+        if output_ids.is_empty() {
+            continue;
+        }
+        let source_participant_ids = if live_participant_ids.contains(&participant.id) {
+            vec![participant.id.clone()]
+        } else {
+            Vec::new()
+        };
+        programs.push(CollaborationProgramRoute {
+            id: format!("col-program-{}", participant.id),
+            program_kind: "guest_program".to_string(),
+            route_state: program_route_state(outputs, &output_ids),
+            source_participant_ids,
+            output_ids,
+            target_creator_id: participant.creator_id.clone(),
+            target_broadcast_id: outputs
+                .iter()
+                .find(|output| output.id == format!("col-out-mirror-{}", participant.id))
+                .and_then(|output| output.target_broadcast_id.clone()),
+            playback_enabled: outputs.iter().any(|output| {
+                output.id == format!("col-out-mirror-{}", participant.id)
+                    && matches!(output.route_state.as_str(), "active" | "degraded" | "issued")
+            }),
+            recording_enabled: outputs.iter().any(|output| {
+                output.id == format!("col-out-archive-{}", participant.id) && output.recording_enabled
+            }),
+            mix_minus_required: false,
+        });
+    }
+
+    programs
+}
+
+fn build_topology_audio(
+    session: &CollaborationSessionView,
+    host_output_participant_ids: &[String],
+    live_participant_ids: &[String],
+    backstage_participant_ids: &[String],
+    contributions: &[CollaborationContributionAttachment],
+) -> Vec<CollaborationAudioRoute> {
+    session
+        .participants
+        .iter()
+        .map(|participant| {
+            let contribution = contributions
+                .iter()
+                .find(|item| item.participant_id == participant.id)
+                .expect("collaboration contribution should exist for participant");
+            let route_kind = if participant.role == "host" {
+                "program_origin"
+            } else if participant.publish_to_host {
+                "mix_minus_return"
+            } else if !contribution.attached_output_ids.is_empty() {
+                "isolated_program"
+            } else {
+                "inactive"
+            };
+            let route_state = if live_participant_ids.contains(&participant.id) {
+                "live"
+            } else if backstage_participant_ids.contains(&participant.id) {
+                "standby"
+            } else {
+                "inactive"
+            };
+            let receive_program_audio = participant.role != "host" && participant.publish_to_host;
+            let mix_minus_required =
+                participant.role != "host" && participant.publish_to_host && participant.state == "live";
+            let upstream_participant_ids = if participant.role == "host" || !participant.publish_to_host {
+                if contribution.attached_output_ids.is_empty() {
+                    Vec::new()
+                } else {
+                    vec![participant.id.clone()]
+                }
+            } else {
+                host_output_participant_ids.to_vec()
+            };
+            let excluded_participant_ids = if mix_minus_required {
+                vec![participant.id.clone()]
+            } else {
+                Vec::new()
+            };
+
+            CollaborationAudioRoute {
+                participant_id: participant.id.clone(),
+                user_id: participant.user_id.clone(),
+                creator_id: participant.creator_id.clone(),
+                route_kind: route_kind.to_string(),
+                route_state: route_state.to_string(),
+                receive_program_audio,
+                mix_minus_required,
+                upstream_participant_ids,
+                excluded_participant_ids,
+                attached_output_ids: contribution.attached_output_ids.clone(),
+            }
+        })
+        .collect()
+}
+
+fn planned_output_ids_for_participant(
+    session: &CollaborationSessionView,
+    participant: &CollaborationParticipant,
+    outputs: &[CollaborationOutputRoute],
+    host_output_participant_ids: &[String],
+) -> Vec<String> {
+    outputs
+        .iter()
+        .filter(|output| {
+            if participant.role == "host" || participant.publish_to_host {
+                output.id == format!("col-out-host-{}", session.id)
+                    || output.id == format!("col-out-archive-host-{}", session.id)
+                    || output.source_participant_ids == host_output_participant_ids
+            } else {
+                output.id == format!("col-out-mirror-{}", participant.id)
+                    || output.id == format!("col-out-archive-{}", participant.id)
+            }
+        })
+        .map(|output| output.id.clone())
+        .collect()
+}
+
+fn program_route_state(outputs: &[CollaborationOutputRoute], output_ids: &[String]) -> String {
+    let selected = outputs
+        .iter()
+        .filter(|output| output_ids.contains(&output.id))
+        .collect::<Vec<_>>();
+    if selected
+        .iter()
+        .any(|output| matches!(output.route_state.as_str(), "active" | "degraded"))
+    {
+        if selected
+            .iter()
+            .any(|output| output.route_state == "degraded")
+        {
+            "degraded".to_string()
+        } else {
+            "active".to_string()
+        }
+    } else if selected
+        .iter()
+        .any(|output| matches!(output.route_state.as_str(), "issued" | "armed"))
+    {
+        "armed".to_string()
+    } else if selected
+        .iter()
+        .any(|output| output.route_state == "pending_source")
+    {
+        "pending_source".to_string()
+    } else {
+        "inactive".to_string()
+    }
+}
+
+fn push_unique(ids: &mut Vec<String>, value: String) {
+    if !ids.contains(&value) {
+        ids.push(value);
+    }
 }
 
 pub(crate) async fn build_collaboration_runtime_response_for_participant(

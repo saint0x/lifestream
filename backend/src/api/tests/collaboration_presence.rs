@@ -452,6 +452,33 @@ async fn collaboration_runtime_topology_exposes_contributions_and_split_archive_
     assert_eq!(guest_contribution.contribution_state, "awaiting_socket");
     assert!(runtime.topology.mix_minus_required);
     assert!(
+        runtime.topology.programs.iter().any(|program| {
+            program.program_kind == "host_program"
+                && program
+                    .source_participant_ids
+                    .contains(&runtime.session.participant.id)
+                && program
+                    .output_ids
+                    .iter()
+                    .any(|output_id| output_id == &format!("col-out-host-{}", session.id))
+        })
+    );
+    assert!(
+        runtime.topology.programs.iter().any(|program| {
+            program.program_kind == "guest_program"
+                && program
+                    .output_ids
+                    .iter()
+                    .any(|output_id| output_id == &format!("col-out-mirror-{}", participant.id))
+        })
+    );
+    assert!(runtime.topology.audio.iter().any(|route| {
+        route.participant_id == participant.id
+            && route.route_kind == "mix_minus_return"
+            && route.receive_program_audio
+            && route.excluded_participant_ids == vec![participant.id.clone()]
+    }));
+    assert!(
         runtime
             .topology
             .outputs
@@ -582,6 +609,11 @@ async fn collaboration_runtime_topology_skips_guest_outputs_without_authorized_m
             .iter()
             .all(|output_id| output_id != &format!("col-out-archive-{}", participant.id))
     );
+    assert!(runtime.topology.audio.iter().any(|route| {
+        route.participant_id == participant.id
+            && route.route_kind == "inactive"
+            && !route.receive_program_audio
+    }));
 
     Ok(())
 }

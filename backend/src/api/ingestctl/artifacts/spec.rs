@@ -7,9 +7,9 @@ use crate::api::ingestctl::{
 };
 use crate::api::ingestctl::queries::canonical_live_runtime_spec_relative_path;
 use crate::models::{
-    CollaborationContributionAttachment, CollaborationOutputRoute, CollaborationTopologyMember,
-    LiveRuntimeAdvisory, LiveRuntimeArtifactHealth, LiveRuntimeTarget, LiveSourceProbe,
-    LiveSourceValidationReport,
+    CollaborationAudioRoute, CollaborationContributionAttachment, CollaborationOutputRoute,
+    CollaborationProgramRoute, CollaborationTopologyMember, LiveRuntimeAdvisory,
+    LiveRuntimeArtifactHealth, LiveRuntimeTarget, LiveSourceProbe, LiveSourceValidationReport,
 };
 use serde::Serialize;
 
@@ -150,6 +150,8 @@ struct LiveRuntimeCollaborationSpec {
     mirrored_creator_ids: Vec<String>,
     contributions: Vec<CollaborationContributionAttachment>,
     outputs: Vec<CollaborationOutputRoute>,
+    programs: Vec<CollaborationProgramRoute>,
+    audio: Vec<CollaborationAudioRoute>,
     members: Vec<CollaborationTopologyMember>,
 }
 
@@ -587,6 +589,8 @@ async fn build_live_runtime_collaboration_spec(
         mirrored_creator_ids: topology.mirrored_creator_ids,
         contributions: topology.contributions,
         outputs: topology.outputs,
+        programs: topology.programs,
+        audio: topology.audio,
         members: topology.members,
     }))
 }

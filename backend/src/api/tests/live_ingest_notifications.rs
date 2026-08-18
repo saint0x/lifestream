@@ -1847,6 +1847,38 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             })
     );
     assert!(
+        ready_spec["collaboration"]["programs"]
+            .as_array()
+            .expect("collaboration programs array")
+            .iter()
+            .any(|program| {
+                program["programKind"] == "host_program"
+                    && program["outputIds"]
+                        .as_array()
+                        .is_some_and(|outputs| {
+                            outputs.iter().any(|output_id| {
+                                output_id
+                                    == &Value::String(format!(
+                                        "col-out-host-{}",
+                                        collaboration_session.id
+                                    ))
+                            })
+                        })
+            })
+    );
+    assert!(
+        ready_spec["collaboration"]["audio"]
+            .as_array()
+            .expect("collaboration audio routes array")
+            .iter()
+            .any(|route| {
+                route["participantId"] == collaboration_participant.id
+                    && route["routeKind"] == "mix_minus_return"
+                    && route["receiveProgramAudio"] == true
+                    && route["excludedParticipantIds"] == json!([collaboration_participant.id])
+            })
+    );
+    assert!(
         ready_spec["collaboration"]["contributions"]
             .as_array()
             .expect("collaboration contributions array")
