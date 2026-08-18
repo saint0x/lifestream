@@ -1,0 +1,140 @@
+.ls-profile {
+  padding: 48px 40px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.ls-profile__head {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--c-border);
+  flex-wrap: wrap;
+}
+
+.ls-profile__kicker {
+  font-size: 11px;
+  color: var(--c-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  margin-bottom: 8px;
+}
+
+.ls-profile__name {
+  font-size: clamp(40px, 5vw, 56px);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.ls-profile__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--c-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ls-profile__actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.ls-profile__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.ls-profile__stat {
+  padding: 28px 24px;
+  border-right: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--c-bg-elevated);
+}
+.ls-profile__stat:last-child { border-right: none; }
+
+.ls-profile__stat-num {
+  font-size: 40px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  color: var(--c-text);
+}
+
+.ls-profile__stat-label {
+  font-size: 10px;
+  color: var(--c-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.ls-profile__sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.ls-profile__section {
+  padding: 24px;
+  background: var(--c-bg-elevated);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+}
+
+.ls-profile__prefs {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.ls-profile__prefs li {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 13px;
+  color: var(--c-text-dim);
+}
+.ls-profile__prefs li:last-child { border-bottom: none; }
+.ls-profile__value {
+  color: var(--c-text);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ls-profile__plan {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding-top: 8px;
+}
+
+.ls-profile__plan-title {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.ls-profile__plan-meta {
+  font-size: 10px;
+  color: var(--c-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 880px) {
+  .ls-profile__sections { grid-template-columns: 1fr; }
+}

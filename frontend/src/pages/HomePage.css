@@ -1,0 +1,15 @@
+.ls-home {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 80px;
+}
+
+.ls-home__rows {
+  display: flex;
+  flex-direction: column;
+  padding-top: 56px;
+  margin-top: -80px;
+  position: relative;
+  z-index: 3;
+  background: linear-gradient(180deg, transparent 0%, var(--c-bg) 80px);
+}

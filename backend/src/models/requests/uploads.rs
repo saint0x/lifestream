@@ -85,6 +85,10 @@ pub struct PublishUploadJobRequest {
 #[serde(rename_all = "camelCase")]
 pub struct PlaybackAccessQuery {
     pub playback_token: Option<String>,
+    #[serde(rename = "_HLS_msn")]
+    pub hls_msn: Option<i64>,
+    #[serde(rename = "_HLS_part")]
+    pub hls_part: Option<i64>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

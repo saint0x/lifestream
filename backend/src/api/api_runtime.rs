@@ -1,4 +1,5 @@
 use super::*;
+use crate::api::ingestctl::reconcile_live_runtime_output_artifacts_background;
 
 pub(super) fn start_background_workers(state: SharedState) {
     tokio::spawn(async move {
@@ -19,6 +20,13 @@ pub(super) fn start_background_workers(state: SharedState) {
 
             if let Err(error) = reconcile_stale_live_ingest_sessions(state.clone()).await {
                 errors.push(format!("stale live ingest reconciliation failed: {error}"));
+            }
+            if let Err(error) =
+                reconcile_live_runtime_output_artifacts_background(state.clone()).await
+            {
+                errors.push(format!(
+                    "live runtime artifact reconciliation failed: {error}"
+                ));
             }
             if let Err(error) = reconcile_expired_collaboration_invites(state.clone()).await {
                 errors.push(format!(

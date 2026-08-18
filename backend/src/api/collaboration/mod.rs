@@ -3,15 +3,17 @@ use super::*;
 mod host;
 mod member;
 
+pub(crate) use host::{apply_collaboration_participant_update, revoke_collaboration_invite_internal};
+#[cfg(test)]
 pub(crate) use host::{
-    apply_collaboration_participant_update, create_collaboration_invite,
-    create_collaboration_session, end_collaboration_session, get_creator_collaboration_control,
-    get_creator_collaboration_runtime, get_creator_collaboration_session,
-    get_creator_collaboration_socket_session, list_creator_collaboration_events,
-    reconcile_creator_collaboration_socket_session, remove_collaboration_participant,
-    revoke_collaboration_invite, revoke_collaboration_invite_internal,
+    create_collaboration_invite, create_collaboration_session, end_collaboration_session,
+    get_creator_collaboration_control, get_creator_collaboration_runtime,
+    get_creator_collaboration_session, get_creator_collaboration_socket_session,
+    list_creator_collaboration_events, reconcile_creator_collaboration_socket_session,
+    remove_collaboration_participant, revoke_collaboration_invite,
     update_collaboration_participant,
 };
+#[cfg(test)]
 pub(crate) use member::{
     accept_collaboration_invite, get_my_collaboration_runtime, get_my_collaboration_session,
     list_my_collaboration_events, list_my_collaboration_invites,

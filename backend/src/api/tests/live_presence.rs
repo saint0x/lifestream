@@ -256,6 +256,19 @@ async fn metrics_report_creator_live_socket_presence_from_reconciled_state() -> 
 
     assert!(stale_disconnected_at.is_some());
     assert!(text.contains("lifestream_presence_creator_live_sockets 1"));
+    assert!(text.contains("lifestream_live_ingest_active_sessions"));
+    assert!(text.contains("lifestream_live_ingest_ready_outputs"));
+    assert!(text.contains("lifestream_live_ingest_artifact_attention_outputs"));
+    assert!(text.contains("lifestream_live_ingest_manifest_path_missing_outputs"));
+    assert!(text.contains("lifestream_live_ingest_archive_path_missing_outputs"));
+    assert!(text.contains("lifestream_live_ingest_advisory_critical_samples"));
+    assert!(text.contains("lifestream_live_ingest_peak_host_channel_targets"));
+    assert!(text.contains("lifestream_live_ingest_peak_mirror_channel_targets"));
+    assert!(text.contains("lifestream_live_ingest_peak_archive_targets"));
+    assert!(text.contains("lifestream_live_ingest_peak_active_targets"));
+    assert!(text.contains("lifestream_live_ingest_peak_degraded_targets"));
+    assert!(text.contains("lifestream_live_ingest_peak_armed_targets"));
+    assert!(text.contains("lifestream_live_ingest_peak_pending_source_targets"));
     Ok(())
 }
 

@@ -1,4 +1,5 @@
 use super::*;
+use crate::api::moderation::validate_live_delivery_class;
 
 pub(crate) fn routes() -> Router<SharedState> {
     Router::new()
@@ -126,6 +127,9 @@ async fn update_creator_live_settings(
     if let Some(value) = input.auto_mod_level.as_deref() {
         validate_auto_mod_level(value)?;
     }
+    if let Some(value) = input.delivery_class.as_deref() {
+        validate_live_delivery_class(value)?;
+    }
 
     let scenes = input.scenes.unwrap_or(current.scenes);
     let active_scene_id = input
@@ -136,7 +140,7 @@ async fn update_creator_live_settings(
         r#"
         UPDATE creator_live_settings
         SET subscriber_only = ?, slow_mode_seconds = ?, auto_mod_level = ?,
-            notify_followers_default = ?, active_scene_id = ?, scenes_json = ?
+            notify_followers_default = ?, delivery_class = ?, active_scene_id = ?, scenes_json = ?
         WHERE creator_id = ?
         "#,
     )
@@ -152,6 +156,12 @@ async fn update_creator_live_settings(
         input
             .notify_followers_default
             .unwrap_or(current.notify_followers_default) as i64,
+    )
+    .bind(
+        input
+            .delivery_class
+            .as_deref()
+            .unwrap_or(current.delivery_class.as_str()),
     )
     .bind(&active_scene_id)
     .bind(to_json(&scenes)?)

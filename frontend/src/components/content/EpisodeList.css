@@ -1,0 +1,137 @@
+.ls-eplist {
+  padding: 0 40px;
+  margin-bottom: 64px;
+}
+
+.ls-eplist__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+
+.ls-eplist__title {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.ls-eplist__seasons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ls-eplist__season {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  color: var(--c-text-faint);
+  font-size: 12px;
+  background: var(--c-surface);
+  transition: all 160ms var(--ease-out);
+}
+.ls-eplist__season:hover {
+  color: var(--c-text-dim);
+  border-color: var(--c-border-hi);
+}
+.ls-eplist__season.is-active {
+  color: var(--c-bg);
+  background: var(--c-text);
+  border-color: var(--c-text);
+}
+.ls-eplist__season.is-active .mono { color: var(--c-bg); }
+
+.ls-eplist__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid var(--c-border);
+}
+
+.ls-eplist__item {
+  display: grid;
+  grid-template-columns: 40px 200px 1fr;
+  gap: 20px;
+  padding: 20px 0;
+  align-items: center;
+  border-bottom: 1px solid var(--c-border);
+  transition: background 180ms var(--ease-out);
+}
+.ls-eplist__item:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+.ls-eplist__num {
+  font-size: 20px;
+  color: var(--c-text-faint);
+  letter-spacing: -0.02em;
+}
+.ls-eplist__item:hover .ls-eplist__num { color: var(--c-text); }
+
+.ls-eplist__thumb {
+  position: relative;
+  width: 200px;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+}
+.ls-eplist__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ls-eplist__play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  color: var(--c-text);
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out);
+}
+.ls-eplist__item:hover .ls-eplist__play { opacity: 1; }
+
+.ls-eplist__body { min-width: 0; }
+
+.ls-eplist__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.ls-eplist__ep-title {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.ls-eplist__dur {
+  font-size: 11px;
+  color: var(--c-text-faint);
+  letter-spacing: 0.06em;
+}
+
+.ls-eplist__synopsis {
+  font-size: 12px;
+  color: var(--c-text-faint);
+  line-height: 1.55;
+  margin-bottom: 6px;
+  max-width: 680px;
+}
+
+.ls-eplist__aired {
+  font-size: 10px;
+  color: var(--c-text-ghost);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}

@@ -116,6 +116,8 @@ async fn terminating_ingest_resets_creator_live_operational_metrics() -> AppResu
             dropped_frames: 2,
             cpu_percent: Some(31),
             free_disk_gb: Some(712.4),
+            ingest_latency_ms: None,
+            source_probe: None,
         }),
     )
     .await?
@@ -272,6 +274,8 @@ async fn admin_can_inspect_and_reconcile_playback_session_by_id() -> AppResult<(
         Path(session_id),
         Query(PlaybackAccessQuery {
             playback_token: Some(playback_token),
+            hls_msn: None,
+            hls_part: None,
         }),
     )
     .await
@@ -293,6 +297,8 @@ async fn refreshing_playback_session_rotates_token_and_invalidates_old_token() -
         Path(session_id.clone()),
         Query(PlaybackAccessQuery {
             playback_token: Some(playback_token.clone()),
+            hls_msn: None,
+            hls_part: None,
         }),
     )
     .await?
@@ -308,6 +314,8 @@ async fn refreshing_playback_session_rotates_token_and_invalidates_old_token() -
         Path(session_id.clone()),
         Query(PlaybackAccessQuery {
             playback_token: Some(playback_token.clone()),
+            hls_msn: None,
+            hls_part: None,
         }),
     )
     .await
@@ -319,6 +327,8 @@ async fn refreshing_playback_session_rotates_token_and_invalidates_old_token() -
         Path(session_id.clone()),
         Query(PlaybackAccessQuery {
             playback_token: Some(refreshed.playback_token.clone()),
+            hls_msn: None,
+            hls_part: None,
         }),
     )
     .await?

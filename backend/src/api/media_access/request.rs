@@ -87,6 +87,14 @@ pub(crate) async fn serve_media_file(
     authorize_media_request(&state, &headers, &query, &relative_path).await?;
     let full_path = media_path_for_relative(&state, &relative_path);
     let file_exists = tokio::fs::try_exists(&full_path).await?;
+    let content_type = media_content_type(&relative_path);
+    if relative_path.ends_with(".m3u8") {
+        let body =
+            load_playback_manifest_body(&state, &query, &relative_path, &full_path, file_exists)
+                .await?;
+        return Ok(([(header::CONTENT_TYPE, content_type)], Body::from(body)).into_response());
+    }
+
     let bytes = tokio::fs::read(&full_path).await.map_err(|error| {
         warn!(
             relative_path = %relative_path,
@@ -102,7 +110,6 @@ pub(crate) async fn serve_media_file(
         }
     })?;
 
-    let content_type = media_content_type(&relative_path);
     if relative_path.ends_with(".vtt") {
         if let Some(playback_token) = query.playback_token.as_deref() {
             let text =
@@ -116,6 +123,158 @@ pub(crate) async fn serve_media_file(
         }
     }
     Ok(([(header::CONTENT_TYPE, content_type)], Body::from(bytes)).into_response())
+}
+
+async fn load_playback_manifest_body(
+    state: &SharedState,
+    query: &PlaybackAccessQuery,
+    relative_path: &str,
+    full_path: &FsPath,
+    file_exists: bool,
+) -> AppResult<String> {
+    let raw = if let Some(playback_token) = query.playback_token.as_deref() {
+        let session =
+            validate_playback_session_token_for_path(&state.pool, playback_token, relative_path)
+                .await?;
+        load_hls_manifest_with_optional_blocking_reload(state, query, &session, relative_path, full_path)
+            .await?
+    } else {
+        tokio::fs::read_to_string(full_path).await.map_err(|error| {
+            warn!(
+                relative_path = %relative_path,
+                full_path = %full_path.display(),
+                file_exists,
+                error = %error,
+                "media manifest read failed"
+            );
+            if error.kind() == std::io::ErrorKind::NotFound {
+                AppError::NotFound
+            } else {
+                AppError::Io(error)
+            }
+        })?
+    };
+
+    if let Some(playback_token) = query.playback_token.as_deref() {
+        let manifest_dir = PathBuf::from(relative_path)
+            .parent()
+            .map(PathBuf::from)
+            .ok_or_else(|| AppError::BadRequest("invalid playback manifest path".to_string()))?;
+        Ok(raw
+            .lines()
+            .map(|line| {
+                if line.is_empty() {
+                    line.to_string()
+                } else if line.starts_with("#EXT-X-MEDIA:") {
+                    rewrite_hls_manifest_media_uri_line(line, &manifest_dir, playback_token)
+                } else if line.starts_with("#EXT-X-MAP:") || line.starts_with("#EXT-X-PART:") {
+                    rewrite_hls_manifest_media_uri_line(line, &manifest_dir, playback_token)
+                } else if line.starts_with('#') {
+                    line.to_string()
+                } else {
+                    rewrite_hls_manifest_reference(line, &manifest_dir, playback_token)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n")
+    } else {
+        Ok(raw)
+    }
+}
+
+async fn load_hls_manifest_with_optional_blocking_reload(
+    state: &SharedState,
+    query: &PlaybackAccessQuery,
+    session: &PlaybackSession,
+    relative_path: &str,
+    full_path: &FsPath,
+) -> AppResult<String> {
+    let mut body = tokio::fs::read_to_string(full_path).await.map_err(AppError::Io)?;
+    if session.content_kind != "live" {
+        return Ok(body);
+    }
+
+    let target = fetch_live_stream_playback_target(&state.pool, &session.content_id).await?;
+    if !target.runtime_output.blocking_reload_enabled {
+        return Ok(body);
+    }
+    if relative_path == target.playback_relative_path {
+        return Ok(body);
+    }
+    let playback_manifest_path = PathBuf::from(&target.playback_relative_path);
+    let Some(parent) = playback_manifest_path.parent() else {
+        return Ok(body);
+    };
+    if !relative_path.starts_with(parent.to_string_lossy().as_ref()) {
+        return Ok(body);
+    }
+
+    let requested = requested_live_manifest_cursor(query);
+    let Some(requested) = requested else {
+        return Ok(body);
+    };
+    let current = parse_live_manifest_cursor(&body);
+    if !requested_manifest_cursor_is_ahead(requested, current) {
+        return Ok(body);
+    }
+
+    let deadline = std::time::Instant::now()
+        + std::time::Duration::from_millis(
+            (target.runtime_output.target_segment_duration_sec.max(1) as u64 * 1_000)
+                .min(3_000),
+        );
+    while std::time::Instant::now() < deadline {
+        tokio::time::sleep(std::time::Duration::from_millis(125)).await;
+        let next_body = tokio::fs::read_to_string(full_path).await.map_err(AppError::Io)?;
+        let next_cursor = parse_live_manifest_cursor(&next_body);
+        body = next_body;
+        if !requested_manifest_cursor_is_ahead(requested, next_cursor) {
+            break;
+        }
+    }
+
+    Ok(body)
+}
+
+fn requested_live_manifest_cursor(query: &PlaybackAccessQuery) -> Option<(i64, Option<i64>)> {
+    query.hls_msn.map(|msn| (msn, query.hls_part))
+}
+
+fn requested_manifest_cursor_is_ahead(
+    requested: (i64, Option<i64>),
+    current: (i64, Option<i64>),
+) -> bool {
+    if requested.0 > current.0 {
+        return true;
+    }
+    requested.0 == current.0
+        && requested.1.unwrap_or(0) > current.1.unwrap_or(0)
+}
+
+fn parse_live_manifest_cursor(body: &str) -> (i64, Option<i64>) {
+    let mut media_sequence = 0_i64;
+    let mut part_count = 0_i64;
+    let mut saw_segment = false;
+
+    for line in body.lines() {
+        if let Some(value) = line.strip_prefix("#EXT-X-MEDIA-SEQUENCE:") {
+            media_sequence = value.trim().parse::<i64>().unwrap_or(0);
+        } else if line.starts_with("#EXT-X-PART:") {
+            part_count += 1;
+        } else if line.starts_with("#EXTINF:") {
+            saw_segment = true;
+        }
+    }
+
+    let part = if part_count > 0 {
+        Some(part_count - 1)
+    } else if saw_segment {
+        Some(0)
+    } else {
+        None
+    };
+    (media_sequence, part)
 }
 
 pub(crate) async fn authorize_media_request(

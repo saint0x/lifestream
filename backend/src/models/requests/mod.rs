@@ -8,7 +8,8 @@ mod uploads;
 mod viewer;
 
 pub use admin::{
-    AdminLiveIngestQuery, AdminMediaJobQuery, AdminPlaybackSessionQuery, NotificationDeliveryQuery,
+    AdminLiveIngestOverviewQuery, AdminLiveIngestQuery, AdminMediaJobQuery,
+    AdminPlaybackSessionQuery, NotificationDeliveryQuery,
 };
 pub use collaboration::{
     CollaborationEventsQuery, CreateCollaborationInviteRequest, CreateCollaborationSessionRequest,
@@ -23,8 +24,9 @@ pub use creator::{
 };
 pub use live::{
     CreateLiveModerationActionRequest, IngestConnectRequest, IngestConnectResponse,
-    IngestHeartbeatRequest, LiveReportRequest, ResolveLiveStreamReportRequest,
-    StartBroadcastRequest, TerminateLiveIngestRequest, UpdateLiveRequest,
+    IngestHeartbeatRequest, LiveReportRequest, LiveSourceProbeInput,
+    RepairLiveRuntimeOutputRequest, ResolveLiveStreamReportRequest, StartBroadcastRequest,
+    TerminateLiveIngestRequest, UpdateLiveRequest, UpdateLiveRuntimeStateRequest,
 };
 pub use uploads::{
     AppendUploadChunkQuery, BulkUploadRequest, CreateUploadJobRequest, PlaybackAccessQuery,

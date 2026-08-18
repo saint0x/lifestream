@@ -5,16 +5,20 @@ mod health;
 mod live;
 
 pub(crate) use catalog::bootstrap;
+pub(crate) use health::{health, health_live, health_ready, metrics};
+#[cfg(test)]
 pub(crate) use health::{
     check_binary_available, check_media_root_writable, check_runtime_dependencies_with_binaries,
-    health, health_live, health_ready, metrics,
 };
 pub(crate) use live::{
-    LimitQuery, PersistedChatMessage, create_clip_request, create_live_moderation_action,
-    get_live_moderation_action, get_live_viewer_preview, list_chat_messages,
-    list_live_moderation_actions, list_live_streams, reconcile_live_moderation_action,
-    remove_live_stream_moderator, resolve_live_stream_report, revoke_live_moderation_action,
+    create_clip_request, create_live_moderation_action, get_live_moderation_action,
+    get_live_viewer_preview, list_chat_messages, list_live_moderation_actions,
+    list_live_streams, reconcile_live_moderation_action, remove_live_stream_moderator,
+    resolve_live_stream_report, revoke_live_moderation_action,
 };
+pub(crate) use live::PersistedChatMessage;
+#[cfg(test)]
+pub(crate) use live::LimitQuery;
 
 pub(super) fn routes() -> Router<SharedState> {
     Router::new()

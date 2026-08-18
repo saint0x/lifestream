@@ -144,6 +144,7 @@ pub struct CreatorLiveSettings {
     pub slow_mode_seconds: i64,
     pub auto_mod_level: String,
     pub notify_followers_default: bool,
+    pub delivery_class: String,
     pub active_scene_id: String,
     pub scenes: Vec<CreatorScene>,
 }

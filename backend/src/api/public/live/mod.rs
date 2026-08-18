@@ -20,9 +20,11 @@ mod discovery;
 mod moderation;
 
 pub(crate) use audience::{
-    LimitQuery, PersistedChatMessage, create_clip_request, enable_live_notify,
-    get_live_viewer_preview, list_chat_messages, post_chat_message, report_live_stream,
+    PersistedChatMessage, create_clip_request, enable_live_notify, get_live_viewer_preview,
+    list_chat_messages, post_chat_message, report_live_stream,
 };
+#[cfg(test)]
+pub(crate) use audience::LimitQuery;
 pub(crate) use discovery::{get_live_discovery, get_live_stream, list_live_streams};
 pub(crate) use moderation::{
     add_live_stream_moderator, list_live_moderation_audit_log, list_live_stream_moderators,

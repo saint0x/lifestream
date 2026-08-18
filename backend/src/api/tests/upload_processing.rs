@@ -223,6 +223,8 @@ async fn processed_upload_materializes_thumbnail_variant_and_publish_uses_it() -
         HeaderMap::new(),
         Query(PlaybackAccessQuery {
             playback_token: Some(grant.playback_token.clone()),
+            hls_msn: None,
+            hls_part: None,
         }),
     )
     .await?;
@@ -473,6 +475,8 @@ async fn processed_upload_materializes_webvtt_caption_variant_from_embedded_subt
         Path(grant.session.id.clone()),
         Query(PlaybackAccessQuery {
             playback_token: Some(grant.playback_token.clone()),
+            hls_msn: None,
+            hls_part: None,
         }),
     )
     .await?;
@@ -748,6 +752,8 @@ async fn processed_upload_materializes_multi_audio_variants_and_playback_honors_
         Path(preferred_grant.session.id.clone()),
         Query(PlaybackAccessQuery {
             playback_token: Some(preferred_grant.playback_token.clone()),
+            hls_msn: None,
+            hls_part: None,
         }),
     )
     .await?;

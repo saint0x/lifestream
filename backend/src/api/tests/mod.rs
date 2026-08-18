@@ -4,7 +4,7 @@ mod support;
 use support::*;
 
 mod collaboration_invites;
-mod collaboration_mirror;
+mod mirror;
 mod collaboration_presence;
 mod health_runtime;
 mod live_ingest_notifications;

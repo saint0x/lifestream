@@ -2,18 +2,18 @@ use super::*;
 
 pub(super) fn router(state: SharedState) -> Router {
     Router::new()
-        .merge(admin_ops_routes())
+        .merge(admin_ops::routes())
         .merge(public::routes())
         .merge(me::routes())
         .merge(creator_business::routes())
         .merge(creator_core::routes())
-        .merge(creator_live_routes())
-        .merge(collaboration_routes())
-        .merge(live_ingest_routes())
-        .merge(playback_routes())
-        .merge(realtime_routes())
-        .merge(uploads_routes())
-        .merge(upload_jobs_routes())
+        .merge(creator_live::routes())
+        .merge(collaboration::routes())
+        .merge(ingest::routes())
+        .merge(playback::routes())
+        .merge(realtime::routes())
+        .merge(uploads::routes())
+        .merge(upload_jobs::routes())
         .route("/api/v1/media/*path", get(serve_media_file))
         .layer(middleware::from_fn_with_state(
             state.clone(),

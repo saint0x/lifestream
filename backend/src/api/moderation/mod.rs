@@ -21,5 +21,6 @@ pub(crate) use queries::{
 };
 pub(crate) use validation::{
     validate_auto_mod_level, validate_creator_enforcement_scope, validate_creator_moderator_role,
-    validate_live_moderation_action_type, validate_live_report_status, validate_slow_mode_seconds,
+    validate_live_delivery_class, validate_live_moderation_action_type,
+    validate_live_report_status, validate_slow_mode_seconds,
 };

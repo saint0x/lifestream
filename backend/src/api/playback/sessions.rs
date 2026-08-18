@@ -1,5 +1,6 @@
 use super::grants::{build_live_playback_grant, build_upload_playback_grant};
 use super::*;
+use crate::api::ingestctl::ensure_live_runtime_output_ready_for_playback;
 
 pub(crate) async fn create_upload_playback_session(
     State(state): State<SharedState>,
@@ -24,6 +25,12 @@ pub(crate) async fn create_live_playback_session(
 ) -> AppResult<Json<PlaybackGrant>> {
     let maybe_identity = optional_identity(&state.pool, &headers).await?;
     let target = fetch_live_stream_playback_target(&state.pool, &stream_id).await?;
+    ensure_live_runtime_output_ready_for_playback(
+        &state,
+        &target.runtime_output,
+        &target.playback_relative_path,
+    )
+    .await?;
     let now = Utc::now();
     let session_id = format!("pbs-{}", Uuid::new_v4().simple());
     let playback_token = format!("pbt_{}", Uuid::new_v4().simple());

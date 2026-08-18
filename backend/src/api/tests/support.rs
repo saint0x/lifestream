@@ -339,7 +339,7 @@ pub(super) async fn reset_creator_live_state(
 ) -> AppResult<()> {
     let now = Utc::now().to_rfc3339();
     sqlx::query(
-        "UPDATE live_ingest_sessions SET status = 'ended', disconnected_at = COALESCE(disconnected_at, ?), last_heartbeat_at = ? WHERE creator_id = ?",
+        "UPDATE live_ingest_sessions SET status = 'ended', contribution_state = 'disconnected', disconnected_at = COALESCE(disconnected_at, ?), last_heartbeat_at = ? WHERE creator_id = ?",
     )
     .bind(&now)
     .bind(&now)
@@ -368,6 +368,19 @@ pub(super) async fn reset_creator_live_state(
         .bind(&creator.handle)
         .execute(pool)
         .await?;
+    Ok(())
+}
+
+pub(super) async fn write_test_media_file(
+    state: &SharedState,
+    relative_path: &str,
+    body: impl AsRef<[u8]>,
+) -> AppResult<()> {
+    let full_path = media_path_for_relative(state, relative_path);
+    ensure_parent_dir(&full_path).await?;
+    tokio::fs::write(full_path, body)
+        .await
+        .map_err(AppError::Io)?;
     Ok(())
 }
 

@@ -5,9 +5,13 @@ import sqlite3
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 BASE = os.environ.get("LIFESTREAM_BASE_URL", "http://127.0.0.1:8080")
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
+DB = os.environ.get(
+    "LIFESTREAM_DB_PATH",
+    str(Path(__file__).resolve().parents[2] / "lifestream.db"),
+)
 AUTH = "Bearer lifestream-local-dev-token"
 HEADERS = {"Authorization": AUTH, "Content-Type": "application/json"}
 SUFFIX = str(int(time.time() * 1000))
@@ -27,6 +31,27 @@ def req(path, method="GET", body=None, headers=None):
     except urllib.error.HTTPError as exc:
         raw = exc.read().decode()
         return exc.code, json.loads(raw) if raw else None
+
+
+conn = sqlite3.connect(DB)
+now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+conn.execute(
+    """
+    INSERT OR REPLACE INTO auth_sessions (
+        id, user_id, label, token_hash, scopes_json, created_at, expires_at, revoked_at, last_used_at
+    ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL)
+    """,
+    (
+        "sess-runtime-control-owner",
+        "usr-1",
+        "runtime-control-owner",
+        hashlib.sha256("lifestream-local-dev-token".encode()).hexdigest(),
+        json.dumps(["user", "creator", "creator:write", "admin"]),
+        now,
+    ),
+)
+conn.commit()
+conn.close()
 
 
 live_before = req("/api/v1/creator/me/live", headers={"Authorization": AUTH})
@@ -90,10 +115,35 @@ heartbeat = req(
 )
 assert heartbeat[0] == 200, heartbeat
 
+runtime_report = req(
+    f"/api/v1/ingest/live/{session['id']}/runtime",
+    "POST",
+    {
+        "runtimeState": "healthy",
+        "packagingStatus": "ready",
+        "archiveStatus": "not_started",
+        "manifestRelativePath": f"live/{live[1]['profile']['id']}/{broadcast['id']}/master.m3u8",
+        "archiveRelativePath": None,
+        "lastError": None,
+    },
+    {"Content-Type": "application/json", "x-ingest-token": ingest_token},
+)
+assert runtime_report[0] == 200, runtime_report
+assert runtime_report[1]["runtimeState"] == "healthy", runtime_report
+assert runtime_report[1]["packagingStatus"] == "ready", runtime_report
+
 runtime = req("/api/v1/creator/me/live/runtime", headers={"Authorization": AUTH})
 assert runtime[0] == 200, runtime
 payload = runtime[1]
 assert payload["activeSession"]["id"] == session["id"], payload
+assert payload["activeRuntimeOutput"]["sessionId"] == session["id"], payload
+assert payload["activeRuntimeOutput"]["runtimeState"] == "healthy", payload
+assert payload["activeRuntimeOutput"]["packagingStatus"] == "ready", payload
+assert payload["telemetrySummary"]["totalSamples"] >= 2, payload
+assert payload["telemetrySummary"]["lastRuntimeState"] == "healthy", payload
+assert payload["recentRuntimeOutputs"][0]["sessionId"] == session["id"], payload
+assert payload["recentTelemetry"][0]["sampleKind"] == "runtime_report", payload
+assert payload["recentTelemetry"][0]["runtimeState"] == "healthy", payload
 assert payload["snapshot"]["currentBroadcast"]["status"] == "live", payload
 assert payload["health"]["samples"][-1]["viewers"] == 1888, payload
 assert payload["collaboration"]["activeSession"] is None, payload
@@ -103,6 +153,44 @@ assert any(
     event["eventType"] == "heartbeat_recorded" and event["payload"]["viewers"] == 1888
     for event in payload["recentEvents"]
 ), payload
+
+repair = req(
+    f"/api/v1/creator/me/live/ingest/{session['id']}/runtime/repair",
+    "POST",
+    {
+        "reason": "runtime control verification",
+        "runtimeState": "healthy",
+        "packagingStatus": "ready",
+        "archiveStatus": "finalizing",
+        "archiveRelativePath": f"archive/{live[1]['profile']['id']}/{broadcast['id']}/archive.mp4",
+        "clearLastError": True,
+    },
+    HEADERS,
+)
+assert repair[0] == 200, repair
+assert repair[1]["actorScope"] == "creator", repair
+assert repair[1]["record"]["runtimeOutput"]["archiveStatus"] == "finalizing", repair
+assert repair[1]["record"]["recentTelemetry"][0]["sampleKind"] == "runtime_repair", repair
+assert any(action["field"] == "archiveStatus" for action in repair[1]["actions"]), repair
+
+runtime_after_repair = req("/api/v1/creator/me/live/runtime", headers={"Authorization": AUTH})
+assert runtime_after_repair[0] == 200, runtime_after_repair
+assert runtime_after_repair[1]["activeRuntimeOutput"]["archiveStatus"] == "finalizing", runtime_after_repair
+assert runtime_after_repair[1]["recentTelemetry"][0]["sampleKind"] == "runtime_repair", runtime_after_repair
+
+overview = req("/api/v1/admin/live/ingest/overview", headers={"Authorization": AUTH})
+assert overview[0] == 200, overview
+assert overview[1]["activeSessions"] >= 1, overview
+assert overview[1]["readyOutputs"] >= 1, overview
+assert overview[1]["archiveFinalizingOutputs"] >= 1, overview
+assert any(
+    item["creatorId"] == live[1]["profile"]["id"] and item["activeSessions"] >= 1
+    for item in overview[1]["creatorBreakdown"]
+), overview
+
+metrics_body = urllib.request.urlopen(BASE + "/metrics").read().decode()
+assert "lifestream_live_ingest_active_sessions" in metrics_body, metrics_body
+assert "lifestream_live_ingest_ready_outputs" in metrics_body, metrics_body
 
 created = req(
     "/api/v1/creator/me/live/collabs/sessions",
@@ -198,10 +286,15 @@ runtime_after = req("/api/v1/creator/me/live/runtime", headers={"Authorization":
 assert runtime_after[0] == 200, runtime_after
 after = runtime_after[1]
 assert after["activeSession"] is None, after
+assert after["activeRuntimeOutput"] is None, after
 assert after["snapshot"]["profile"]["liveStatus"] == "offline", after
 assert after["collaboration"]["activeSession"] is None, after
 assert after["recentSessions"][0]["id"] == session["id"], after
 assert after["recentSessions"][0]["status"] == "terminated", after
+assert after["recentRuntimeOutputs"][0]["sessionId"] == session["id"], after
+assert after["recentRuntimeOutputs"][0]["runtimeState"] == "disconnected", after
+assert after["recentTelemetry"][0]["sampleKind"] == "session_state", after
+assert after["recentTelemetry"][0]["runtimeState"] == "disconnected", after
 assert any(event["eventType"] == "creator_terminated" for event in after["recentEvents"]), after
 
 print("runtime|socket-inspect|connected|terminated")

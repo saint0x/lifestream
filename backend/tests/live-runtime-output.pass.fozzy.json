@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "live-runtime-output-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/health')); print(f\"{data['status']}|{str(data['database']).lower()}\")"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "backend/tests/live-runtime-control-check.py"
+      ],
+      "exit_code": 0,
+      "stdout": "runtime|socket-inspect|connected|terminated\n",
+      "stderr": "",
+      "times": 1
+    }
+  ]
+}

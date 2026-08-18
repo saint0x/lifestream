@@ -14,10 +14,12 @@ mod sessions;
 mod state;
 mod watch;
 
+#[cfg(test)]
 pub(crate) use entitlements::{
     get_my_membership_entitlement, get_my_purchase_entitlement,
     reconcile_my_membership_entitlement, reconcile_my_purchase_entitlement,
 };
+#[cfg(test)]
 pub(crate) use sessions::revoke_session;
 
 pub(super) fn routes() -> Router<SharedState> {

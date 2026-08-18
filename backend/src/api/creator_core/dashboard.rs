@@ -17,7 +17,7 @@ pub(crate) async fn get_creator_state(
     let identity = require_identity(&state.pool, &headers).await?;
     Ok(Json(
         fetch_creator_app_state(
-            &state.pool,
+            &state,
             &identity,
             &CreatorContentQuery {
                 kind: None,

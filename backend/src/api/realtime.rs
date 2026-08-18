@@ -6,10 +6,13 @@ mod sockets;
 
 pub(super) use chat::persist_chat_message;
 pub(super) use collaboration::{
-    CollaborationSocketCommand, execute_collaboration_socket_command,
-    fetch_current_collaboration_socket_session_view, reconcile_collaboration_expiry_for_host_read,
+    execute_collaboration_socket_command, reconcile_collaboration_expiry_for_host_read,
     reconcile_collaboration_expiry_for_participant_read,
     reconcile_collaboration_session_expiry_for_read,
+};
+#[cfg(test)]
+pub(super) use collaboration::{
+    CollaborationSocketCommand, fetch_current_collaboration_socket_session_view,
 };
 pub(super) use sockets::auth_session_channel_id;
 

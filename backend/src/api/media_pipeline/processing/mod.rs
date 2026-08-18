@@ -1,15 +1,16 @@
 use super::*;
 
+mod attempt;
+mod derive;
 mod finalize;
 mod persist;
-mod stages;
+mod verify;
 
+use attempt::begin_media_processing_attempt;
+use derive::generate_derivatives_and_package;
 pub(crate) use finalize::finalize_media_processing;
 pub(crate) use persist::persist_media_variants;
-use stages::{
-    begin_media_processing_attempt, generate_derivatives_and_package, run_integrity_stage,
-    run_probe_stage,
-};
+use verify::{run_integrity_stage, run_probe_stage};
 
 pub(crate) struct MediaProcessingAttempt {
     pub(crate) job: UploadJob,

@@ -10,9 +10,9 @@ pub(crate) use deliveries::{
     fetch_notifications_rows, reconcile_notification_deliveries_for_read,
     reconcile_single_notification_delivery,
 };
-pub(crate) use dispatch::{
-    claim_notification_delivery_attempt, dispatch_notification_delivery, enqueue_notification_event,
-};
+pub(crate) use dispatch::{dispatch_notification_delivery, enqueue_notification_event};
+#[cfg(test)]
+pub(crate) use dispatch::claim_notification_delivery_attempt;
 pub(crate) use inbox::{
     fetch_user_notifications, list_my_notifications, mark_my_notification_read,
 };

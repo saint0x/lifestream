@@ -27,6 +27,15 @@ pub(crate) fn validate_auto_mod_level(level: &str) -> AppResult<()> {
     }
 }
 
+pub(crate) fn validate_live_delivery_class(delivery_class: &str) -> AppResult<()> {
+    match delivery_class {
+        "standard_hls" | "ll_hls" => Ok(()),
+        _ => Err(AppError::BadRequest(
+            "deliveryClass must be one of standard_hls or ll_hls".to_string(),
+        )),
+    }
+}
+
 pub(crate) fn validate_live_moderation_action_type(action_type: &str) -> AppResult<()> {
     match action_type {
         "mute" | "ban" | "shadowban" => Ok(()),

@@ -7,6 +7,7 @@ pub struct UpdateCreatorLiveSettingsRequest {
     pub slow_mode_seconds: Option<i64>,
     pub auto_mod_level: Option<String>,
     pub notify_followers_default: Option<bool>,
+    pub delivery_class: Option<String>,
     pub active_scene_id: Option<String>,
     pub scenes: Option<Vec<CreatorScene>>,
 }

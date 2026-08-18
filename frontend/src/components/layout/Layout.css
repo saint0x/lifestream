@@ -1,0 +1,23 @@
+.ls-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--c-bg);
+}
+
+.ls-layout__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ls-layout__content {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+/* chromeless layout — used on /watch pages for immersive playback */
+.ls-layout--chromeless .ls-layout__content {
+  padding: 0;
+}

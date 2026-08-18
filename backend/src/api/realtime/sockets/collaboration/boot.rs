@@ -1,0 +1,155 @@
+use super::*;
+use tokio::sync::broadcast;
+
+pub(super) struct SocketBootstrap {
+    pub(super) session: CollaborationSessionView,
+    pub(super) presence_session_token: String,
+    pub(super) last_seen_at: String,
+    pub(super) subscription: broadcast::Receiver<WsEvent>,
+    pub(super) auth_subscription: broadcast::Receiver<WsEvent>,
+}
+
+pub(super) async fn bootstrap_socket(
+    state: &SharedState,
+    session_id: &str,
+    identity: &RequestIdentity,
+    after_seq: i64,
+    session_token: Option<&str>,
+    channel_id: &str,
+    sender: &mut futures_util::stream::SplitSink<WebSocket, Message>,
+) -> Option<SocketBootstrap> {
+    if ensure_identity_session_active(&state.pool, identity)
+        .await
+        .is_err()
+    {
+        return None;
+    }
+    let session = fetch_current_collaboration_socket_session_view(state, session_id, identity)
+        .await
+        .ok()?;
+    let (presence_session_token, resumed, last_seen_at) =
+        register_collaboration_socket_session(&state.pool, &session, identity, session_token)
+            .await
+            .ok()?;
+    let session_grants = fetch_collaboration_mirror_grants_for_session(&state.pool, session_id)
+        .await
+        .unwrap_or_default();
+    let session_pickups = fetch_collaboration_mirror_pickups_for_session(&state.pool, session_id)
+        .await
+        .unwrap_or_default();
+    let visible_grants =
+        fetch_visible_collaboration_mirror_grants_for_session_view(&state.pool, &session)
+            .await
+            .unwrap_or_default();
+    let visible_pickups =
+        fetch_visible_collaboration_mirror_pickups_for_session_view(&state.pool, &session)
+            .await
+            .unwrap_or_default();
+    let (snapshot_events, replay_events) =
+        load_collaboration_socket_event_bootstrap(&state.pool, session_id, after_seq)
+            .await
+            .unwrap_or_default();
+    let (subscription, _) = state.realtime.join(channel_id).await;
+    let (auth_subscription, _) = state
+        .realtime
+        .join(&auth_session_channel_id(&identity.session_id))
+        .await;
+    let connected_participants =
+        count_active_collaboration_socket_sessions(&state.pool, session_id)
+            .await
+            .unwrap_or_default();
+    let topology = build_collaboration_runtime_topology(
+        &state.pool,
+        &session,
+        &session_grants,
+        &session_pickups,
+        connected_participants,
+    )
+    .await
+    .unwrap_or_else(|_| fallback_topology(&session, connected_participants));
+    let visible_snapshot_events =
+        filter_visible_collaboration_events_for_session(&session, snapshot_events);
+    let visible_replay_events =
+        filter_visible_collaboration_events_for_session(&session, replay_events);
+
+    let _ = sender
+        .send(Message::Text(
+            serde_json::to_string(&WsEvent::SessionReady {
+                channel: channel_id.to_string(),
+                session_token: presence_session_token.clone(),
+                resumed,
+                last_seen_at: last_seen_at.clone(),
+            })
+            .unwrap_or_default(),
+        ))
+        .await;
+    let _ = sender
+        .send(Message::Text(
+            serde_json::to_string(&WsEvent::CollaborationSnapshot {
+                session: session.clone(),
+                grants: visible_grants,
+                pickups: visible_pickups,
+                events: visible_snapshot_events,
+            })
+            .unwrap_or_default(),
+        ))
+        .await;
+    if after_seq > 0 {
+        let _ = sender
+            .send(Message::Text(
+                serde_json::to_string(&WsEvent::CollaborationReplay {
+                    after_seq,
+                    events: visible_replay_events,
+                })
+                .unwrap_or_default(),
+            ))
+            .await;
+    }
+    let _ = sender
+        .send(Message::Text(
+            serde_json::to_string(&WsEvent::CollaborationTopology { topology }).unwrap_or_default(),
+        ))
+        .await;
+    state
+        .realtime
+        .publish(
+            channel_id,
+            WsEvent::CollaborationPresence {
+                session_id: session_id.to_string(),
+                connected_participants: connected_participants as i64,
+            },
+        )
+        .await;
+    let _ = publish_collaboration_topology(state, session_id).await;
+
+    Some(SocketBootstrap {
+        session,
+        presence_session_token,
+        last_seen_at,
+        subscription,
+        auth_subscription,
+    })
+}
+
+fn fallback_topology(
+    session: &CollaborationSessionView,
+    connected_participants: i64,
+) -> CollaborationRuntimeTopology {
+    CollaborationRuntimeTopology {
+        session_id: session.id.clone(),
+        source_broadcast_id: session.source_broadcast_id.clone(),
+        chat_mode: session.chat_mode.clone(),
+        recording_policy: session.recording_policy.clone(),
+        shared_chat: session.chat_mode == "shared",
+        mix_minus_required: false,
+        recording_owner_creator_id: None,
+        connected_participants,
+        host_output_participant_ids: Vec::new(),
+        backstage_participant_ids: Vec::new(),
+        live_participant_ids: Vec::new(),
+        mirrored_creator_ids: Vec::new(),
+        contributions: Vec::new(),
+        outputs: Vec::new(),
+        members: Vec::new(),
+    }
+}

@@ -370,12 +370,203 @@ async fn collaboration_presence_counts_distinct_participants_not_socket_tabs() -
 
     let per_session = count_active_collaboration_socket_sessions(&state.pool, &session.id).await?;
     let all_active = count_all_active_collaboration_socket_sessions(&state.pool).await?;
-    let runtime =
-        build_collaboration_runtime_response_for_host(&state.pool, session.clone()).await?;
+    let runtime = build_collaboration_runtime_response_for_host(
+        &state.pool,
+        fetch_collaboration_session_by_id(&state.pool, &session.id).await?,
+    )
+    .await?;
 
     assert_eq!(per_session, 2);
     assert!(all_active >= 2);
     assert_eq!(runtime.topology.connected_participants, 2);
+    Ok(())
+}
+
+#[tokio::test]
+async fn collaboration_runtime_topology_exposes_contributions_and_split_archive_outputs()
+-> AppResult<()> {
+    let (state, creator) = setup_test_state().await?;
+    let (session, participant) =
+        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    sqlx::query(
+        "UPDATE collaboration_sessions SET recording_policy = 'split_archive' WHERE id = ?",
+    )
+    .bind(&session.id)
+    .execute(&state.pool)
+    .await?;
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        r#"
+        INSERT INTO live_ingest_sessions (
+            id, creator_id, broadcast_id, stream_key_hash, ingest_token_hash, protocol,
+            contribution_class, contribution_state, ingest_server, status, bitrate_kbps, viewers,
+            dropped_frames, connected_at, last_heartbeat_at, disconnected_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'connected', ?, ?, ?, ?, ?, NULL)
+        "#,
+    )
+    .bind(format!("ing-test-{}", Uuid::new_v4().simple()))
+    .bind(&creator.id)
+    .bind(&session.source_broadcast_id)
+    .bind(hash_token(&creator.stream_key))
+    .bind(hash_token(&format!(
+        "fixture-ingest-token-{}",
+        Uuid::new_v4().simple()
+    )))
+    .bind("rtmp")
+    .bind("rtmp_push")
+    .bind("healthy")
+    .bind("topology-test-ingest")
+    .bind(6100_i64)
+    .bind(144_i64)
+    .bind(0_i64)
+    .bind(&now)
+    .bind(&now)
+    .execute(&state.pool)
+    .await?;
+    let _grant =
+        issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
+
+    let runtime = build_collaboration_runtime_response_for_host(
+        &state.pool,
+        fetch_collaboration_session_by_id(&state.pool, &session.id).await?,
+    )
+    .await?;
+    let host_contribution = runtime
+        .topology
+        .contributions
+        .iter()
+        .find(|item| item.participant_id == runtime.session.participant.id)
+        .expect("host contribution should exist");
+    let guest_contribution = runtime
+        .topology
+        .contributions
+        .iter()
+        .find(|item| item.participant_id == participant.id)
+        .expect("guest contribution should exist");
+
+    assert_eq!(host_contribution.transport_class, "rtmp_push");
+    assert_eq!(host_contribution.contribution_state, "healthy");
+    assert!(host_contribution.ingest_session_id.is_some());
+    assert_eq!(guest_contribution.transport_class, "collaboration_socket");
+    assert_eq!(guest_contribution.contribution_state, "awaiting_socket");
+    assert!(runtime.topology.mix_minus_required);
+    assert!(
+        runtime
+            .topology
+            .outputs
+            .iter()
+            .any(|output| output.output_kind == "host_channel"
+                && output.target_creator_id.as_deref() == Some(creator.id.as_str()))
+    );
+    assert!(
+        runtime
+            .topology
+            .outputs
+            .iter()
+            .any(|output| output.output_kind == "mirror_channel"
+                && output.target_creator_id.as_deref() == Some("crt-atlas"))
+    );
+    assert!(
+        runtime
+            .topology
+            .outputs
+            .iter()
+            .filter(|output| output.output_kind == "archive" && output.recording_enabled)
+            .count()
+            >= 2
+    );
+    assert!(
+        guest_contribution
+            .attached_output_ids
+            .iter()
+            .any(|output_id| output_id == &format!("col-out-archive-{}", participant.id))
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn collaboration_runtime_topology_skips_guest_outputs_without_authorized_mirror_route()
+-> AppResult<()> {
+    let (state, creator) = setup_test_state().await?;
+    let (session, participant) =
+        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        r#"
+        INSERT INTO live_ingest_sessions (
+            id, creator_id, broadcast_id, stream_key_hash, ingest_token_hash, protocol,
+            contribution_class, contribution_state, ingest_server, status, bitrate_kbps, viewers,
+            dropped_frames, connected_at, last_heartbeat_at, disconnected_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'connected', ?, ?, ?, ?, ?, NULL)
+        "#,
+    )
+    .bind(format!("ing-test-{}", Uuid::new_v4().simple()))
+    .bind(&creator.id)
+    .bind(&session.source_broadcast_id)
+    .bind(hash_token(&creator.stream_key))
+    .bind(hash_token(&format!(
+        "fixture-ingest-token-{}",
+        Uuid::new_v4().simple()
+    )))
+    .bind("rtmp")
+    .bind("rtmp_push")
+    .bind("healthy")
+    .bind("topology-test-unauthorized")
+    .bind(6100_i64)
+    .bind(144_i64)
+    .bind(0_i64)
+    .bind(&now)
+    .bind(&now)
+    .execute(&state.pool)
+    .await?;
+
+    let runtime = build_collaboration_runtime_response_for_host(
+        &state.pool,
+        fetch_collaboration_session_by_id(&state.pool, &session.id).await?,
+    )
+    .await?;
+    let guest_contribution = runtime
+        .topology
+        .contributions
+        .iter()
+        .find(|item| item.participant_id == participant.id)
+        .expect("guest contribution should exist");
+    let guest_member = runtime
+        .topology
+        .members
+        .iter()
+        .find(|item| item.participant_id == participant.id)
+        .expect("guest member should exist");
+
+    assert_eq!(guest_member.mirror_pickup_state, "eligible");
+    assert!(
+        runtime
+            .topology
+            .outputs
+            .iter()
+            .all(|output| output.id != format!("col-out-mirror-{}", participant.id))
+    );
+    assert!(
+        runtime
+            .topology
+            .outputs
+            .iter()
+            .all(|output| output.id != format!("col-out-archive-{}", participant.id))
+    );
+    assert!(
+        guest_contribution
+            .attached_output_ids
+            .iter()
+            .all(|output_id| output_id != &format!("col-out-mirror-{}", participant.id))
+    );
+    assert!(
+        guest_contribution
+            .attached_output_ids
+            .iter()
+            .all(|output_id| output_id != &format!("col-out-archive-{}", participant.id))
+    );
+
     Ok(())
 }
 

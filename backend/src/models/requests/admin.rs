@@ -26,6 +26,12 @@ pub struct AdminLiveIngestQuery {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AdminLiveIngestOverviewQuery {
+    pub creator_id: Option<Id>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AdminPlaybackSessionQuery {
     pub creator_id: Option<Id>,
     pub content_id: Option<Id>,

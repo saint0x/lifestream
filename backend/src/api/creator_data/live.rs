@@ -8,8 +8,8 @@ pub(crate) async fn ensure_creator_live_settings_row(
         r#"
         INSERT OR IGNORE INTO creator_live_settings (
             creator_id, subscriber_only, slow_mode_seconds, auto_mod_level, notify_followers_default,
-            active_scene_id, scenes_json, bitrate_kbps, cpu_percent, dropped_frames, free_disk_gb
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            delivery_class, active_scene_id, scenes_json, bitrate_kbps, cpu_percent, dropped_frames, free_disk_gb
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
     )
     .bind(creator_id)
@@ -17,6 +17,7 @@ pub(crate) async fn ensure_creator_live_settings_row(
     .bind(3_i64)
     .bind("standard")
     .bind(1_i64)
+    .bind("standard_hls")
     .bind("cam-main")
     .bind(
         json!([
@@ -44,7 +45,7 @@ pub(crate) async fn fetch_creator_live_settings(
     let row = sqlx::query(
         r#"
         SELECT subscriber_only, slow_mode_seconds, auto_mod_level, notify_followers_default,
-               active_scene_id, scenes_json
+               delivery_class, active_scene_id, scenes_json
         FROM creator_live_settings
         WHERE creator_id = ?
         "#,
@@ -59,6 +60,7 @@ pub(crate) async fn fetch_creator_live_settings(
         slow_mode_seconds: row.get("slow_mode_seconds"),
         auto_mod_level: row.get("auto_mod_level"),
         notify_followers_default: row.get::<i64, _>("notify_followers_default") == 1,
+        delivery_class: row.get("delivery_class"),
         active_scene_id: row.get("active_scene_id"),
         scenes: from_json(row.get::<String, _>("scenes_json"))?,
     })

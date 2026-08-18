@@ -1,0 +1,232 @@
+/* ------------------------------------------------------------------
+   LIFESTREAM — design tokens & global styles
+   Aesthetic: refined black, geometric, monospaced accents, sharp
+   typography. Vercel-influenced chrome; HBO-max-quality content art.
+   ------------------------------------------------------------------ */
+
+:root {
+  --c-bg:           #000000;
+  --c-bg-elevated:  #0a0a0a;
+  --c-bg-raised:    #111111;
+  --c-surface:      #141414;
+  --c-surface-hi:   #1a1a1a;
+  --c-border:       rgba(255, 255, 255, 0.08);
+  --c-border-hi:    rgba(255, 255, 255, 0.14);
+  --c-border-strong:rgba(255, 255, 255, 0.22);
+
+  --c-text:         #fafafa;
+  --c-text-dim:     rgba(255, 255, 255, 0.66);
+  --c-text-faint:   rgba(255, 255, 255, 0.42);
+  --c-text-ghost:   rgba(255, 255, 255, 0.22);
+
+  --c-accent:       #ffffff;
+  --c-live:         #ff2d55;
+  --c-live-glow:    rgba(255, 45, 85, 0.38);
+  --c-success:      #3dffb5;
+  --c-warning:      #ffcc3d;
+  --c-info:         #4ea1ff;
+
+  --f-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --f-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --f-serif: "Instrument Serif", ui-serif, Georgia, serif;
+
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+  --r-xl: 14px;
+  --r-pill: 999px;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-20: 80px;
+
+  --header-h: 64px;
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 72px;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+*::selection {
+  background: var(--c-text);
+  color: var(--c-bg);
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--f-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+body {
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(1200px 800px at 85% -10%, rgba(255, 255, 255, 0.03), transparent 60%),
+    radial-gradient(900px 700px at -10% 110%, rgba(255, 45, 85, 0.04), transparent 60%),
+    linear-gradient(180deg, #000 0%, #000 100%);
+  background-attachment: fixed;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+input, textarea {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--c-text-faint);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+ul { list-style: none; }
+
+/* ---------- utility classes ---------- */
+
+.mono {
+  font-family: var(--f-mono);
+  font-feature-settings: "ss01", "zero";
+}
+
+.serif {
+  font-family: var(--f-serif);
+}
+
+.dim     { color: var(--c-text-dim); }
+.faint   { color: var(--c-text-faint); }
+.ghost   { color: var(--c-text-ghost); }
+
+.uppercase {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar { display: none; }
+
+.scroll-y {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-border-hi) transparent;
+}
+.scroll-y::-webkit-scrollbar { width: 8px; }
+.scroll-y::-webkit-scrollbar-thumb {
+  background: var(--c-border-hi);
+  border-radius: 8px;
+}
+.scroll-y::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- grain overlay for atmosphere ---------- */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  z-index: 9999;
+}
+
+/* ---------- focus ring ---------- */
+:focus-visible {
+  outline: 1px solid var(--c-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ---------- keyframes ---------- */
+@keyframes pulse-live {
+  0%, 100% { box-shadow: 0 0 0 0 var(--c-live-glow); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slide-right {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.fade-up {
+  animation: fade-up 600ms var(--ease-out) both;
+}
+
+.fade-in {
+  animation: fade-in 400ms var(--ease-out) both;
+}
