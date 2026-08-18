@@ -879,6 +879,41 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         "mix_minus"
     );
     assert!(
+        ready_spec["collaboration"]["engine"]["buses"]
+            .as_array()
+            .expect("execution buses array")
+            .iter()
+            .any(|bus| bus["busKind"] == "host_program")
+    );
+    assert!(
+        ready_spec["collaboration"]["engine"]["buses"]
+            .as_array()
+            .expect("execution buses array")
+            .iter()
+            .any(|bus| bus["busKind"] == "mirror_channel")
+    );
+    assert!(
+        ready_spec["collaboration"]["engine"]["operations"]
+            .as_array()
+            .expect("execution operations array")
+            .iter()
+            .any(|operation| operation["operationKind"] == "attach_contribution")
+    );
+    assert!(
+        ready_spec["collaboration"]["engine"]["operations"]
+            .as_array()
+            .expect("execution operations array")
+            .iter()
+            .any(|operation| operation["operationKind"] == "fanout_mirror")
+    );
+    assert!(
+        ready_spec["collaboration"]["engine"]["operations"]
+            .as_array()
+            .expect("execution operations array")
+            .iter()
+            .any(|operation| operation["operationKind"] == "return_audio")
+    );
+    assert!(
         ready_spec["collaboration"]["engine"]["edges"]
             .as_array()
             .expect("execution edges array")

@@ -83,12 +83,38 @@ pub struct CollaborationExecutionEdge {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CollaborationExecutionBus {
+    pub id: Id,
+    pub bus_kind: String,
+    pub route_state: String,
+    pub participant_id: Option<Id>,
+    pub target_creator_id: Option<Id>,
+    pub target_broadcast_id: Option<Id>,
+    pub mix_minus_required: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollaborationExecutionOperation {
+    pub id: Id,
+    pub operation_kind: String,
+    pub input_bus_ids: Vec<Id>,
+    pub output_bus_id: Id,
+    pub route_state: String,
+    pub excluded_participant_ids: Vec<Id>,
+    pub mix_minus_required: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CollaborationExecutionPlan {
     pub execution_mode: String,
     pub fanout_mode: String,
     pub audio_mode: String,
     pub nodes: Vec<CollaborationExecutionNode>,
     pub edges: Vec<CollaborationExecutionEdge>,
+    pub buses: Vec<CollaborationExecutionBus>,
+    pub operations: Vec<CollaborationExecutionOperation>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
