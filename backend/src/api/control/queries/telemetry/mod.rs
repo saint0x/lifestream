@@ -4,7 +4,10 @@ use crate::models::{LiveRuntimeTelemetry, LiveRuntimeTelemetrySummary};
 mod current;
 mod recent;
 mod record;
+mod record_collab;
+mod record_detail;
 mod summary;
+mod summary_rows;
 
 pub(crate) use current::fetch_current_operational_telemetry;
 pub(crate) use recent::{
