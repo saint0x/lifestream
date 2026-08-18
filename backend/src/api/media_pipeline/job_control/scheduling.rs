@@ -77,10 +77,6 @@ pub(crate) async fn schedule_media_processing(
     creator_id: String,
     job_id: String,
 ) {
-    if !state.media_processing_jobs.try_acquire(&job_id).await {
-        return;
-    }
-
     tokio::spawn(async move {
         let result = process_media_job(state.clone(), &creator_id, &job_id).await;
         if let Err((error, lease_updated_at)) = result {
@@ -95,6 +91,5 @@ pub(crate) async fn schedule_media_processing(
             )
             .await;
         }
-        state.media_processing_jobs.release(&job_id).await;
     });
 }

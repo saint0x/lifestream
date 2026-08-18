@@ -19,7 +19,6 @@ pub(crate) async fn reconcile_stale_media_processing_jobs(state: SharedState) ->
     for row in rows {
         let job_id: String = row.get("id");
         let creator_id: String = row.get("creator_id");
-        state.media_processing_jobs.release(&job_id).await;
         let _ = super::failures::fail_media_job(
             &state.pool,
             &creator_id,
@@ -88,7 +87,6 @@ pub(crate) async fn reconcile_single_media_job(
     let mut actions = Vec::new();
 
     if before.status == "processing" && is_upload_job_stale(&before) {
-        state.media_processing_jobs.release(job_id).await;
         let transitioned = fail_media_job_for_lease(
             &state.pool,
             &creator_id,

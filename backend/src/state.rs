@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashMap, VecDeque},
     path::PathBuf,
     sync::Arc,
     sync::atomic::{AtomicU64, AtomicUsize, Ordering},
@@ -20,7 +20,6 @@ pub struct AppState {
     pub realtime: RealtimeHub,
     pub rate_limits: RateLimitStore,
     pub metrics: MetricsStore,
-    pub media_processing_jobs: MediaProcessingJobStore,
     pub background_worker: BackgroundWorkerHealthStore,
     started_at: Instant,
 }
@@ -38,7 +37,6 @@ impl AppState {
             realtime: RealtimeHub::default(),
             rate_limits: RateLimitStore::default(),
             metrics: MetricsStore::default(),
-            media_processing_jobs: MediaProcessingJobStore::default(),
             background_worker: BackgroundWorkerHealthStore::default(),
             started_at: Instant::now(),
         }
@@ -72,11 +70,6 @@ pub struct MetricsStore {
     in_flight_requests: Arc<AtomicU64>,
     total_rate_limits: Arc<AtomicU64>,
     status_counts: Arc<Mutex<HashMap<u16, u64>>>,
-}
-
-#[derive(Clone, Default)]
-pub struct MediaProcessingJobStore {
-    inner: Arc<Mutex<HashSet<String>>>,
 }
 
 #[derive(Clone, Default)]
@@ -249,17 +242,6 @@ impl MetricsStore {
 
     pub async fn status_counts(&self) -> HashMap<u16, u64> {
         self.status_counts.lock().await.clone()
-    }
-}
-
-impl MediaProcessingJobStore {
-    pub async fn try_acquire(&self, job_id: &str) -> bool {
-        let mut guard = self.inner.lock().await;
-        guard.insert(job_id.to_string())
-    }
-
-    pub async fn release(&self, job_id: &str) {
-        self.inner.lock().await.remove(job_id);
     }
 }
 

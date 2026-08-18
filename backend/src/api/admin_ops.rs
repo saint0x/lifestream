@@ -167,10 +167,6 @@ pub(super) async fn retry_admin_media_job(
             "only failed or stale processing media jobs can be retried by operators".to_string(),
         ));
     }
-    state
-        .media_processing_jobs
-        .release(&job.upload_job.id)
-        .await;
     requeue_media_job_for_processing(&state.pool, &job.creator_id, &job.upload_job.id).await?;
     schedule_media_processing(
         state.clone(),
