@@ -3,7 +3,7 @@ use super::*;
 
 mod admin;
 mod creator;
-mod ingest;
+mod live;
 mod repair;
 
 #[cfg(test)]
@@ -19,7 +19,7 @@ pub(crate) use creator::{
     terminate_creator_live_ingest,
 };
 #[cfg(test)]
-pub(crate) use ingest::{
+pub(crate) use live::{
     connect_live_ingest, disconnect_live_ingest, heartbeat_live_ingest, report_live_runtime,
     terminate_live_ingest,
 };
@@ -88,22 +88,22 @@ pub(super) fn routes() -> Router<SharedState> {
         )
         .route(
             "/api/v1/ingest/live/connect",
-            post(ingest::connect_live_ingest),
+            post(live::connect_live_ingest),
         )
         .route(
             "/api/v1/ingest/live/:session_id/heartbeat",
-            post(ingest::heartbeat_live_ingest),
+            post(live::heartbeat_live_ingest),
         )
         .route(
             "/api/v1/ingest/live/:session_id/disconnect",
-            post(ingest::disconnect_live_ingest),
+            post(live::disconnect_live_ingest),
         )
         .route(
             "/api/v1/ingest/live/:session_id/terminate",
-            post(ingest::terminate_live_ingest),
+            post(live::terminate_live_ingest),
         )
         .route(
             "/api/v1/ingest/live/:session_id/runtime",
-            post(ingest::report_live_runtime),
+            post(live::report_live_runtime),
         )
 }
