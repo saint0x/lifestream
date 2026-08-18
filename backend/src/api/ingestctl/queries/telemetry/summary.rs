@@ -126,6 +126,10 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
                 AS peak_host_channel_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.mirrorChannelCount') AS INTEGER), 0))
                 AS peak_mirror_channel_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.sharedProgramMirrorChannelCount') AS INTEGER), 0))
+                AS peak_shared_program_mirror_channel_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.guestIsolatedMirrorChannelCount') AS INTEGER), 0))
+                AS peak_guest_isolated_mirror_channel_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.archiveCount') AS INTEGER), 0))
                 AS peak_archive_target_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.activeCount') AS INTEGER), 0))
@@ -247,6 +251,12 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         peak_mirror_channel_count: total_row
             .get::<Option<i64>, _>("peak_mirror_channel_count")
             .unwrap_or(0),
+        peak_shared_program_mirror_channel_count: total_row
+            .get::<Option<i64>, _>("peak_shared_program_mirror_channel_count")
+            .unwrap_or(0),
+        peak_guest_isolated_mirror_channel_count: total_row
+            .get::<Option<i64>, _>("peak_guest_isolated_mirror_channel_count")
+            .unwrap_or(0),
         peak_archive_target_count: total_row
             .get::<Option<i64>, _>("peak_archive_target_count")
             .unwrap_or(0),
@@ -328,6 +338,12 @@ async fn fetch_live_runtime_telemetry_summary_by_scope(
         last_mirror_channel_count: latest_row
             .as_ref()
             .and_then(|row| row.get("mirror_channel_count")),
+        last_shared_program_mirror_channel_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("shared_program_mirror_channel_count")),
+        last_guest_isolated_mirror_channel_count: latest_row
+            .as_ref()
+            .and_then(|row| row.get("guest_isolated_mirror_channel_count")),
         last_archive_target_count: latest_row
             .as_ref()
             .and_then(|row| row.get("archive_target_count")),
@@ -384,6 +400,10 @@ async fn fetch_latest_telemetry_row(
             CAST(json_extract(detail_json, '$.targets.collaborationCount') AS INTEGER) AS collaboration_target_count,
             CAST(json_extract(detail_json, '$.targets.hostChannelCount') AS INTEGER) AS host_channel_count,
             CAST(json_extract(detail_json, '$.targets.mirrorChannelCount') AS INTEGER) AS mirror_channel_count,
+            CAST(json_extract(detail_json, '$.targets.sharedProgramMirrorChannelCount') AS INTEGER)
+                AS shared_program_mirror_channel_count,
+            CAST(json_extract(detail_json, '$.targets.guestIsolatedMirrorChannelCount') AS INTEGER)
+                AS guest_isolated_mirror_channel_count,
             CAST(json_extract(detail_json, '$.targets.archiveCount') AS INTEGER) AS archive_target_count,
             CAST(json_extract(detail_json, '$.targets.activeCount') AS INTEGER) AS active_target_count,
             CAST(json_extract(detail_json, '$.targets.degradedCount') AS INTEGER) AS degraded_target_count,

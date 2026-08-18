@@ -21,6 +21,7 @@ pub(crate) use creator::update_creator_live;
 #[cfg(test)]
 pub(crate) use ingest::{
     connect_live_ingest, disconnect_live_ingest, heartbeat_live_ingest, report_live_runtime,
+    terminate_live_ingest,
 };
 
 pub(super) fn routes() -> Router<SharedState> {
@@ -96,6 +97,10 @@ pub(super) fn routes() -> Router<SharedState> {
         .route(
             "/api/v1/ingest/live/:session_id/disconnect",
             post(ingest::disconnect_live_ingest),
+        )
+        .route(
+            "/api/v1/ingest/live/:session_id/terminate",
+            post(ingest::terminate_live_ingest),
         )
         .route(
             "/api/v1/ingest/live/:session_id/runtime",

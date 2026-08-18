@@ -100,6 +100,10 @@ pub(crate) async fn fetch_admin_live_ingest_overview(
                 AS peak_host_channel_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.mirrorChannelCount') AS INTEGER), 0))
                 AS peak_mirror_channel_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.sharedProgramMirrorChannelCount') AS INTEGER), 0))
+                AS peak_shared_program_mirror_channel_count,
+            MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.guestIsolatedMirrorChannelCount') AS INTEGER), 0))
+                AS peak_guest_isolated_mirror_channel_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.archiveCount') AS INTEGER), 0))
                 AS peak_archive_target_count,
             MAX(COALESCE(CAST(json_extract(detail_json, '$.targets.activeCount') AS INTEGER), 0))
@@ -124,6 +128,20 @@ pub(crate) async fn fetch_admin_live_ingest_overview(
                 ORDER BY t.collected_at DESC
                 LIMIT 1
             ) AS last_mirror_channel_count,
+            (
+                SELECT CAST(json_extract(t.detail_json, '$.targets.sharedProgramMirrorChannelCount') AS INTEGER)
+                FROM live_runtime_telemetry t
+                WHERE (? IS NULL OR t.creator_id = ?)
+                ORDER BY t.collected_at DESC
+                LIMIT 1
+            ) AS last_shared_program_mirror_channel_count,
+            (
+                SELECT CAST(json_extract(t.detail_json, '$.targets.guestIsolatedMirrorChannelCount') AS INTEGER)
+                FROM live_runtime_telemetry t
+                WHERE (? IS NULL OR t.creator_id = ?)
+                ORDER BY t.collected_at DESC
+                LIMIT 1
+            ) AS last_guest_isolated_mirror_channel_count,
             (
                 SELECT CAST(json_extract(t.detail_json, '$.targets.archiveCount') AS INTEGER)
                 FROM live_runtime_telemetry t
@@ -163,6 +181,10 @@ pub(crate) async fn fetch_admin_live_ingest_overview(
         WHERE (? IS NULL OR creator_id = ?)
         "#,
     )
+    .bind(scoped_filter)
+    .bind(scoped_filter)
+    .bind(scoped_filter)
+    .bind(scoped_filter)
     .bind(scoped_filter)
     .bind(scoped_filter)
     .bind(scoped_filter)
@@ -535,6 +557,12 @@ pub(crate) async fn fetch_admin_live_ingest_overview(
         peak_mirror_channel_count: telemetry_row
             .get::<Option<i64>, _>("peak_mirror_channel_count")
             .unwrap_or(0),
+        peak_shared_program_mirror_channel_count: telemetry_row
+            .get::<Option<i64>, _>("peak_shared_program_mirror_channel_count")
+            .unwrap_or(0),
+        peak_guest_isolated_mirror_channel_count: telemetry_row
+            .get::<Option<i64>, _>("peak_guest_isolated_mirror_channel_count")
+            .unwrap_or(0),
         peak_archive_target_count: telemetry_row
             .get::<Option<i64>, _>("peak_archive_target_count")
             .unwrap_or(0),
@@ -552,6 +580,10 @@ pub(crate) async fn fetch_admin_live_ingest_overview(
             .unwrap_or(0),
         last_host_channel_count: telemetry_row.get("last_host_channel_count"),
         last_mirror_channel_count: telemetry_row.get("last_mirror_channel_count"),
+        last_shared_program_mirror_channel_count: telemetry_row
+            .get("last_shared_program_mirror_channel_count"),
+        last_guest_isolated_mirror_channel_count: telemetry_row
+            .get("last_guest_isolated_mirror_channel_count"),
         last_archive_target_count: telemetry_row.get("last_archive_target_count"),
         last_active_target_count: telemetry_row.get("last_active_target_count"),
         last_degraded_target_count: telemetry_row.get("last_degraded_target_count"),

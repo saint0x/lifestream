@@ -93,17 +93,23 @@ pub(super) fn build_topology_outputs(
         } else {
             "inactive".to_string()
         };
+        let source_participant_ids = if matches!(host_output_state.as_str(), "active" | "degraded")
+        {
+            if participant.publish_to_host {
+                host_output_participant_ids.to_vec()
+            } else {
+                vec![participant.id.clone()]
+            }
+        } else {
+            Vec::new()
+        };
         outputs.push(CollaborationOutputRoute {
             id: format!("col-out-mirror-{}", participant.id),
             output_kind: "mirror_channel".to_string(),
             route_state: route_state.clone(),
             target_creator_id: participant.creator_id.clone(),
             target_broadcast_id: active_pickup.map(|pickup| pickup.guest_broadcast_id.clone()),
-            source_participant_ids: if matches!(host_output_state.as_str(), "active" | "degraded") {
-                vec![participant.id.clone()]
-            } else {
-                Vec::new()
-            },
+            source_participant_ids: source_participant_ids.clone(),
             playback_enabled: matches!(route_state.as_str(), "active" | "degraded"),
             recording_enabled: false,
             mix_minus_required: participant.publish_to_host && participant.state == "live",
@@ -119,14 +125,7 @@ pub(super) fn build_topology_outputs(
                 },
                 target_creator_id: participant.creator_id.clone(),
                 target_broadcast_id: active_pickup.map(|pickup| pickup.guest_broadcast_id.clone()),
-                source_participant_ids: if matches!(
-                    host_output_state.as_str(),
-                    "active" | "degraded"
-                ) {
-                    vec![participant.id.clone()]
-                } else {
-                    Vec::new()
-                },
+                source_participant_ids: source_participant_ids,
                 playback_enabled: false,
                 recording_enabled: true,
                 mix_minus_required: participant.publish_to_host && participant.state == "live",

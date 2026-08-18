@@ -2,13 +2,7 @@
 
 ## Unfinished Media Runtime Work
 
-### 1. Live Ingest Runtime
-
-Still unfinished:
-
-- real ingest termination instead of control-only connect, heartbeat, and disconnect authority
-
-### 2. Collaboration Routing Runtime
+### 1. Collaboration Routing Runtime
 
 Still unfinished:
 
@@ -19,13 +13,13 @@ Still unfinished:
 
 Must close:
 
-### 3. Low-Latency Delivery Evolution
+### 2. Low-Latency Delivery Evolution
 
 Closed in backend control/runtime:
 
 - blocking reload behavior for low-latency playlists
 
-### 4. Media Quality Improvements
+### 3. Media Quality Improvements
 
 Closed in backend control/runtime:
 

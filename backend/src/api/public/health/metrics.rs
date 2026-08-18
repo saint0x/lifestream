@@ -290,6 +290,24 @@ pub(crate) async fn metrics(State(state): State<SharedState>) -> AppResult<Respo
     );
     let _ = writeln!(
         body,
+        "# TYPE lifestream_live_ingest_peak_shared_program_mirror_channel_targets gauge"
+    );
+    let _ = writeln!(
+        body,
+        "lifestream_live_ingest_peak_shared_program_mirror_channel_targets {}",
+        live_ingest_overview.peak_shared_program_mirror_channel_count
+    );
+    let _ = writeln!(
+        body,
+        "# TYPE lifestream_live_ingest_peak_guest_isolated_mirror_channel_targets gauge"
+    );
+    let _ = writeln!(
+        body,
+        "lifestream_live_ingest_peak_guest_isolated_mirror_channel_targets {}",
+        live_ingest_overview.peak_guest_isolated_mirror_channel_count
+    );
+    let _ = writeln!(
+        body,
         "# TYPE lifestream_live_ingest_peak_archive_targets gauge"
     );
     let _ = writeln!(
@@ -346,6 +364,28 @@ pub(crate) async fn metrics(State(state): State<SharedState>) -> AppResult<Respo
             "# TYPE lifestream_live_ingest_last_mirror_channel_targets gauge"
         );
         let _ = writeln!(body, "lifestream_live_ingest_last_mirror_channel_targets {}", value);
+    }
+    if let Some(value) = live_ingest_overview.last_shared_program_mirror_channel_count {
+        let _ = writeln!(
+            body,
+            "# TYPE lifestream_live_ingest_last_shared_program_mirror_channel_targets gauge"
+        );
+        let _ = writeln!(
+            body,
+            "lifestream_live_ingest_last_shared_program_mirror_channel_targets {}",
+            value
+        );
+    }
+    if let Some(value) = live_ingest_overview.last_guest_isolated_mirror_channel_count {
+        let _ = writeln!(
+            body,
+            "# TYPE lifestream_live_ingest_last_guest_isolated_mirror_channel_targets gauge"
+        );
+        let _ = writeln!(
+            body,
+            "lifestream_live_ingest_last_guest_isolated_mirror_channel_targets {}",
+            value
+        );
     }
     if let Some(value) = live_ingest_overview.last_archive_target_count {
         let _ = writeln!(

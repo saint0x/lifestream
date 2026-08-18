@@ -205,7 +205,7 @@ pub(super) async fn publish_collaboration_reconciliation_event(
     event_type: &str,
     payload: Value,
 ) -> AppResult<CollaborationEvent> {
-    publish_collaboration_event_raw(
+    let event = publish_collaboration_event_raw(
         state,
         session_id,
         actor_user_id,
@@ -213,7 +213,10 @@ pub(super) async fn publish_collaboration_reconciliation_event(
         event_type,
         payload,
     )
-    .await
+    .await?;
+    let session = fetch_collaboration_session_by_id(&state.pool, session_id).await?;
+    let _ = publish_current_creator_live_state(state, &session.host_creator_id).await;
+    Ok(event)
 }
 
 pub(super) fn collaboration_channel_id(session_id: &str) -> String {

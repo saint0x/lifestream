@@ -9,6 +9,7 @@ pub(crate) async fn publish_collaboration_topology(
     session_id: &str,
 ) -> AppResult<()> {
     let session = fetch_collaboration_session_by_id(&state.pool, session_id).await?;
+    sync_collaboration_runtime_persistence(state, &session).await?;
     let response = build_collaboration_runtime_response_for_host(&state.pool, session).await?;
     state
         .realtime
@@ -19,6 +20,22 @@ pub(crate) async fn publish_collaboration_topology(
             },
         )
         .await;
+    Ok(())
+}
+
+async fn sync_collaboration_runtime_persistence(
+    state: &SharedState,
+    session: &CollaborationSession,
+) -> AppResult<()> {
+    let Some(active_session) =
+        fetch_active_live_ingest_session(&state.pool, &session.host_creator_id).await?
+    else {
+        return Ok(());
+    };
+    if active_session.broadcast_id != session.source_broadcast_id {
+        return Ok(());
+    }
+    persist_live_runtime_spec(state, &active_session).await?;
     Ok(())
 }
 

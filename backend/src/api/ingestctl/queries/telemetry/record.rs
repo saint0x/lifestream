@@ -82,6 +82,8 @@ struct LiveRuntimeTelemetryCollaboration {
     audio_mix_mode: &'static str,
     active_route_count: i64,
     armed_archive_route_count: i64,
+    shared_program_mirror_route_count: i64,
+    guest_isolated_mirror_route_count: i64,
 }
 
 async fn build_live_runtime_telemetry_collaboration(
@@ -131,6 +133,25 @@ async fn build_live_runtime_telemetry_collaboration(
     .bind(&session.id)
     .fetch_one(pool)
     .await?;
+    let shared_program_mirror_route_count = session
+        .participants
+        .iter()
+        .filter(|participant| {
+            participant.role != "host"
+                && participant.mirror_to_guest_channel
+                && participant.publish_to_host
+                && participant.state == "live"
+        })
+        .count() as i64;
+    let guest_isolated_mirror_route_count = session
+        .participants
+        .iter()
+        .filter(|participant| {
+            participant.role != "host"
+                && participant.mirror_to_guest_channel
+                && (!participant.publish_to_host || participant.state != "live")
+        })
+        .count() as i64;
     let host_route_active = 1_i64;
     let mirror_route_active = active_pickup_count;
     let active_route_count = host_route_active + mirror_route_active;
@@ -160,6 +181,8 @@ async fn build_live_runtime_telemetry_collaboration(
         },
         active_route_count,
         armed_archive_route_count,
+        shared_program_mirror_route_count,
+        guest_isolated_mirror_route_count,
     }))
 }
 
@@ -304,6 +327,8 @@ fn build_live_runtime_telemetry_detail(
                     "activePickupCount": item.active_pickup_count,
                     "mixMinusRequired": item.mix_minus_required,
                     "audioMixMode": item.audio_mix_mode,
+                    "sharedProgramMirrorRouteCount": item.shared_program_mirror_route_count,
+                    "guestIsolatedMirrorRouteCount": item.guest_isolated_mirror_route_count,
                 })
             })
             .unwrap_or_else(|| json!({ "present": false })),
@@ -317,6 +342,21 @@ fn build_live_runtime_telemetry_detail(
             "variantCount": targets.iter().filter(|target| target.target_kind == "variant").count(),
             "hostChannelCount": targets.iter().filter(|target| target.target_kind == "host_channel").count(),
             "mirrorChannelCount": targets.iter().filter(|target| target.target_kind == "mirror_channel").count(),
+            "sharedProgramMirrorChannelCount": targets
+                .iter()
+                .filter(|target| {
+                    target.target_kind == "mirror_channel"
+                        && target.mix_minus_required
+                        && target.source_participant_ids.len() > 1
+                })
+                .count(),
+            "guestIsolatedMirrorChannelCount": targets
+                .iter()
+                .filter(|target| {
+                    target.target_kind == "mirror_channel"
+                        && !(target.mix_minus_required && target.source_participant_ids.len() > 1)
+                })
+                .count(),
             "archiveCount": targets.iter().filter(|target| target.target_kind == "archive").count(),
             "collaborationCount": targets
                 .iter()

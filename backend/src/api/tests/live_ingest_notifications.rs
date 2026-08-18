@@ -1938,6 +1938,23 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         .iter()
         .filter(|target| target.target_kind == "mirror_channel")
         .count() as i64;
+    let shared_program_mirror_channel_targets = runtime
+        .active_runtime_targets
+        .iter()
+        .filter(|target| {
+            target.target_kind == "mirror_channel"
+                && target.mix_minus_required
+                && target.source_participant_ids.len() > 1
+        })
+        .count() as i64;
+    let guest_isolated_mirror_channel_targets = runtime
+        .active_runtime_targets
+        .iter()
+        .filter(|target| {
+            target.target_kind == "mirror_channel"
+                && !(target.mix_minus_required && target.source_participant_ids.len() > 1)
+        })
+        .count() as i64;
     let archive_targets = runtime
         .active_runtime_targets
         .iter()
@@ -1992,6 +2009,18 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         mirror_channel_targets
     );
     assert_eq!(
+        runtime
+            .telemetry_summary
+            .peak_shared_program_mirror_channel_count,
+        shared_program_mirror_channel_targets
+    );
+    assert_eq!(
+        runtime
+            .telemetry_summary
+            .peak_guest_isolated_mirror_channel_count,
+        guest_isolated_mirror_channel_targets
+    );
+    assert_eq!(
         runtime.telemetry_summary.peak_archive_target_count,
         archive_targets
     );
@@ -2040,6 +2069,18 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         Some(mirror_channel_targets)
     );
     assert_eq!(
+        runtime
+            .telemetry_summary
+            .last_shared_program_mirror_channel_count,
+        Some(shared_program_mirror_channel_targets)
+    );
+    assert_eq!(
+        runtime
+            .telemetry_summary
+            .last_guest_isolated_mirror_channel_count,
+        Some(guest_isolated_mirror_channel_targets)
+    );
+    assert_eq!(
         runtime.telemetry_summary.last_archive_target_count,
         Some(archive_targets)
     );
@@ -2074,6 +2115,10 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
             && sample.detail["targets"]["collaborationCount"] == collaboration_targets
             && sample.detail["targets"]["hostChannelCount"] == host_channel_targets
             && sample.detail["targets"]["mirrorChannelCount"] == mirror_channel_targets
+            && sample.detail["targets"]["sharedProgramMirrorChannelCount"]
+                == shared_program_mirror_channel_targets
+            && sample.detail["targets"]["guestIsolatedMirrorChannelCount"]
+                == guest_isolated_mirror_channel_targets
             && sample.detail["targets"]["archiveCount"] == archive_targets
             && sample.detail["targets"]["activeCount"] == active_targets
             && sample.detail["targets"]["degradedCount"] == degraded_targets
@@ -3134,6 +3179,66 @@ async fn background_runtime_reconciliation_promotes_archive_finalizing_to_comple
         .realtime
         .leave(&creator_live_channel_id(&creator.id))
         .await;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn runtime_termination_closes_session_with_distinct_terminal_event() -> AppResult<()> {
+    let (state, creator) = setup_test_state().await?;
+    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let connected = connect_live_ingest(
+        State(state.clone()),
+        Json(IngestConnectRequest {
+            stream_key: creator.stream_key.clone(),
+            protocol: "rtmp".to_string(),
+            ingest_server: "test-ingest-runtime-terminate".to_string(),
+            broadcast_id: Some(broadcast.id.clone()),
+        }),
+    )
+    .await?
+    .0;
+
+    let mut ingest_headers = HeaderMap::new();
+    ingest_headers.insert(
+        "x-ingest-token",
+        HeaderValue::from_str(&connected.ingest_token).unwrap(),
+    );
+    let terminated = terminate_live_ingest(
+        State(state.clone()),
+        Path(connected.session.id.clone()),
+        ingest_headers,
+        Json(TerminateLiveIngestRequest {
+            reason: Some("encoder exited fatally".to_string()),
+        }),
+    )
+    .await?
+    .0;
+
+    assert_eq!(terminated.status, "terminated");
+
+    let record =
+        fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
+            .await?;
+    let runtime_output = record.runtime_output.expect("runtime output should exist");
+
+    assert_eq!(runtime_output.runtime_state, "disconnected");
+    assert!(
+        record
+            .recent_events
+            .iter()
+            .any(|event| event.event_type == "runtime_terminated"
+                && event.payload["details"]["reason"]
+                    == Value::String("encoder exited fatally".to_string()))
+    );
+    assert!(
+        record
+            .recent_telemetry
+            .iter()
+            .any(|sample| sample.sample_kind == "session_state"
+                && sample.detail["eventType"]
+                    == Value::String("runtime_terminated".to_string()))
+    );
 
     Ok(())
 }

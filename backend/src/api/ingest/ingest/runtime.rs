@@ -18,6 +18,31 @@ pub(crate) async fn disconnect_live_ingest(
     ))
 }
 
+pub(crate) async fn terminate_live_ingest(
+    State(state): State<SharedState>,
+    Path(session_id): Path<String>,
+    headers: HeaderMap,
+    Json(input): Json<TerminateLiveIngestRequest>,
+) -> AppResult<Json<LiveIngestSession>> {
+    let ingest_token = require_ingest_token(&headers)?;
+    let session = validate_live_ingest_session(&state.pool, &session_id, &ingest_token).await?;
+    close_live_ingest_session(
+        &state,
+        &session,
+        "terminated",
+        "runtime_terminated",
+        json!({
+            "reason": input
+                .reason
+                .unwrap_or_else(|| "runtime requested termination".to_string()),
+        }),
+    )
+    .await?;
+    Ok(Json(
+        fetch_live_ingest_session_by_id(&state.pool, &session.creator_id, &session_id).await?,
+    ))
+}
+
 pub(crate) async fn report_live_runtime(
     State(state): State<SharedState>,
     Path(session_id): Path<String>,

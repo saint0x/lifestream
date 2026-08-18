@@ -1,38 +1,22 @@
 # lifestream
 
-Lifestream is a streaming platform backend and frontend workspace for a product that combines creator-led live broadcasting with premium on-demand media delivery.
+Lifestream is a streaming platform that combines creator-led live broadcasting with premium on-demand entertainment in one product.
 
-## What it covers
+## Features
 
-- multi-user live channels with collaboration and guest routing
-- creator control-plane APIs for channels, uploads, publishing, moderation, and operations
-- audience-facing playback, presence, catalog, and realtime surfaces
-- SQLite-backed persistence for control-plane state
-- media pipeline orchestration for upload processing, packaging, and delivery policy
+- creator channels with low-latency live streaming, chat, audience presence, and realtime activity
+- collaborative live sessions with guests, mirrored co-streaming, and shared audience growth
+- premium viewing for films, series, episodes, specials, clips, and creator video libraries
+- publishing flows for livestreams, archived replays, trailers, long-form uploads, and episodic releases
+- a unified experience across live events, premium catalog content, channel libraries, and watch surfaces
+- moderation, creator controls, delivery health, and platform-wide operational visibility
 
-## Workspace
+## Experience
 
-- `backend/`: Rust control plane and media runtime orchestration
-- `frontend/`: product UI and creator surfaces
-- `CODECS.md`: remaining media-runtime and codec-system design work
-
-## Development
-
-Backend:
-
-```bash
-cd backend
-cargo check --tests
-```
-
-Frontend:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
+- viewers can move between live shows and on-demand entertainment without leaving the platform
+- creators can run their own channels, host guests, co-stream with other creators, and publish premium-form content
+- live broadcasts, archives, shows, films, and channel media all live inside one connected product surface
 
 ## Status
 
-The control plane is live and under active hardening. Remaining work is concentrated in the deeper media runtime path, especially ingest termination, collaborative media routing, and mirrored output wiring.
+The control plane is live and under active hardening. Remaining work is concentrated in the deeper media runtime path, especially collaboration routing, mirrored output wiring, and final live-runtime closure.

@@ -217,6 +217,7 @@ use creator_live::{
     fetch_authoritative_creator_live_control_response,
     fetch_authoritative_creator_live_runtime_response, fetch_creator_live_socket_presence_by_id_raw,
     normalize_creator_live_profile, publish_authoritative_creator_live_state,
+    publish_current_creator_live_state,
     publish_creator_live_state,
 };
 #[cfg(test)]
@@ -234,6 +235,7 @@ use ingest::{
     list_creator_live_ingest_events, reconcile_admin_live_ingest_session,
     reconcile_creator_live_ingest_session, repair_admin_live_runtime_output,
     repair_creator_live_runtime_output, report_live_runtime, terminate_creator_live_ingest,
+    terminate_live_ingest,
 };
 #[cfg(test)]
 use ingestctl::{

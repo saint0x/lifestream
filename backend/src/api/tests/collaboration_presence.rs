@@ -1,4 +1,5 @@
 use super::*;
+use crate::api::ingestctl::fetch_live_runtime_targets_for_session;
 
 #[tokio::test]
 async fn collaboration_invite_read_self_heals_expired_pending_invite() -> AppResult<()> {
@@ -466,6 +467,21 @@ async fn collaboration_runtime_topology_exposes_contributions_and_split_archive_
             .any(|output| output.output_kind == "mirror_channel"
                 && output.target_creator_id.as_deref() == Some("crt-atlas"))
     );
+    let mirror_output = runtime
+        .topology
+        .outputs
+        .iter()
+        .find(|output| {
+            output.output_kind == "mirror_channel"
+                && output.target_creator_id.as_deref() == Some("crt-atlas")
+        })
+        .expect("mirror output should exist");
+    assert!(
+        mirror_output
+            .source_participant_ids
+            .contains(&runtime.session.participant.id)
+    );
+    assert!(mirror_output.source_participant_ids.contains(&participant.id));
     assert!(
         runtime
             .topology
@@ -566,6 +582,56 @@ async fn collaboration_runtime_topology_skips_guest_outputs_without_authorized_m
             .iter()
             .all(|output_id| output_id != &format!("col-out-archive-{}", participant.id))
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn collaboration_event_syncs_runtime_targets_for_active_ingest() -> AppResult<()> {
+    let (state, creator) = setup_test_state().await?;
+    let (session, participant) =
+        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+
+    let connected = connect_live_ingest(
+        State(state.clone()),
+        Json(IngestConnectRequest {
+            stream_key: creator.stream_key.clone(),
+            protocol: "rtmp".to_string(),
+            ingest_server: "test-ingest-collab-sync".to_string(),
+            broadcast_id: Some(session.source_broadcast_id.clone()),
+        }),
+    )
+    .await?
+    .0;
+
+    let before = fetch_live_runtime_targets_for_session(&state.pool, &connected.session.id).await?;
+    assert!(before.iter().any(|target| target.target_kind == "host_channel"));
+    assert!(before.iter().all(|target| {
+        !(target.target_kind == "mirror_channel"
+            && target.target_creator_id.as_deref() == Some("crt-atlas"))
+    }));
+
+    issue_mirror_grant_for_participant(&state, &session, &participant, &creator.user_id).await?;
+
+    let after = fetch_live_runtime_targets_for_session(&state.pool, &connected.session.id).await?;
+    let mirror_target = after
+        .iter()
+        .find(|target| {
+            target.target_kind == "mirror_channel"
+                && target.target_creator_id.as_deref() == Some("crt-atlas")
+        })
+        .expect("mirror target should be persisted after topology publication");
+
+    assert_eq!(mirror_target.route_state, "issued");
+    assert!(mirror_target.playback_enabled);
+    assert!(mirror_target.relative_path.is_some());
+
+    let runtime = fetch_creator_live_runtime_response(&state.pool, &creator.id).await?;
+    assert!(runtime.active_runtime_targets.iter().any(|target| {
+        target.target_kind == "mirror_channel"
+            && target.target_creator_id.as_deref() == Some("crt-atlas")
+            && target.route_state == "issued"
+    }));
 
     Ok(())
 }
