@@ -11,8 +11,7 @@ pub(crate) use deliveries::{
     reconcile_single_notification_delivery,
 };
 pub(crate) use dispatch::{
-    claim_notification_delivery_attempt, dispatch_notification_delivery,
-    enqueue_notification_event,
+    claim_notification_delivery_attempt, dispatch_notification_delivery, enqueue_notification_event,
 };
 pub(crate) use inbox::{
     fetch_user_notifications, list_my_notifications, mark_my_notification_read,
