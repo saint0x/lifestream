@@ -1,0 +1,169 @@
+use super::queries::live_ingest_session_from_row;
+use super::*;
+
+pub(crate) async fn mark_live_ingest_session_stale(
+    state: &SharedState,
+    session: &LiveIngestSession,
+) -> AppResult<()> {
+    mark_live_ingest_session_stale_in_db(&state.pool, session).await?;
+    if let Some(collaboration_session) =
+        fetch_active_collaboration_session_for_broadcast(&state.pool, &session.broadcast_id).await?
+    {
+        let _ = sync_active_collaboration_mirror_pickups_for_session_and_publish(
+            state,
+            &collaboration_session.id,
+        )
+        .await;
+    }
+    publish_creator_live_state(state, &session.creator_id).await?;
+    Ok(())
+}
+
+pub(crate) async fn mark_live_ingest_session_stale_in_db(
+    pool: &SqlitePool,
+    session: &LiveIngestSession,
+) -> AppResult<()> {
+    let creator = fetch_creator_profile(pool, &session.creator_id).await?;
+    let now = Utc::now().to_rfc3339();
+
+    sqlx::query(
+        "UPDATE live_ingest_sessions SET status = 'stale', disconnected_at = ?, last_heartbeat_at = ? WHERE id = ?",
+    )
+    .bind(&now)
+    .bind(&now)
+    .bind(&session.id)
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "UPDATE broadcasts SET status = 'ready', ended_at = NULL, duration_sec = NULL WHERE id = ? AND status = 'live'",
+    )
+    .bind(&session.broadcast_id)
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "UPDATE creator_profiles SET live_status = 'ready', current_broadcast_id = ? WHERE id = ?",
+    )
+    .bind(&session.broadcast_id)
+    .bind(&session.creator_id)
+    .execute(pool)
+    .await?;
+    reset_creator_live_operational_metrics(pool, &session.creator_id).await?;
+    sqlx::query("UPDATE streamers SET is_live = 0 WHERE handle = ?")
+        .bind(&creator.handle)
+        .execute(pool)
+        .await?;
+    sqlx::query("DELETE FROM live_streams WHERE id = ?")
+        .bind(format!("lv-{}-live", creator.handle))
+        .execute(pool)
+        .await?;
+    write_live_ingest_event(
+        pool,
+        &session.id,
+        &session.creator_id,
+        &session.broadcast_id,
+        "stale_reconciled",
+        json!({
+            "status": "stale",
+            "reason": "live ingest heartbeat exceeded the reconnect grace window",
+            "lastViewers": session.viewers,
+            "lastBitrateKbps": session.bitrate_kbps,
+            "lastDroppedFrames": session.dropped_frames,
+        }),
+    )
+    .await?;
+    if let Some(collaboration_session) =
+        fetch_active_collaboration_session_for_broadcast(pool, &session.broadcast_id).await?
+    {
+        let _ =
+            sync_active_collaboration_mirror_pickups_for_session(pool, &collaboration_session.id)
+                .await;
+    }
+    Ok(())
+}
+
+pub(crate) async fn reconcile_stale_live_ingest_sessions(state: SharedState) -> AppResult<()> {
+    let cutoff = (Utc::now() - chrono::Duration::seconds(20)).to_rfc3339();
+    let rows = sqlx::query(
+        r#"
+        SELECT id, creator_id, broadcast_id, protocol, ingest_server, status, bitrate_kbps, viewers,
+               dropped_frames, connected_at, last_heartbeat_at, disconnected_at
+        FROM live_ingest_sessions
+        WHERE status = 'connected' AND last_heartbeat_at < ?
+        "#,
+    )
+    .bind(&cutoff)
+    .fetch_all(&state.pool)
+    .await?;
+
+    for row in rows {
+        let session = live_ingest_session_from_row(row)?;
+        mark_live_ingest_session_stale(&state, &session).await?;
+    }
+
+    Ok(())
+}
+
+pub(crate) async fn reconcile_stale_live_ingest_sessions_for_read(
+    pool: &SqlitePool,
+    creator_filter: Option<&str>,
+    session_filter: Option<&str>,
+) -> AppResult<()> {
+    let cutoff = stale_live_ingest_cutoff();
+    let rows = sqlx::query(
+        r#"
+        SELECT id, creator_id, broadcast_id, protocol, ingest_server, status, bitrate_kbps, viewers,
+               dropped_frames, connected_at, last_heartbeat_at, disconnected_at
+        FROM live_ingest_sessions
+        WHERE status = 'connected'
+          AND last_heartbeat_at < ?
+          AND (? IS NULL OR creator_id = ?)
+          AND (? IS NULL OR id = ?)
+        ORDER BY last_heartbeat_at ASC
+        LIMIT 50
+        "#,
+    )
+    .bind(&cutoff)
+    .bind(creator_filter)
+    .bind(creator_filter)
+    .bind(session_filter)
+    .bind(session_filter)
+    .fetch_all(pool)
+    .await?;
+
+    for row in rows {
+        let session = live_ingest_session_from_row(row)?;
+        mark_live_ingest_session_stale_in_db(pool, &session).await?;
+    }
+
+    Ok(())
+}
+
+pub(crate) async fn reconcile_single_live_ingest_session(
+    state: SharedState,
+    session_id: &str,
+) -> AppResult<LiveIngestReconciliationReport> {
+    let now = Utc::now().to_rfc3339();
+    let mut actions = Vec::new();
+    let session =
+        fetch_live_ingest_session_by_id_global_unreconciled(&state.pool, session_id).await?;
+
+    if session.status == "connected" && is_live_ingest_session_stale(&session) {
+        mark_live_ingest_session_stale(&state, &session).await?;
+        actions.push(LiveIngestReconciliationAction {
+            action_type: "session_marked_stale".to_string(),
+            target_id: session.id.clone(),
+            previous_status: Some("connected".to_string()),
+            next_status: Some("stale".to_string()),
+            reason: "live ingest heartbeat exceeded the reconnect grace window".to_string(),
+            occurred_at: now.clone(),
+        });
+    }
+
+    let record = fetch_admin_live_ingest_session_record(&state.pool, session_id).await?;
+    Ok(LiveIngestReconciliationReport {
+        session_id: session_id.to_string(),
+        reconciled_at: now,
+        actions,
+        record,
+    })
+}
