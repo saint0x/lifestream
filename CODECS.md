@@ -8,8 +8,7 @@ Still unfinished:
 
 - actual host-plus-guest media routing
 - mirrored co-stream media fanout
-- output wiring for host-only, mirrored guest, and multi-mirror sessions
-- audio-routing protections such as mix-minus or equivalent echo prevention
+- runtime audio graph execution with enforced mix-minus or equivalent echo prevention
 
 Must close:
 
@@ -28,4 +27,4 @@ Closed in backend control/runtime:
 
 ## Current Backend Closure Order
 
-1. Add collaboration routing runtime with mirrored output wiring.
+1. Add executable collaboration media routing and mirrored fanout.

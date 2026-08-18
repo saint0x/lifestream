@@ -1611,7 +1611,17 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
     assert_eq!(initial_spec["packaging"]["blockingReloadEnabled"], false);
     assert_eq!(initial_spec["packaging"]["targetLatencyMs"], 18000);
     assert_eq!(initial_spec["archive"]["enabled"], true);
+    assert_eq!(initial_spec["archive"]["recordingMode"], "single_output");
     assert_eq!(initial_spec["archive"]["targetContainer"], "mp4");
+    assert_eq!(initial_spec["archive"]["outputCount"], 1);
+    assert_eq!(
+        initial_spec["archive"]["outputRelativePath"],
+        archive_relative_path.clone()
+    );
+    assert_eq!(
+        initial_spec["archive"]["outputRelativePaths"],
+        json!([archive_relative_path.clone()])
+    );
     assert_eq!(
         initial_spec["reconnectPolicy"]["replacementMode"],
         "new_session_per_reconnect"
@@ -1800,6 +1810,8 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         ready_spec["collaboration"]["recordingPolicy"],
         "host_archive"
     );
+    assert_eq!(ready_spec["archive"]["recordingMode"], "host_archive");
+    assert_eq!(ready_spec["archive"]["outputCount"], 1);
     assert_eq!(ready_spec["collaboration"]["sharedChat"], true);
     assert_eq!(ready_spec["collaboration"]["mixMinusRequired"], true);
     assert_eq!(ready_spec["collaboration"]["audioMixMode"], "mix_minus");
@@ -2142,6 +2154,14 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         "archive/{}/{}/col-out-archive-host-{}/final.mp4",
         creator.id, collaboration_session.source_broadcast_id, collaboration_session.id
     );
+    assert_eq!(
+        ready_spec["archive"]["outputRelativePath"],
+        expected_host_route_archive.clone()
+    );
+    assert_eq!(
+        ready_spec["archive"]["outputRelativePaths"],
+        json!([expected_host_route_archive.clone()])
+    );
     assert!(runtime.active_runtime_targets.iter().any(|target| {
         target.target_kind == "variant"
             && target.target_key == "1080p"
@@ -2165,6 +2185,9 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> Ap
         target.target_kind == "archive"
             && target.target_key == format!("col-out-archive-host-{}", collaboration_session.id)
             && target.relative_path.as_deref() == Some(expected_host_route_archive.as_str())
+    }));
+    assert!(!runtime.active_runtime_targets.iter().any(|target| {
+        target.target_kind == "archive" && target.target_key == "primary"
     }));
     assert!(
         tokio::fs::metadata(media_path_for_relative(&state, &expected_mirror_playlist))
