@@ -1,237 +1,6 @@
-use super::super::discovery::{
-    fetch_categories, fetch_live_stream_by_id, fetch_live_stream_by_slug, fetch_live_streams,
-    fetch_user, sort_live_streams,
-};
-use super::super::moderation::{
-    authorize_live_stream_moderation, authorize_live_stream_owner, fetch_creator_moderator,
-    fetch_creator_moderators, fetch_live_moderation_action_by_id,
-    fetch_live_moderation_action_by_id_raw, fetch_live_moderation_actions,
-    fetch_live_stream_owner_creator_id, fetch_live_stream_report_by_id, fetch_live_stream_reports,
-    fetch_moderation_audit_log, validate_creator_moderator_role,
-    validate_live_moderation_action_type, validate_live_moderation_subject,
-    validate_live_report_status, write_moderation_audit_entry,
-};
-use super::super::realtime::persist_chat_message;
 use super::*;
-use serde::Deserialize;
 
-pub(crate) async fn list_live_streams(
-    State(state): State<SharedState>,
-) -> AppResult<Json<Vec<LiveStream>>> {
-    Ok(Json(fetch_live_streams(&state.pool, None).await?))
-}
-
-pub(super) async fn get_live_stream(
-    State(state): State<SharedState>,
-    Path(slug): Path<String>,
-) -> AppResult<Json<LiveStream>> {
-    Ok(Json(fetch_live_stream_by_slug(&state.pool, &slug).await?))
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct LiveDiscoveryQuery {
-    category: Option<String>,
-    sort: Option<String>,
-    limit: Option<i64>,
-}
-
-pub(super) async fn get_live_discovery(
-    State(state): State<SharedState>,
-    Query(query): Query<LiveDiscoveryQuery>,
-) -> AppResult<Json<LiveDiscoveryResponse>> {
-    let categories = fetch_categories(&state.pool).await?;
-    let active_category = match query.category.as_deref() {
-        Some("all") | None => None,
-        Some(category_name) => {
-            if categories.iter().any(|item| item.name == category_name) {
-                Some(category_name.to_string())
-            } else {
-                return Err(AppError::BadRequest(
-                    "unknown live category filter".to_string(),
-                ));
-            }
-        }
-    };
-    let active_sort = match query.sort.as_deref().unwrap_or("viewers") {
-        "viewers" | "newest" => query.sort.unwrap_or_else(|| "viewers".to_string()),
-        _ => {
-            return Err(AppError::BadRequest(
-                "sort must be either 'viewers' or 'newest'".to_string(),
-            ));
-        }
-    };
-
-    let limit = query.limit.unwrap_or(200).clamp(1, 500) as usize;
-    let mut streams = fetch_live_streams(&state.pool, None).await?;
-    let total_viewers = streams.iter().map(|stream| stream.viewers).sum();
-    let total_channels = streams.len() as i64;
-    if let Some(category_name) = active_category.as_deref() {
-        streams.retain(|stream| stream.category == category_name);
-    }
-    sort_live_streams(&mut streams, &active_sort);
-    if streams.len() > limit {
-        streams.truncate(limit);
-    }
-
-    Ok(Json(LiveDiscoveryResponse {
-        streams,
-        categories,
-        total_viewers,
-        total_channels,
-        active_category,
-        active_sort,
-    }))
-}
-
-#[derive(Deserialize)]
-pub(crate) struct LimitQuery {
-    pub(crate) limit: Option<i64>,
-    pub(crate) after_seq: Option<i64>,
-}
-
-pub(crate) async fn list_chat_messages(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(stream_id): Path<String>,
-    Query(query): Query<LimitQuery>,
-) -> AppResult<Json<Vec<ChatMessage>>> {
-    let maybe_identity = optional_identity(&state.pool, &headers).await?;
-    ensure_stream_exists(&state.pool, &stream_id).await?;
-    Ok(Json(
-        fetch_chat_messages_for_viewer(
-            &state.pool,
-            &stream_id,
-            maybe_identity
-                .as_ref()
-                .map(|identity| identity.user_id.as_str()),
-            query.limit.unwrap_or(100),
-            query.after_seq,
-        )
-        .await?,
-    ))
-}
-
-#[derive(Debug)]
-pub(crate) struct PersistedChatMessage {
-    pub(crate) message: ChatMessage,
-    pub(crate) hidden_by_moderation: bool,
-}
-
-pub(super) async fn enable_live_notify(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(stream_id): Path<String>,
-) -> AppResult<Json<LiveNotifyPreference>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let stream = fetch_live_stream_by_id(&state.pool, &stream_id).await?;
-    let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        r#"
-        INSERT INTO live_stream_notification_preferences (user_id, streamer_id, enabled, created_at)
-        VALUES (?, ?, 1, ?)
-        ON CONFLICT(user_id, streamer_id) DO UPDATE SET enabled = 1
-        "#,
-    )
-    .bind(&identity.user_id)
-    .bind(&stream.streamer.id)
-    .bind(&now)
-    .execute(&state.pool)
-    .await?;
-
-    Ok(Json(LiveNotifyPreference {
-        streamer_id: stream.streamer.id,
-        enabled: true,
-    }))
-}
-
-pub(crate) async fn create_clip_request(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(stream_id): Path<String>,
-) -> AppResult<StatusCode> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    ensure_stream_exists(&state.pool, &stream_id).await?;
-    let now = Utc::now();
-    let now_rfc3339 = now.to_rfc3339();
-    let clip_dedupe_after = (now - chrono::Duration::seconds(30)).to_rfc3339();
-    let existing = sqlx::query(
-        r#"
-        SELECT id
-        FROM live_stream_clip_requests
-        WHERE stream_id = ?
-          AND user_id = ?
-          AND created_at >= ?
-        ORDER BY created_at DESC
-        LIMIT 1
-        "#,
-    )
-    .bind(&stream_id)
-    .bind(&identity.user_id)
-    .bind(&clip_dedupe_after)
-    .fetch_optional(&state.pool)
-    .await?;
-    if existing.is_none() {
-        sqlx::query(
-            "INSERT INTO live_stream_clip_requests (id, stream_id, user_id, created_at) VALUES (?, ?, ?, ?)",
-        )
-        .bind(Uuid::new_v4().to_string())
-        .bind(&stream_id)
-        .bind(&identity.user_id)
-        .bind(&now_rfc3339)
-        .execute(&state.pool)
-        .await?;
-    }
-    Ok(StatusCode::ACCEPTED)
-}
-
-pub(super) async fn report_live_stream(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(stream_id): Path<String>,
-    Json(input): Json<LiveReportRequest>,
-) -> AppResult<StatusCode> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let stream = fetch_live_stream_by_id(&state.pool, &stream_id).await?;
-    if input.reason.trim().is_empty() {
-        return Err(AppError::BadRequest("reason is required".to_string()));
-    }
-    let report_id = Uuid::new_v4().to_string();
-    let created_at = Utc::now().to_rfc3339();
-    sqlx::query(
-        "INSERT INTO live_stream_reports (id, stream_id, user_id, reason, details, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-    )
-    .bind(&report_id)
-    .bind(&stream_id)
-    .bind(&identity.user_id)
-    .bind(input.reason.trim())
-    .bind(input.details)
-    .bind(&created_at)
-    .execute(&state.pool)
-    .await?;
-    let reporter = fetch_user(&state.pool, &identity.user_id).await?;
-    let creator_id = fetch_live_stream_owner_creator_id(&state.pool, &stream_id).await?;
-    enqueue_notification_event(
-        &state.pool,
-        "live_report_received",
-        &format!("{} reported {}.", reporter.display_name, stream.title),
-        Some(&identity.user_id),
-        Some(&reporter.display_name),
-        Some(&creator_id),
-        Some(&stream_id),
-        None,
-        json!({
-            "reportId": report_id,
-            "reason": input.reason.trim(),
-        }),
-        &[],
-        &[creator_id.clone()],
-    )
-    .await?;
-    Ok(StatusCode::ACCEPTED)
-}
-
-pub(super) async fn list_live_stream_moderators(
+pub(crate) async fn list_live_stream_moderators(
     State(state): State<SharedState>,
     headers: HeaderMap,
     Path(stream_id): Path<String>,
@@ -243,7 +12,7 @@ pub(super) async fn list_live_stream_moderators(
     ))
 }
 
-pub(super) async fn add_live_stream_moderator(
+pub(crate) async fn add_live_stream_moderator(
     State(state): State<SharedState>,
     headers: HeaderMap,
     Path(stream_id): Path<String>,
@@ -488,7 +257,7 @@ pub(crate) async fn revoke_live_moderation_action(
     Ok(Json(revoked))
 }
 
-pub(super) async fn list_live_stream_reports(
+pub(crate) async fn list_live_stream_reports(
     State(state): State<SharedState>,
     headers: HeaderMap,
     Path(stream_id): Path<String>,
@@ -551,7 +320,7 @@ pub(crate) async fn resolve_live_stream_report(
     ))
 }
 
-pub(super) async fn list_live_moderation_audit_log(
+pub(crate) async fn list_live_moderation_audit_log(
     State(state): State<SharedState>,
     headers: HeaderMap,
     Path(stream_id): Path<String>,
@@ -561,26 +330,4 @@ pub(super) async fn list_live_moderation_audit_log(
     Ok(Json(
         fetch_moderation_audit_log(&state.pool, &creator_id, Some(&stream_id)).await?,
     ))
-}
-
-pub(crate) async fn get_live_viewer_preview(
-    State(state): State<SharedState>,
-    Path(stream_id): Path<String>,
-) -> AppResult<Json<ViewerPreview>> {
-    ensure_stream_exists(&state.pool, &stream_id).await?;
-    Ok(Json(ViewerPreview {
-        total_viewers: effective_live_viewer_count(&state.pool, &stream_id).await?,
-        sample_users: fetch_live_viewer_sample_users(&state.pool, &stream_id, 8).await?,
-    }))
-}
-
-pub(super) async fn post_chat_message(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(stream_id): Path<String>,
-    Json(input): Json<ChatInput>,
-) -> AppResult<Json<ChatMessage>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let persisted = persist_chat_message(&state, &stream_id, &identity, input).await?;
-    Ok(Json(persisted.message))
 }
