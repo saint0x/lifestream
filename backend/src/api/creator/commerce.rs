@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) async fn fetch_creator_membership(
+pub(crate) async fn fetch_creator_membership(
     pool: &SqlitePool,
     user_id: &str,
     creator_id: &str,
@@ -35,7 +35,7 @@ pub(super) async fn fetch_creator_membership(
     })
 }
 
-pub(super) async fn fetch_content_purchase_by_id(
+pub(crate) async fn fetch_content_purchase_by_id(
     pool: &SqlitePool,
     purchase_id: &str,
 ) -> AppResult<ContentPurchase> {
@@ -70,7 +70,7 @@ pub(super) async fn fetch_content_purchase_by_id(
     })
 }
 
-pub(super) async fn purchase_belongs_to_user(
+pub(crate) async fn purchase_belongs_to_user(
     pool: &SqlitePool,
     user_id: &str,
     purchase_id: &str,
@@ -83,7 +83,7 @@ pub(super) async fn purchase_belongs_to_user(
     Ok(row.is_some())
 }
 
-pub(super) async fn fetch_current_content_purchase(
+pub(crate) async fn fetch_current_content_purchase(
     pool: &SqlitePool,
     user_id: &str,
     upload_id: &str,
@@ -118,7 +118,7 @@ pub(super) async fn fetch_current_content_purchase(
     }
 }
 
-pub(super) async fn fetch_user_entitlements(
+pub(crate) async fn fetch_user_entitlements(
     pool: &SqlitePool,
     user_id: &str,
 ) -> AppResult<UserEntitlements> {
@@ -189,7 +189,7 @@ pub(super) async fn fetch_user_entitlements(
     })
 }
 
-pub(super) async fn reconcile_single_membership_entitlement(
+pub(crate) async fn reconcile_single_membership_entitlement(
     state: SharedState,
     user_id: &str,
     creator_id: &str,
@@ -246,7 +246,7 @@ pub(super) async fn reconcile_single_membership_entitlement(
     })
 }
 
-pub(super) async fn reconcile_single_purchase_entitlement(
+pub(crate) async fn reconcile_single_purchase_entitlement(
     state: SharedState,
     user_id: &str,
     purchase_id: &str,

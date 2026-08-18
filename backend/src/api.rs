@@ -100,13 +100,8 @@ mod collab;
 mod collaboration;
 mod collaboration_events;
 mod mirror;
-mod creator_business;
-mod creator_catalog;
-mod creator_commerce;
-mod creator_core;
+mod creator;
 mod dashboard;
-mod creator_data;
-mod creator_live;
 mod discovery;
 mod ingest;
 mod ingestctl;
@@ -183,14 +178,12 @@ use mirror::{
     sync_active_collaboration_mirror_pickups_for_session,
     sync_active_collaboration_mirror_pickups_for_session_and_publish,
 };
-use creator_catalog::{
+pub(crate) use creator::{
     fetch_creator_catalog_film_by_id, fetch_creator_catalog_film_by_slug,
     fetch_creator_catalog_films, fetch_creator_catalog_series, fetch_creator_catalog_series_by_id,
-    fetch_creator_catalog_series_by_slug, fetch_creator_series, fetch_creator_series_by_id,
-};
-use creator_commerce::{
-    fetch_content_purchase_by_id, fetch_creator_membership, fetch_current_content_purchase,
-    fetch_user_entitlements, purchase_belongs_to_user, reconcile_single_membership_entitlement,
+    fetch_creator_catalog_series_by_slug, fetch_content_purchase_by_id,
+    fetch_creator_membership, fetch_current_content_purchase, fetch_user_entitlements,
+    purchase_belongs_to_user, reconcile_single_membership_entitlement,
     reconcile_single_purchase_entitlement,
 };
 use dashboard::{
@@ -201,15 +194,12 @@ use dashboard::{
     summarize_creator_content, summarize_creator_revenue, validate_bulk_upload_action,
     validate_upload_job_kind, validate_upload_job_source_type, validate_upload_visibility,
 };
-use creator_data::{
-    fetch_creator_enforcement_action_by_id, fetch_creator_enforcement_action_by_id_raw,
-    fetch_creator_enforcement_state, fetch_creator_live_health, fetch_creator_live_settings,
+pub(crate) use creator::{
+    fetch_creator_enforcement_action_by_id_raw, fetch_creator_live_settings,
     fetch_creator_operational_state, fetch_creator_profile, fetch_creator_profile_by_stream_key,
     fetch_creator_subscriber_tier_by_id, fetch_creator_subscriber_tiers,
-    next_creator_subscriber_tier_rank, normalize_creator_subscriber_tier_ranks,
-    validate_creator_subscriber_tier_input,
 };
-use creator_live::{
+pub(crate) use creator::{
     build_creator_live_snapshot, contract_broadcast, contract_broadcasts, contract_creator_profile,
     contract_live_status, creator_live_channel_id,
     fetch_authoritative_creator_live_control_response,
@@ -219,9 +209,9 @@ use creator_live::{
     publish_creator_live_state,
 };
 #[cfg(test)]
-use creator_live::{fetch_creator_live_control_response, fetch_creator_live_runtime_response};
+use creator::{fetch_creator_live_control_response, fetch_creator_live_runtime_response};
 #[cfg(test)]
-use creator_live::{get_creator_live_socket_session, reconcile_creator_live_socket_session};
+use creator::{get_creator_live_socket_session, reconcile_creator_live_socket_session};
 use discovery::{
     fetch_creator_id_for_user, fetch_live_stream_by_id, fetch_live_streams,
     fetch_streamer_by_handle,
@@ -388,7 +378,7 @@ pub fn start_background_workers(state: SharedState) {
 #[cfg(test)]
 use admin_ops::*;
 #[cfg(test)]
-use creator_core::*;
+use creator::*;
 #[cfg(test)]
 use discovery::*;
 #[cfg(test)]

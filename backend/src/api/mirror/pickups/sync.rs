@@ -1,5 +1,5 @@
 use super::*;
-use crate::api::creator_live::publish_current_creator_live_state;
+use crate::api::creator::publish_current_creator_live_state;
 
 pub(crate) async fn sync_active_collaboration_mirror_pickups_for_session(
     pool: &SqlitePool,

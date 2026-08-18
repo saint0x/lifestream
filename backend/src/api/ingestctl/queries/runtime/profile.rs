@@ -1,5 +1,5 @@
 use super::*;
-use crate::api::creator_data::fetch_creator_live_settings;
+use crate::api::creator::fetch_creator_live_settings;
 use crate::models::LiveSourceProbe;
 
 #[derive(Clone, Debug)]
