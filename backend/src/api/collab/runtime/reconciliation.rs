@@ -3,6 +3,7 @@ use super::topology::{
     build_creator_collaboration_control_response_for_host,
 };
 use super::*;
+use crate::api::collab::end_collaboration_session_internal_raw;
 
 pub(crate) async fn publish_collaboration_topology(
     state: &SharedState,
