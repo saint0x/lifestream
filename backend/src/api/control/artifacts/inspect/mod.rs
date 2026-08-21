@@ -17,7 +17,7 @@ mod live;
 mod state;
 
 use collab::inspect_live_runtime_collaboration_artifacts;
-use live::{archive_artifact_exists, validate_archive_artifact, validate_manifest_artifact};
+use live::{archive_artifact_exists, validate_archive_artifact};
 use state::{artifact_state_label, declared_artifact_issue, declared_artifact_state_label};
 
 #[derive(Clone, Debug)]
@@ -65,7 +65,8 @@ pub(super) async fn inspect_live_runtime_output_artifacts(
                 issues,
             });
         };
-        if let Some(issue) = validate_manifest_artifact(state, manifest_relative_path).await? {
+        if let Some(issue) = live::validate_manifest_artifact(state, manifest_relative_path).await?
+        {
             manifest_invalid = true;
             issues.push(issue);
         } else {
@@ -127,6 +128,13 @@ pub(super) async fn inspect_live_runtime_output_artifacts(
         collaboration_expected_relative_path,
         issues,
     })
+}
+
+pub(super) async fn validate_playback_manifest_artifact(
+    state: &SharedState,
+    relative_path: &str,
+) -> AppResult<Option<String>> {
+    live::validate_manifest_artifact(state, relative_path).await
 }
 
 pub(crate) async fn describe_live_runtime_artifact_health(

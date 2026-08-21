@@ -783,3 +783,49 @@ Post-playback-grant-pass mixed sweep on the same Friday, August 21, 2026 fresh r
   - The playback grant cleanup removed real redundant work, but the full mixed sweep says the dominant cost of `POST /api/v1/playback/live/:stream/session` is still inside live playback target/runtime readiness validation and shared write contention, not the old session re-fetch.
   - The broader shell and collaboration lanes held their post-refactor health band on the same fresh binary, so this pass did not regress the stronger control-plane reads.
   - The highest-value remaining control-plane bottlenecks are still `GET /api/v1/creator/me/live/runtime` and `POST /api/v1/playback/live/:stream/session` under fully overlapped operator traffic.
+
+- Friday, August 21, 2026 shared-contention and hot-path isolation pass:
+  - Stopped `creator/me/live/runtime` from re-querying recent active-session state it already had in hand when the creator already has an active ingest session.
+  - Narrowed live playback issuance readiness checks to authoritative manifest readiness instead of re-running full archive and collaboration artifact inspection on every issued playback session.
+  - Split live snapshot broadcast reads into direct indexed `live` and `ready` reads instead of a mixed-status temp-sort path.
+  - Added explicit mixed-load SQLite tuning and ingest-session hot-path indexes:
+    - `temp_store = MEMORY`
+    - `cache_size = -32768`
+    - `mmap_size = 268435456`
+    - `idx_live_ingest_sessions_creator_connected_at`
+    - `idx_live_ingest_sessions_creator_status_heartbeat`
+    - `idx_live_ingest_sessions_broadcast_status_heartbeat`
+  - Verification on the freshly rebuilt foreground binary:
+    - `cargo build` -> passed
+    - `python3 backend/tests/creator-app-state-check.py` -> `creator-app-state|bootstrap|consistent`
+    - `python3 backend/tests/live-runtime-control-check.py` -> `runtime|socket-inspect|connected|terminated`
+    - `/health` -> `ready=true` before and after the mixed sweep
+
+Isolated hot-path probes on the same Friday, August 21, 2026 fresh binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/creator/me/live/runtime` | 283.96 | 107.76 ms | 149.29 ms | isolated runtime endpoint is healthy on its own |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 214.77 | 139.20 ms | 222.05 ms | isolated playback issuance is also healthy on its own |
+
+Post-shared-contention-pass mixed sweep on the same Friday, August 21, 2026 fresh rebuilt binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 190.63 | 126.44 ms | 329.21 ms | public list stayed healthy, though noisier under overlap |
+| `GET /api/v1/live/streams/deepsaint-live` | 300.48 | 108.07 ms | 322.02 ms | public detail improved materially in this rerun |
+| `GET /api/v1/bootstrap` | 55.73 | 482.38 ms | 807.95 ms | bootstrap held its healthy post-refactor band |
+| `GET /api/v1/me/state` | 63.46 | 497.37 ms | 892.94 ms | materially improved under the full mixed matrix |
+| `GET /api/v1/creator/me/state` | 23.81 | 1.24 s | 1.31 s | creator shell remained stable but heavy |
+| `GET /api/v1/creator/me/live/control` | 15.87 | 1.69 s | 1.96 s | still heavily load-sensitive under overlap |
+| `GET /api/v1/creator/me/live/runtime` | 15.88 | 1.66 s | 1.89 s | essentially unchanged under the full mixed matrix despite strong isolated health |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 35.46 | 961.80 ms | 1.11 s | clear improvement from the prior low-20 req/s band |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 31.73 | 953.81 ms | 1.09 s | clear improvement from the prior low-20 req/s band |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 7.93 | 0.00 us | 0.00 us | still timeout-bound under full overlap even though isolated playback issuance is healthy |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 141.05 | 135.83 ms | 1.77 s | limiter-driven non-2xx responses remained expected |
+
+- Read of this pass:
+  - The isolated probes prove the remaining problem is not raw endpoint implementation speed. Both `creator/me/live/runtime` and live playback issuance are healthy on their own.
+  - The mixed sweep still pins those same lanes when the whole platform is active, which means the current ceiling is shared concurrency pressure across the control plane rather than local endpoint logic alone.
+  - The shared SQLite/snapshot pass did produce real wins anyway: `me/state` improved materially and both collaboration host endpoints moved from the low-20 req/s band into the low-to-mid 30s.
+  - The next highest-value work is now at the contention architecture layer: reducing shared database pressure between heavy read shells and playback session writes, or splitting the hottest live reads away from the write-sensitive issuance path.

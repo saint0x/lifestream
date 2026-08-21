@@ -1,4 +1,4 @@
-use super::inspect::inspect_live_runtime_output_artifacts;
+use super::inspect::validate_playback_manifest_artifact;
 use super::*;
 
 pub(crate) async fn ensure_live_runtime_output_ready_for_playback(
@@ -16,12 +16,10 @@ pub(crate) async fn ensure_live_runtime_output_ready_for_playback(
             "live runtime manifest is not aligned with the published playback path".to_string(),
         ));
     }
-    let session =
-        fetch_live_ingest_session_by_id_global_unreconciled(&state.pool, &output.session_id)
-            .await?;
-    let inspection = inspect_live_runtime_output_artifacts(state, &session, output).await?;
-    if !inspection.issues.is_empty() {
-        return Err(AppError::BadRequest(inspection.issues.join("; ")));
+    if let Some(issue) =
+        validate_playback_manifest_artifact(state, expected_manifest_relative_path).await?
+    {
+        return Err(AppError::BadRequest(issue));
     }
     Ok(())
 }

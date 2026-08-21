@@ -207,22 +207,10 @@ pub(crate) async fn fetch_creator_live_runtime_response(
     creator_id: &str,
 ) -> AppResult<CreatorLiveRuntimeResponse> {
     reconcile_stale_creator_live_socket_sessions_for_read(pool, Some(creator_id), None).await?;
-    let (snapshot, health, recent_sessions, recent_runtime_outputs, recent_runtime_targets) =
-        tokio::try_join!(
-            build_creator_live_snapshot(pool, creator_id),
-            fetch_creator_live_health(pool, creator_id),
-            fetch_recent_live_ingest_sessions(pool, creator_id, CREATOR_LIVE_RECENT_SESSION_LIMIT),
-            fetch_recent_live_runtime_outputs(
-                pool,
-                creator_id,
-                CREATOR_LIVE_RECENT_RUNTIME_OUTPUT_LIMIT,
-            ),
-            fetch_recent_live_runtime_targets(
-                pool,
-                creator_id,
-                CREATOR_LIVE_RECENT_RUNTIME_TARGET_LIMIT,
-            ),
-        )?;
+    let (snapshot, health) = tokio::try_join!(
+        build_creator_live_snapshot(pool, creator_id),
+        fetch_creator_live_health(pool, creator_id),
+    )?;
     let collaboration =
         fetch_creator_live_collaboration_summary(pool, creator_id, &snapshot).await?;
     let active_session = snapshot.ingest_session.clone();
@@ -232,6 +220,9 @@ pub(crate) async fn fetch_creator_live_runtime_response(
         telemetry_summary,
         recent_telemetry,
         recent_events,
+        recent_sessions,
+        recent_runtime_outputs,
+        recent_runtime_targets,
     ) =
         if let Some(session) = active_session.as_ref() {
             let session_id = session.id.as_str();
@@ -248,31 +239,65 @@ pub(crate) async fn fetch_creator_live_runtime_response(
             let telemetry_summary =
                 fetch_creator_runtime_telemetry_summary_compact(pool, session_id, &recent_telemetry)
                     .await?;
+            let recent_runtime_targets = targets
+                .iter()
+                .max_by(|left, right| {
+                    left.updated_at
+                        .cmp(&right.updated_at)
+                        .then_with(|| left.target_kind.cmp(&right.target_kind))
+                        .then_with(|| left.target_key.cmp(&right.target_key))
+                })
+                .cloned()
+                .into_iter()
+                .collect();
+            let recent_runtime_outputs = output.clone().into_iter().collect();
             (
                 output,
                 targets,
                 telemetry_summary,
                 recent_telemetry,
                 recent_events,
+                vec![session.clone()],
+                recent_runtime_outputs,
+                recent_runtime_targets,
             )
         } else {
-            let telemetry_summary = fetch_live_runtime_telemetry_summary(pool, creator_id).await?;
-            let recent_telemetry =
+            let (
+                recent_sessions,
+                recent_runtime_outputs,
+                recent_runtime_targets,
+                telemetry_summary,
+                recent_telemetry,
+                recent_events,
+            ) = tokio::try_join!(
+                fetch_recent_live_ingest_sessions(pool, creator_id, CREATOR_LIVE_RECENT_SESSION_LIMIT),
+                fetch_recent_live_runtime_outputs(
+                    pool,
+                    creator_id,
+                    CREATOR_LIVE_RECENT_RUNTIME_OUTPUT_LIMIT,
+                ),
+                fetch_recent_live_runtime_targets(
+                    pool,
+                    creator_id,
+                    CREATOR_LIVE_RECENT_RUNTIME_TARGET_LIMIT,
+                ),
+                fetch_live_runtime_telemetry_summary(pool, creator_id),
                 fetch_recent_live_runtime_telemetry(
                     pool,
                     creator_id,
                     CREATOR_LIVE_RECENT_TELEMETRY_LIMIT,
-                )
-                .await?;
-            let recent_events =
-                fetch_live_ingest_events_for_creator(pool, creator_id, CREATOR_LIVE_RECENT_EVENT_LIMIT)
-                    .await?;
+                ),
+                fetch_live_ingest_events_for_creator(pool, creator_id, CREATOR_LIVE_RECENT_EVENT_LIMIT),
+            )?;
             (
                 None,
                 Vec::new(),
                 telemetry_summary,
                 recent_telemetry,
                 recent_events,
+                recent_sessions,
+                recent_runtime_outputs,
+                recent_runtime_targets,
             )
         };
     let runtime_advisory = build_live_runtime_advisory(
