@@ -11,11 +11,15 @@ pub(crate) async fn disconnect_live_ingest(
     headers: HeaderMap,
 ) -> AppResult<Json<LiveIngestSession>> {
     let ingest_token = require_ingest_token(&headers)?;
-    let session = validate_live_ingest_session(&state.pool, &session_id, &ingest_token).await?;
-    close_live_ingest_session(&state, &session, "ended", "disconnected", json!({})).await?;
-    Ok(Json(
-        fetch_live_ingest_session_by_id(&state.pool, &session.creator_id, &session_id).await?,
-    ))
+    let session =
+        validate_live_ingest_session_any_status(&state.pool, &session_id, &ingest_token).await?;
+    if session.status == "connected" || session.status == "stale" {
+        close_live_ingest_session(&state, &session, "ended", "disconnected", json!({})).await?;
+        return Ok(Json(
+            fetch_live_ingest_session_by_id(&state.pool, &session.creator_id, &session_id).await?,
+        ));
+    }
+    Ok(Json(session))
 }
 
 pub(crate) async fn terminate_live_ingest(

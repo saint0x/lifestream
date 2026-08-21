@@ -1,9 +1,37 @@
+use std::{
+    collections::HashMap,
+    sync::OnceLock,
+    time::{Duration, Instant},
+};
+
 use axum::http::HeaderMap;
 use chrono::Utc;
 use sha2::{Digest, Sha256};
 use sqlx::{Row, SqlitePool};
+use tokio::sync::Mutex;
 
 use crate::error::{AppError, AppResult};
+
+const AUTH_SESSION_TOUCH_MIN_INTERVAL: Duration = Duration::from_secs(30);
+
+fn auth_session_touch_gates() -> &'static Mutex<HashMap<String, Instant>> {
+    static GATES: OnceLock<Mutex<HashMap<String, Instant>>> = OnceLock::new();
+    GATES.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+async fn should_touch_auth_session(session_id: &str) -> bool {
+    let now = Instant::now();
+    let mut guard = auth_session_touch_gates().lock().await;
+    match guard.get(session_id).copied() {
+        Some(last_touch) if now.duration_since(last_touch) < AUTH_SESSION_TOUCH_MIN_INTERVAL => {
+            false
+        }
+        _ => {
+            guard.insert(session_id.to_string(), now);
+            true
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct RequestIdentity {
@@ -85,11 +113,13 @@ pub async fn lookup_identity(pool: &SqlitePool, token: &str) -> AppResult<Reques
     .ok_or(AppError::Unauthorized)?;
 
     let session_id: String = row.get("id");
-    sqlx::query("UPDATE auth_sessions SET last_used_at = ? WHERE id = ?")
-        .bind(&now)
-        .bind(&session_id)
-        .execute(pool)
-        .await?;
+    if should_touch_auth_session(&session_id).await {
+        sqlx::query("UPDATE auth_sessions SET last_used_at = ? WHERE id = ?")
+            .bind(&now)
+            .bind(&session_id)
+            .execute(pool)
+            .await?;
+    }
 
     Ok(RequestIdentity {
         session_id,

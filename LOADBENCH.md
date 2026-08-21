@@ -1005,3 +1005,213 @@ Post-corrected-artifact mixed sweep on the same Friday, August 21, 2026 fresh de
   - On the real current binary, the control plane is in a substantially healthier place than previously believed: public discovery, viewer state, creator state, creator live control, collaboration reads, live playback issuance, and chat all hold strong mixed-load numbers concurrently.
   - The remaining heaviest lane on the corrected binary is `GET /api/v1/creator/me/live/runtime`, especially at the `p99`, but it is no longer in the catastrophic band and is now an optimization target rather than a correctness crisis.
   - The live playback control plane moved from an apparent overlap bottleneck to a healthy high-throughput path once the actual artifact, migration set, and reusable session architecture were all aligned.
+
+- Friday, August 21, 2026 creator-runtime trim and cache-window hardening pass:
+  - Reduced redundant creator runtime payload weight by trimming the embedded collaboration execution graph inside `GET /api/v1/creator/me/live/runtime` down to summary-safe data while keeping the dedicated collaboration control/runtime routes authoritative for the full graph.
+  - Lengthened the invalidation-backed creator-live cache windows so burst operator reads reuse fresh authoritative snapshots instead of forcing a new rebuild every `750 ms` under pressure:
+    - creator live control: `1000 ms`
+    - creator live runtime: `2000 ms`
+  - Direct payload proof on the fresh rebuilt debug binary:
+    - `GET /api/v1/creator/me/live/runtime` response size dropped from roughly `32040` bytes to roughly `25034` bytes on the same live fixture.
+
+High-concurrency isolated probes on the same Friday, August 21, 2026 fresh rebuilt binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/bootstrap` at `-t4 -c128 -d8s` | 126.27 | 914.41 ms | 1.33 s | stable with no timeouts, but still one of the heaviest aggregate read shells |
+| `GET /api/v1/creator/me/live/runtime` before trim/cache hardening at `-t4 -c128 -d8s` | 209.20 | 125.97 ms | 1.84 s | `167` timeouts; hot operator runtime still too brittle under isolated burst |
+| `GET /api/v1/creator/me/live/runtime` after trim/cache hardening at `-t4 -c128 -d8s` | 386.04 | 192.98 ms | 1.59 s | `68` timeouts; throughput nearly doubled and tail failures dropped materially |
+
+Clean post-fix mixed sweep on the same Friday, August 21, 2026 fresh debug binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 703.39-857.85 | 45.69-48.66 ms | 77.55-87.44 ms | public live discovery remained strong |
+| `GET /api/v1/live/streams/deepsaint-live` | 653.71-808.27 | 48.82-50.65 ms | 77.86-88.24 ms | public detail remained strong |
+| `GET /api/v1/bootstrap` | 28.78-33.00 | 1.02-1.04 s | 1.11-1.16 s | still the heaviest broad aggregate read path |
+| `GET /api/v1/me/state` | 125.28-125.37 | 230.73-238.71 ms | 511.52-521.82 ms | stable under the full shared sweep |
+| `GET /api/v1/creator/me/state` | 58.20-63.01 | 427.73-437.46 ms | 733.38-773.52 ms | creator shell remained healthy and stable |
+| `GET /api/v1/creator/me/live/control` | 263.94-349.56 | 65.05-68.67 ms | 480.24-814.76 ms | authoritative control stayed in a healthy band |
+| `GET /api/v1/creator/me/live/runtime` | 181.55-217.75 | 106.44-110.84 ms | 600.69-819.26 ms | materially better than the earlier pre-fix mixed run |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 78.05-78.92 | 344.17-351.83 ms | 670.05-727.87 ms | collaboration control stayed bounded and repeatable |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 73.77-86.19 | 342.18-349.33 ms | 609.70-678.79 ms | collaboration runtime stayed bounded and repeatable |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 5037.53-5050.46 | 5.05-5.16 ms | 431.27-485.10 ms | playback issuance remained decisively healthy under overlap |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 445.20-514.44 | 58.36-60.01 ms | 278.77-443.75 ms | limiter-driven non-2xx responses remained expected under flood traffic |
+
+Post-fix correctness and determinism verification on the same Friday, August 21, 2026 current build:
+
+- `fozzy doctor --deep --scenario backend/tests/live-runtime-control.pass.fozzy.json --runs 5 --seed 20260821 --strict --json`
+  Result: `consistent=true`
+- `fozzy doctor --deep --scenario backend/tests/collaboration-websocket-control.pass.fozzy.json --runs 5 --seed 20260821 --strict --json`
+  Result: `consistent=true`
+- `fozzy doctor --deep --scenario backend/tests/live-chat-replay.pass.fozzy.json --runs 5 --seed 20260821 --strict --json`
+  Result: `consistent=true`
+- `fozzy test backend/tests/live-runtime-control.pass.fozzy.json backend/tests/collaboration-session-graph.pass.fozzy.json backend/tests/live-chat-replay.pass.fozzy.json backend/tests/collaboration-websocket-control.pass.fozzy.json backend/tests/stale-live-read-consistency.pass.fozzy.json --det --strict-verify --seed 20260821 --proc-backend host --fs-backend host --http-backend host --json`
+  Result: pass
+- `python3 backend/tests/live-runtime-control-check.py`
+  Result: `runtime|socket-inspect|connected|terminated`
+- `python3 backend/tests/viewer-app-state-check.py`
+  Result: `viewer-app-state|bootstrap|consistent`
+- `python3 backend/tests/creator-app-state-check.py`
+  Result: `creator-app-state|bootstrap|consistent`
+- `node backend/tests/collaboration-websocket-control-check.js`
+  Result: `collab-ws|control|host-guest-authority`
+- `node backend/tests/live-chat-replay-check.js`
+  Result: `live-chat-replay-pass`
+
+- Read of this pass:
+  - The creator live runtime route was the highest-leverage remaining hot read, and trimming the redundant collaboration execution graph plus widening the invalidation-backed cache window materially improved its burst behavior without weakening the dedicated collaboration endpoints.
+  - The control plane now holds a much stronger shared-load posture across public discovery, viewer state, creator state, creator live control, creator live runtime, collaboration reads, playback issuance, and chat flood handling.
+  - `GET /api/v1/bootstrap` remains the clearest remaining aggregate-read cost center. It stayed stable during the pass, but it is still the next route to attack if we want to keep pushing operator/viewer shell latency down further.
+
+- Friday, August 21, 2026 bootstrap aggregation cache and coalescing pass:
+  - Added a session-scoped bootstrap cache with request coalescing to `GET /api/v1/bootstrap` so repeated concurrent app-shell requests for the same authenticated session reuse the same aggregate payload instead of rebuilding the full home + viewer + creator shell on every burst.
+  - Kept the payload contract unchanged while widening the bootstrap cache window from `1000 ms` to `2000 ms` after the first isolated burst still showed too many miss windows under an `8s` hard-pressure run.
+  - Direct payload proof:
+    - `GET /api/v1/bootstrap` response size remained roughly `82706` bytes on the same authenticated creator session, which confirms this pass was a recomputation/aggregation optimization rather than a payload-shape change.
+
+Clean isolated bootstrap burst probes on the same Friday, August 21, 2026 fresh debug binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/bootstrap` before cache/coalescing at `-t4 -c128 -d8s` | 126.27 | 914.41 ms | 1.33 s | stable, but still very heavy as a burst aggregate read |
+| `GET /api/v1/bootstrap` with `1000 ms` cache/coalescing at `-t4 -c128 -d8s` | 110.70 | 121.62 ms | 1.16 s | median collapsed dramatically, but the cache still expired too often; `114` timeouts remained |
+| `GET /api/v1/bootstrap` with `2000 ms` cache/coalescing at `-t4 -c128 -d8s` | 285.52 | 99.25 ms | 312.06 ms | decisive improvement after widening the burst window; `103` timeouts remained under the hard isolated burst |
+
+Clean post-bootstrap-cache mixed sweep on the same Friday, August 21, 2026 fresh debug binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 743.65-782.41 | 37.44-42.44 ms | 78.56-190.90 ms | public live discovery remained healthy |
+| `GET /api/v1/live/streams/deepsaint-live` | 630.49-752.40 | 38.43-43.29 ms | 79.21-198.96 ms | public detail remained healthy |
+| `GET /api/v1/bootstrap` | 74.28-95.59 | 220.16-224.02 ms | 1.47-1.63 s | materially better than the prior `28.78-33.00 req/s`, `1.02-1.04 s` p50 mixed band; only `4-7` timeouts remained |
+| `GET /api/v1/me/state` | 173.48-183.80 | 174.60-183.11 ms | 280.42-307.74 ms | viewer shell stayed stable |
+| `GET /api/v1/creator/me/state` | 83.64-93.65 | 318.43-324.52 ms | 424.69-707.74 ms | creator shell remained healthy |
+| `GET /api/v1/creator/me/live/control` | 376.40-392.44 | 53.77-56.14 ms | 494.90-680.26 ms | control remained strong |
+| `GET /api/v1/creator/me/live/runtime` | 234.81-247.39 | 104.28-110.03 ms | 556.80-720.95 ms | runtime remained in the healthy shared-load band from the prior pass |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 105.32-106.25 | 255.95-267.84 ms | 534.16-556.54 ms | collaboration control remained bounded and repeatable |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 103.36-104.61 | 257.94-268.76 ms | 509.35-556.96 ms | collaboration runtime remained bounded and repeatable |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 4285.13-4564.77 | 5.73-5.74 ms | 386.96-543.99 ms | playback issuance remained comfortably healthy |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 617.33-712.21 | 41.09-46.19 ms | 217.57-351.52 ms | limiter-driven non-2xx responses remained expected under flood traffic |
+
+Post-bootstrap-cache verification on the same Friday, August 21, 2026 current build:
+
+- `python3 backend/tests/viewer-app-state-check.py`
+  Result: `viewer-app-state|bootstrap|consistent`
+- `python3 backend/tests/creator-app-state-check.py`
+  Result: `creator-app-state|bootstrap|consistent`
+- `python3 backend/tests/live-runtime-control-check.py`
+  Result: `runtime|socket-inspect|connected|terminated`
+- `node backend/tests/collaboration-websocket-control-check.js`
+  Result: `collab-ws|control|host-guest-authority`
+- `node backend/tests/live-chat-replay-check.js`
+  Result: `live-chat-replay-pass`
+- `fozzy doctor --deep --scenario backend/tests/live-runtime-control.pass.fozzy.json --runs 5 --seed 20260821 --strict --json`
+  Result: `consistent=true`
+
+- Read of this pass:
+  - The bootstrap route was paying a heavy repeated aggregation tax for the same authenticated session under burst load. Session-scoped caching plus coalescing materially improved both the isolated and mixed-load behavior without changing the API contract.
+  - `GET /api/v1/bootstrap` is still one of the heavier aggregate reads, but it is no longer sitting in the original `~1s` median band during the shared mixed sweep.
+  - After this pass, the clearest remaining ceilings are no longer catastrophic route failures. They are residual timeout counts on the hardest isolated `128`-connection bootstrap burst and the normal tail behavior of the heavy aggregate shells.
+
+- Friday, August 21, 2026 byte-cached bootstrap, auth-session touch throttle, and ingest disconnect hardening pass:
+  - Replaced the cached bootstrap `Value` path with a cached pre-serialized JSON body so bootstrap cache hits reuse the exact response bytes instead of paying the full JSON serialization cost on every hit.
+  - Added a process-local auth-session touch gate so `auth_sessions.last_used_at` only persists once every `30s` per session instead of on every authenticated request.
+  - Hardened `POST /api/v1/ingest/live/:session_id/disconnect` to be idempotent for already-terminal ingest sessions, which removed the replay cleanup `401` tail that surfaced during repeated chat replay verification.
+
+Clean isolated bootstrap burst on the same Friday, August 21, 2026 fresh debug binary after byte-caching:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/bootstrap` at `-t4 -c128 -d8s` after byte-cached response reuse | 7323.12 | 13.50 ms | 773.84 ms | decisive step-change over the structured-cache-only build; just `1` timeout remained |
+
+Clean shared mixed sweeps on the same Friday, August 21, 2026 fresh debug binary after byte-cached response reuse:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 808.92-851.71 | 33.90-36.25 ms | 77.83-88.53 ms | public live discovery remained healthy |
+| `GET /api/v1/live/streams/deepsaint-live` | 785.57-822.86 | 34.62-36.48 ms | 78.27-89.27 ms | public detail remained healthy |
+| `GET /api/v1/bootstrap` | 441.00-456.80 | 49.01-55.23 ms | 721.96-742.54 ms | huge improvement over the structured-cache-only shared sweep |
+| `GET /api/v1/me/state` | 162.38-183.62 | 174.29-194.23 ms | 317.67-402.99 ms | viewer shell stayed stable |
+| `GET /api/v1/creator/me/state` | 81.61-94.41 | 319.82-345.44 ms | 445.28-637.80 ms | creator shell remained healthy |
+| `GET /api/v1/creator/me/live/control` | 351.31-398.32 | 54.33-63.21 ms | 549.29-716.60 ms | authoritative creator live control remained strong |
+| `GET /api/v1/creator/me/live/runtime` | 199.86-251.48 | 99.49-108.18 ms | 598.46-722.49 ms | runtime stayed in the healthy shared-load band |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 101.22-112.09 | 262.58-282.24 ms | 589.25-665.90 ms | collaboration control remained bounded |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 96.77-106.08 | 282.74-282.74 ms | 663.30-663.30 ms | collaboration runtime remained bounded |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 5395.06-5740.59 | 4.61-4.75 ms | 504.18-558.18 ms | playback issuance remained very strong |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 545.03-579.85 | 44.42-45.43 ms | 391.46-555.91 ms | limiter-driven non-2xx responses remained expected under flood traffic |
+
+Post-auth-session-touch-throttle verification on the same Friday, August 21, 2026 current build:
+
+- `python3 backend/tests/load/full_mixed_sweep.py --repeats 1`
+  Result highlights:
+  - `GET /api/v1/bootstrap`: `567.47 req/s`, `46.91 ms` p50, `731.12 ms` p99
+  - `GET /api/v1/creator/me/live/control`: `505.99 req/s`, `49.66 ms` p50, `393.17 ms` p99
+  - `GET /api/v1/creator/me/live/runtime`: `234.04 req/s`, `102.42 ms` p50, `473.12 ms` p99
+  - `POST /api/v1/playback/live/lv-deepsaint-live/session`: `6517.40 req/s`, `4.44 ms` p50, `130.26 ms` p99
+- Observed server behavior:
+  - the earlier repeated slow-statement warnings for `UPDATE auth_sessions SET last_used_at = ? WHERE id = ?` were no longer observed during the post-throttle log poll that followed the shared sweep
+- `python3 backend/tests/viewer-app-state-check.py`
+  Result: `viewer-app-state|bootstrap|consistent`
+- `python3 backend/tests/creator-app-state-check.py`
+  Result: `creator-app-state|bootstrap|consistent`
+- `python3 backend/tests/live-runtime-control-check.py`
+  Result: `runtime|socket-inspect|connected|terminated`
+- `node backend/tests/collaboration-websocket-control-check.js`
+  Result: `collab-ws|control|host-guest-authority`
+- `node backend/tests/live-chat-replay-check.js`
+  Result: `live-chat-replay-pass`
+
+- Read of this pass:
+  - Pre-serializing the bootstrap body was the highest-leverage remaining fix for the aggregate shell. It removed the per-hit JSON serialization tax and pushed bootstrap from a merely improved route into a clearly healthy shared-load path.
+  - Throttling auth-session touch writes addressed a real SQLite contention source exposed by the server logs, and the post-throttle sweep no longer showed the earlier repeated slow `auth_sessions.last_used_at` write warnings in the observed poll window.
+  - Making ingest disconnect idempotent closed a real replay-cleanup edge that surfaced during repeated stress-driven websocket verification.
+
+- Friday, August 21, 2026 viewer-state and creator-state byte-cache pass:
+  - Applied the same session-scoped pre-serialized JSON body caching pattern to:
+    - `GET /api/v1/me/state`
+    - `GET /api/v1/creator/me/state`
+  - Kept both routes on a short `2000 ms` cache window with request coalescing so burst traffic for the same session stops paying the full app-state aggregation and serialization cost on every hit.
+
+Authenticated app-state payload sizes on the same Friday, August 21, 2026 creator session:
+
+| Endpoint | Response size | Dominant components |
+| --- | ---: | --- |
+| `GET /api/v1/me/state` | `15141` bytes | notifications `5420`, sessions `2779`, watchlist `1783`, settings `1608` |
+| `GET /api/v1/creator/me/state` | `33856` bytes | content `16969`, dashboard `11867`, liveRuntime `5244` |
+
+Clean isolated authenticated app-state burst probes on the same Friday, August 21, 2026 fresh debug binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/me/state` before byte-cache at `-t4 -c128 -d8s` | 305.55 | 444.03 ms | 709.79 ms | healthy, but still full-shell recomputation per hit |
+| `GET /api/v1/creator/me/state` before byte-cache at `-t4 -c128 -d8s` | 218.13 | 552.25 ms | 802.35 ms | creator shell was still materially heavier |
+| `GET /api/v1/me/state` after byte-cache at `-t4 -c128 -d8s` | 12560.51 | 10.04 ms | 101.76 ms | dramatic step-change into a comfortably healthy burst band |
+| `GET /api/v1/creator/me/state` after byte-cache at `-t4 -c128 -d8s` | 12288.25 | 10.12 ms | 111.03 ms | creator shell now sits in the same healthy burst class as viewer state |
+
+Clean shared mixed sweep on the same Friday, August 21, 2026 fresh debug binary after app-state byte-caching:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 2165.38 | 8.27 ms | 284.17 ms | public listing moved into a very strong shared-load band |
+| `GET /api/v1/live/streams/deepsaint-live` | 2018.52 | 8.53 ms | 264.43 ms | public detail matched the stronger band |
+| `GET /api/v1/bootstrap` | 933.37 | 27.85 ms | 212.40 ms | bootstrap improved again under the full shared matrix |
+| `GET /api/v1/me/state` | 786.25 | 29.50 ms | 319.51 ms | viewer shell is now firmly healthy under shared overlap |
+| `GET /api/v1/creator/me/state` | 877.54 | 28.98 ms | 291.05 ms | creator shell is now also firmly healthy under shared overlap |
+| `GET /api/v1/creator/me/live/control` | 453.09 | 57.77 ms | 248.44 ms | live control remained strong |
+| `GET /api/v1/creator/me/live/runtime` | 197.02 | 141.41 ms | 523.66 ms | still one of the heavier live operator reads, but healthy and bounded |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 333.15 | 69.35 ms | 404.36 ms | collaboration control materially improved under the shared matrix |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 469.43 | 60.97 ms | 206.01 ms | collaboration runtime became one of the strongest operator lanes in the shared sweep |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 2580.79 | 7.57 ms | 262.39 ms | playback issuance remained comfortably healthy |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 732.68 | 30.94 ms | 355.71 ms | limiter-driven non-2xx responses remained expected under chat flood |
+
+Post-app-state-cache verification on the same Friday, August 21, 2026 current build:
+
+- `python3 backend/tests/viewer-app-state-check.py`
+  Result: `viewer-app-state|bootstrap|consistent`
+- `python3 backend/tests/creator-app-state-check.py`
+  Result: `creator-app-state|bootstrap|consistent`
+
+- Read of this pass:
+  - The same byte-cached delivery pattern that unlocked bootstrap also cleanly unlocked the two authenticated app-state shells.
+  - After this pass, the full shared control-plane matrix moved out of the “few heavy shells dominate the whole overlap” regime and into a much more comfortable production band across public discovery, bootstrap, viewer state, creator state, live control/runtime, collaboration control/runtime, playback issuance, and chat flood handling.

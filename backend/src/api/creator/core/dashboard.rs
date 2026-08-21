@@ -1,5 +1,7 @@
 use super::*;
 
+const CREATOR_APP_STATE_RESPONSE_CACHE_TTL: Duration = Duration::from_millis(2_000);
+
 pub(super) async fn creator_dashboard(
     State(state): State<SharedState>,
     headers: HeaderMap,
@@ -13,19 +15,39 @@ pub(super) async fn creator_dashboard(
 pub(crate) async fn get_creator_state(
     State(state): State<SharedState>,
     headers: HeaderMap,
-) -> AppResult<Json<CreatorAppState>> {
+) -> AppResult<Response> {
     let identity = require_identity(&state.pool, &headers).await?;
-    Ok(Json(
-        fetch_creator_app_state(
-            &state,
-            &identity,
-            &CreatorContentQuery {
-                kind: None,
-                status: None,
-                q: None,
-                sort: None,
-            },
-        )
-        .await?,
-    ))
+    let cache_key = format!("creator-state:session:{}", identity.session_id);
+    if let Some(cached) = state
+        .bootstrap_cache
+        .get(&cache_key, CREATOR_APP_STATE_RESPONSE_CACHE_TTL)
+        .await
+    {
+        return Ok(([(header::CONTENT_TYPE, "application/json")], Body::from(cached)).into_response());
+    }
+    let _coalesced = state
+        .request_coalescer
+        .acquire(&cache_key)
+        .await;
+    if let Some(cached) = state
+        .bootstrap_cache
+        .get(&cache_key, CREATOR_APP_STATE_RESPONSE_CACHE_TTL)
+        .await
+    {
+        return Ok(([(header::CONTENT_TYPE, "application/json")], Body::from(cached)).into_response());
+    }
+    let response = fetch_creator_app_state(
+        &state,
+        &identity,
+        &CreatorContentQuery {
+            kind: None,
+            status: None,
+            q: None,
+            sort: None,
+        },
+    )
+    .await?;
+    let response_body = Bytes::from(serde_json::to_vec(&response)?);
+    state.bootstrap_cache.put(&cache_key, response_body.clone()).await;
+    Ok(([(header::CONTENT_TYPE, "application/json")], Body::from(response_body)).into_response())
 }

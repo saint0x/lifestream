@@ -1,5 +1,7 @@
 use super::*;
 
+const VIEWER_APP_STATE_RESPONSE_CACHE_TTL: Duration = Duration::from_millis(2_000);
+
 pub(crate) async fn get_me(
     State(state): State<SharedState>,
     headers: HeaderMap,
@@ -11,11 +13,31 @@ pub(crate) async fn get_me(
 pub(crate) async fn get_my_state(
     State(state): State<SharedState>,
     headers: HeaderMap,
-) -> AppResult<Json<ViewerAppState>> {
+) -> AppResult<Response> {
     let identity = require_identity(&state.pool, &headers).await?;
-    Ok(Json(
-        fetch_viewer_app_state(&state.pool, &identity.user_id, &identity.session_id).await?,
-    ))
+    let cache_key = format!("viewer-state:session:{}", identity.session_id);
+    if let Some(cached) = state
+        .bootstrap_cache
+        .get(&cache_key, VIEWER_APP_STATE_RESPONSE_CACHE_TTL)
+        .await
+    {
+        return Ok(([(header::CONTENT_TYPE, "application/json")], Body::from(cached)).into_response());
+    }
+    let _coalesced = state
+        .request_coalescer
+        .acquire(&cache_key)
+        .await;
+    if let Some(cached) = state
+        .bootstrap_cache
+        .get(&cache_key, VIEWER_APP_STATE_RESPONSE_CACHE_TTL)
+        .await
+    {
+        return Ok(([(header::CONTENT_TYPE, "application/json")], Body::from(cached)).into_response());
+    }
+    let response = fetch_viewer_app_state(&state.pool, &identity.user_id, &identity.session_id).await?;
+    let response_body = Bytes::from(serde_json::to_vec(&response)?);
+    state.bootstrap_cache.put(&cache_key, response_body.clone()).await;
+    Ok(([(header::CONTENT_TYPE, "application/json")], Body::from(response_body)).into_response())
 }
 
 pub(crate) async fn get_my_library(

@@ -7,6 +7,7 @@ use std::{
 };
 
 use axum::http::HeaderValue;
+use axum::body::Bytes;
 use sqlx::SqlitePool;
 use tokio::sync::{Mutex, broadcast};
 
@@ -25,6 +26,7 @@ pub struct AppState {
     pub reconciliation_gates: ReconciliationGateStore,
     pub request_coalescer: RequestCoalescerStore,
     pub live_response_cache: LiveResponseCacheStore,
+    pub bootstrap_cache: BootstrapCacheStore,
     pub metrics: MetricsStore,
     pub background_worker: BackgroundWorkerHealthStore,
     pub binary_probe_cache: BinaryProbeCacheStore,
@@ -46,6 +48,7 @@ impl AppState {
             reconciliation_gates: ReconciliationGateStore::default(),
             request_coalescer: RequestCoalescerStore::default(),
             live_response_cache: LiveResponseCacheStore::default(),
+            bootstrap_cache: BootstrapCacheStore::default(),
             metrics: MetricsStore::default(),
             background_worker: BackgroundWorkerHealthStore::default(),
             binary_probe_cache: BinaryProbeCacheStore::default(),
@@ -98,6 +101,11 @@ pub struct LiveResponseCacheStore {
     control: Arc<Mutex<HashMap<String, TimedCacheEntry<CreatorLiveControlResponse>>>>,
     runtime: Arc<Mutex<HashMap<String, TimedCacheEntry<CreatorLiveRuntimeResponse>>>>,
     live_playback_grants: Arc<Mutex<HashMap<String, TimedCacheEntry<PlaybackGrant>>>>,
+}
+
+#[derive(Clone, Default)]
+pub struct BootstrapCacheStore {
+    inner: Arc<Mutex<HashMap<String, TimedCacheEntry<Bytes>>>>,
 }
 
 #[derive(Clone, Default)]
@@ -318,6 +326,16 @@ impl LiveResponseCacheStore {
 
     pub async fn put_live_playback_grant(&self, key: &str, value: PlaybackGrant) {
         put_timed_cache_value(&self.live_playback_grants, key, value).await;
+    }
+}
+
+impl BootstrapCacheStore {
+    pub async fn get(&self, key: &str, ttl: Duration) -> Option<Bytes> {
+        get_timed_cache_value(&self.inner, key, ttl).await
+    }
+
+    pub async fn put(&self, key: &str, value: Bytes) {
+        put_timed_cache_value(&self.inner, key, value).await;
     }
 }
 

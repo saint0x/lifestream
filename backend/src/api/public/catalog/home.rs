@@ -4,6 +4,8 @@ use crate::api::discovery::{
     fetch_categories_for_live_streams, fetch_user, fetch_viewer_app_state,
 };
 
+const BOOTSTRAP_RESPONSE_CACHE_TTL: Duration = Duration::from_millis(2_000);
+
 async fn build_home_response(state: &SharedState, headers: &HeaderMap) -> AppResult<HomeResponse> {
     let (trending_series, trending_films, featured_live, maybe_identity) = tokio::try_join!(
         fetch_series(&state.pool, Some("WHERE trending = 1"), Some(6)),
@@ -36,8 +38,30 @@ pub(crate) async fn home(
 pub(crate) async fn bootstrap(
     State(state): State<SharedState>,
     headers: HeaderMap,
-) -> AppResult<Json<serde_json::Value>> {
+) -> AppResult<Response> {
     let identity = optional_identity(&state.pool, &headers).await?;
+    let bootstrap_cache_key = identity
+        .as_ref()
+        .map(|identity| format!("session:{}", identity.session_id))
+        .unwrap_or_else(|| "anon".to_string());
+    if let Some(cached) = state
+        .bootstrap_cache
+        .get(&bootstrap_cache_key, BOOTSTRAP_RESPONSE_CACHE_TTL)
+        .await
+    {
+        return Ok(([(header::CONTENT_TYPE, "application/json")], Body::from(cached)).into_response());
+    }
+    let _coalesced = state
+        .request_coalescer
+        .acquire(&format!("bootstrap:{bootstrap_cache_key}"))
+        .await;
+    if let Some(cached) = state
+        .bootstrap_cache
+        .get(&bootstrap_cache_key, BOOTSTRAP_RESPONSE_CACHE_TTL)
+        .await
+    {
+        return Ok(([(header::CONTENT_TYPE, "application/json")], Body::from(cached)).into_response());
+    }
     let home = build_home_response(&state, &headers).await?;
     let me = match identity.as_ref() {
         Some(identity) => Some(fetch_user(&state.pool, &identity.user_id).await?),
@@ -71,12 +95,17 @@ pub(crate) async fn bootstrap(
         }
         _ => (None, None),
     };
-
-    Ok(Json(serde_json::json!({
+    let response = serde_json::json!({
         "home": home,
         "me": me,
         "viewer": viewer,
         "creator": creator,
         "creatorState": creator_state
-    })))
+    });
+    let response_body = Bytes::from(serde_json::to_vec(&response)?);
+    state
+        .bootstrap_cache
+        .put(&bootstrap_cache_key, response_body.clone())
+        .await;
+    Ok(([(header::CONTENT_TYPE, "application/json")], Body::from(response_body)).into_response())
 }

@@ -10,7 +10,8 @@ use crate::api::control::{
 use crate::api::presence::reconcile_stale_creator_live_socket_sessions_for_read_coalesced;
 use crate::models::{LiveRuntimeTelemetry, LiveRuntimeTelemetrySummary};
 
-const CREATOR_LIVE_RESPONSE_CACHE_TTL: Duration = Duration::from_millis(750);
+const CREATOR_LIVE_CONTROL_RESPONSE_CACHE_TTL: Duration = Duration::from_millis(1_000);
+const CREATOR_LIVE_RUNTIME_RESPONSE_CACHE_TTL: Duration = Duration::from_millis(2_000);
 const CREATOR_LIVE_RECENT_SESSION_LIMIT: i64 = 1;
 const CREATOR_LIVE_RECENT_RUNTIME_OUTPUT_LIMIT: i64 = 1;
 const CREATOR_LIVE_RECENT_RUNTIME_TARGET_LIMIT: i64 = 1;
@@ -157,6 +158,29 @@ async fn fetch_creator_runtime_telemetry_summary_compact(
         last_failure_state: None,
         last_error: None,
     })
+}
+
+fn trim_runtime_collaboration_embed_for_creator_runtime(
+    collaboration: &mut CreatorLiveCollaborationSummary,
+) {
+    let Some(active_control) = collaboration.active_control.as_mut() else {
+        return;
+    };
+
+    active_control.runtime.grants.clear();
+    active_control.runtime.pickups.clear();
+    active_control.runtime.recent_events.clear();
+    active_control.socket_sessions.clear();
+
+    let topology = &mut active_control.runtime.topology;
+    topology.contributions.clear();
+    topology.outputs.clear();
+    topology.programs.clear();
+    topology.audio.clear();
+    topology.engine.nodes.clear();
+    topology.engine.edges.clear();
+    topology.engine.buses.clear();
+    topology.engine.operations.clear();
 }
 
 pub(crate) async fn fetch_creator_live_control_response(
@@ -326,7 +350,7 @@ pub(crate) async fn fetch_creator_live_runtime_response(
         _ => None,
     };
 
-    Ok(CreatorLiveRuntimeResponse {
+    let mut response = CreatorLiveRuntimeResponse {
         snapshot,
         health,
         collaboration,
@@ -341,7 +365,9 @@ pub(crate) async fn fetch_creator_live_runtime_response(
         recent_runtime_targets,
         recent_telemetry,
         recent_events,
-    })
+    };
+    trim_runtime_collaboration_embed_for_creator_runtime(&mut response.collaboration);
+    Ok(response)
 }
 
 pub(crate) async fn fetch_authoritative_creator_live_control_response(
@@ -350,7 +376,7 @@ pub(crate) async fn fetch_authoritative_creator_live_control_response(
 ) -> AppResult<CreatorLiveControlResponse> {
     if let Some(cached) = state
         .live_response_cache
-        .get_control(creator_id, CREATOR_LIVE_RESPONSE_CACHE_TTL)
+        .get_control(creator_id, CREATOR_LIVE_CONTROL_RESPONSE_CACHE_TTL)
         .await
     {
         return Ok(cached);
@@ -361,7 +387,7 @@ pub(crate) async fn fetch_authoritative_creator_live_control_response(
         .await;
     if let Some(cached) = state
         .live_response_cache
-        .get_control(creator_id, CREATOR_LIVE_RESPONSE_CACHE_TTL)
+        .get_control(creator_id, CREATOR_LIVE_CONTROL_RESPONSE_CACHE_TTL)
         .await
     {
         return Ok(cached);
@@ -387,7 +413,7 @@ pub(crate) async fn fetch_authoritative_creator_live_runtime_response(
 ) -> AppResult<CreatorLiveRuntimeResponse> {
     if let Some(cached) = state
         .live_response_cache
-        .get_runtime(creator_id, CREATOR_LIVE_RESPONSE_CACHE_TTL)
+        .get_runtime(creator_id, CREATOR_LIVE_RUNTIME_RESPONSE_CACHE_TTL)
         .await
     {
         return Ok(cached);
@@ -398,7 +424,7 @@ pub(crate) async fn fetch_authoritative_creator_live_runtime_response(
         .await;
     if let Some(cached) = state
         .live_response_cache
-        .get_runtime(creator_id, CREATOR_LIVE_RESPONSE_CACHE_TTL)
+        .get_runtime(creator_id, CREATOR_LIVE_RUNTIME_RESPONSE_CACHE_TTL)
         .await
     {
         return Ok(cached);
