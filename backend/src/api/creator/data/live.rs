@@ -1,5 +1,7 @@
 use super::*;
 
+const CREATOR_LIVE_HEALTH_SAMPLE_LIMIT: i64 = 24;
+
 pub(crate) async fn ensure_creator_live_settings_row(
     pool: &SqlitePool,
     creator_id: &str,
@@ -84,28 +86,32 @@ pub(crate) async fn fetch_creator_live_health(
         SELECT collected_at, bitrate_kbps, viewers, cpu_percent, dropped_frames, free_disk_gb
         FROM creator_stream_health_samples
         WHERE creator_id = ?
-        ORDER BY collected_at ASC
+        ORDER BY collected_at DESC
+        LIMIT ?
         "#,
     )
     .bind(creator_id)
+    .bind(CREATOR_LIVE_HEALTH_SAMPLE_LIMIT)
     .fetch_all(pool)
     .await?;
+    let mut samples = sample_rows
+        .into_iter()
+        .map(|row| CreatorHealthSample {
+            collected_at: row.get("collected_at"),
+            bitrate_kbps: row.get("bitrate_kbps"),
+            viewers: row.get("viewers"),
+            cpu_percent: row.get("cpu_percent"),
+            dropped_frames: row.get("dropped_frames"),
+            free_disk_gb: row.get("free_disk_gb"),
+        })
+        .collect::<Vec<_>>();
+    samples.reverse();
 
     Ok(CreatorLiveHealth {
         current_bitrate_kbps: settings_row.get("bitrate_kbps"),
         current_cpu_percent: settings_row.get("cpu_percent"),
         current_dropped_frames: settings_row.get("dropped_frames"),
         current_free_disk_gb: settings_row.get("free_disk_gb"),
-        samples: sample_rows
-            .into_iter()
-            .map(|row| CreatorHealthSample {
-                collected_at: row.get("collected_at"),
-                bitrate_kbps: row.get("bitrate_kbps"),
-                viewers: row.get("viewers"),
-                cpu_percent: row.get("cpu_percent"),
-                dropped_frames: row.get("dropped_frames"),
-                free_disk_gb: row.get("free_disk_gb"),
-            })
-            .collect(),
+        samples,
     })
 }

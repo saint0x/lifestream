@@ -7,6 +7,12 @@ use crate::api::control::{
     fetch_recent_live_runtime_telemetry, reconcile_live_runtime_output_artifacts,
 };
 
+const CREATOR_LIVE_RECENT_SESSION_LIMIT: i64 = 5;
+const CREATOR_LIVE_RECENT_RUNTIME_OUTPUT_LIMIT: i64 = 5;
+const CREATOR_LIVE_RECENT_RUNTIME_TARGET_LIMIT: i64 = 12;
+const CREATOR_LIVE_RECENT_TELEMETRY_LIMIT: i64 = 12;
+const CREATOR_LIVE_RECENT_EVENT_LIMIT: i64 = 12;
+
 pub(crate) async fn fetch_creator_live_control_response(
     pool: &SqlitePool,
     creator_id: &str,
@@ -99,11 +105,36 @@ pub(crate) async fn fetch_creator_live_runtime_response(
         telemetry_summary,
         runtime_advisory,
         artifact_health,
-        recent_sessions: fetch_recent_live_ingest_sessions(pool, creator_id, 10).await?,
-        recent_runtime_outputs: fetch_recent_live_runtime_outputs(pool, creator_id, 10).await?,
-        recent_runtime_targets: fetch_recent_live_runtime_targets(pool, creator_id, 25).await?,
-        recent_telemetry: fetch_recent_live_runtime_telemetry(pool, creator_id, 25).await?,
-        recent_events: fetch_live_ingest_events_for_creator(pool, creator_id, 25).await?,
+        recent_sessions: fetch_recent_live_ingest_sessions(
+            pool,
+            creator_id,
+            CREATOR_LIVE_RECENT_SESSION_LIMIT,
+        )
+        .await?,
+        recent_runtime_outputs: fetch_recent_live_runtime_outputs(
+            pool,
+            creator_id,
+            CREATOR_LIVE_RECENT_RUNTIME_OUTPUT_LIMIT,
+        )
+        .await?,
+        recent_runtime_targets: fetch_recent_live_runtime_targets(
+            pool,
+            creator_id,
+            CREATOR_LIVE_RECENT_RUNTIME_TARGET_LIMIT,
+        )
+        .await?,
+        recent_telemetry: fetch_recent_live_runtime_telemetry(
+            pool,
+            creator_id,
+            CREATOR_LIVE_RECENT_TELEMETRY_LIMIT,
+        )
+        .await?,
+        recent_events: fetch_live_ingest_events_for_creator(
+            pool,
+            creator_id,
+            CREATOR_LIVE_RECENT_EVENT_LIMIT,
+        )
+        .await?,
     })
 }
 
