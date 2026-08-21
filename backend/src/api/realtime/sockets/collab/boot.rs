@@ -1,4 +1,9 @@
 use super::*;
+use crate::api::{
+    fetch_collaboration_socket_presence_for_session,
+    filter_visible_collaboration_mirror_grants_for_session_view,
+    filter_visible_collaboration_mirror_pickups_for_session_view,
+};
 use tokio::sync::broadcast;
 
 pub(super) struct SocketBootstrap {
@@ -37,16 +42,15 @@ pub(super) async fn bootstrap_socket(
     let session_pickups = fetch_collaboration_mirror_pickups_for_session(&state.pool, session_id)
         .await
         .unwrap_or_default();
-    let connected_participants =
-        count_active_collaboration_socket_sessions(&state.pool, session_id)
-            .await
-            .unwrap_or_default();
+    let socket_sessions = fetch_collaboration_socket_presence_for_session(&state.pool, session_id)
+        .await
+        .unwrap_or_default();
     let topology = match build_collaboration_runtime_topology(
         &state.pool,
         &session,
         &session_grants,
         &session_pickups,
-        connected_participants,
+        &socket_sessions,
     )
     .await
     {
@@ -62,14 +66,6 @@ pub(super) async fn bootstrap_socket(
             return None;
         }
     };
-    let visible_grants =
-        fetch_visible_collaboration_mirror_grants_for_session_view(&state.pool, &session)
-            .await
-            .unwrap_or_default();
-    let visible_pickups =
-        fetch_visible_collaboration_mirror_pickups_for_session_view(&state.pool, &session)
-            .await
-            .unwrap_or_default();
     let (snapshot_events, replay_events) =
         load_collaboration_socket_event_bootstrap(&state.pool, session_id, after_seq)
             .await
@@ -99,8 +95,14 @@ pub(super) async fn bootstrap_socket(
         .send(Message::Text(
             serde_json::to_string(&WsEvent::CollaborationSnapshot {
                 session: session.clone(),
-                grants: visible_grants,
-                pickups: visible_pickups,
+                grants: filter_visible_collaboration_mirror_grants_for_session_view(
+                    &session,
+                    &session_grants,
+                ),
+                pickups: filter_visible_collaboration_mirror_pickups_for_session_view(
+                    &session,
+                    &session_pickups,
+                ),
                 events: visible_snapshot_events,
             })
             .unwrap_or_default(),
@@ -117,6 +119,7 @@ pub(super) async fn bootstrap_socket(
             ))
             .await;
     }
+    let connected_participants = topology.connected_participants;
     let _ = sender
         .send(Message::Text(
             serde_json::to_string(&WsEvent::CollaborationTopology { topology }).unwrap_or_default(),
@@ -128,7 +131,7 @@ pub(super) async fn bootstrap_socket(
             channel_id,
             WsEvent::CollaborationPresence {
                 session_id: session_id.to_string(),
-                connected_participants: connected_participants as i64,
+                connected_participants,
             },
         )
         .await;

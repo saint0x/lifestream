@@ -6,8 +6,9 @@ mod topology;
 
 pub(crate) use presence::{
     fetch_collaboration_socket_presence_by_id_raw,
-    fetch_visible_collaboration_mirror_grants_for_session_view,
-    fetch_visible_collaboration_mirror_pickups_for_session_view,
+    fetch_collaboration_socket_presence_for_session,
+    filter_visible_collaboration_mirror_grants_for_session_view,
+    filter_visible_collaboration_mirror_pickups_for_session_view,
 };
 pub(crate) use reconciliation::{
     disconnect_stale_collaboration_socket_sessions_for_session,

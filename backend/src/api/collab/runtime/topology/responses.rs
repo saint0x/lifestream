@@ -1,40 +1,111 @@
-use super::presence::fetch_collaboration_socket_presence_for_session;
+use super::presence::{
+    fetch_collaboration_socket_presence_for_session,
+    filter_visible_collaboration_mirror_grants_for_session_view,
+    filter_visible_collaboration_mirror_pickups_for_session_view,
+};
 use super::*;
-use crate::api::collab::fetch_collaboration_invites_for_session;
 
 const CREATOR_LIVE_RECENT_COLLABORATION_SESSIONS_LIMIT: i64 = 3;
 
-pub(crate) async fn build_collaboration_runtime_response_for_participant(
+struct CollaborationRuntimeBuild {
+    runtime: CollaborationRuntimeResponse,
+    socket_sessions: Vec<CollaborationSocketPresence>,
+}
+
+#[derive(sqlx::FromRow)]
+struct CreatorCollaborationCountsRow {
+    total_sessions: i64,
+    active_session_count: i64,
+    pending_invite_count: i64,
+    active_grant_count: i64,
+    issued_grant_count: i64,
+}
+
+async fn build_collaboration_runtime_for_session_view(
     pool: &SqlitePool,
     session: CollaborationSessionView,
-) -> AppResult<CollaborationRuntimeResponse> {
-    let session_grants = fetch_collaboration_mirror_grants_for_session(pool, &session.id).await?;
-    let session_pickups = fetch_collaboration_mirror_pickups_for_session(pool, &session.id).await?;
+) -> AppResult<CollaborationRuntimeBuild> {
+    let (session_grants, session_pickups, recent_events, socket_sessions) = tokio::try_join!(
+        fetch_collaboration_mirror_grants_for_session(pool, &session.id),
+        fetch_collaboration_mirror_pickups_for_session(pool, &session.id),
+        fetch_collaboration_events(pool, &session.id, 0, 100),
+        fetch_collaboration_socket_presence_for_session(pool, &session.id),
+    )?;
     let visible_grants =
-        fetch_visible_collaboration_mirror_grants_for_session_view(pool, &session).await?;
+        filter_visible_collaboration_mirror_grants_for_session_view(&session, &session_grants);
     let visible_pickups =
-        fetch_visible_collaboration_mirror_pickups_for_session_view(pool, &session).await?;
-    let recent_events = filter_visible_collaboration_events_for_session(
-        &session,
-        fetch_collaboration_events(pool, &session.id, 0, 100).await?,
-    );
-    let connected_participants =
-        count_active_collaboration_socket_sessions(pool, &session.id).await?;
+        filter_visible_collaboration_mirror_pickups_for_session_view(&session, &session_pickups);
     let topology = build_collaboration_runtime_topology(
         pool,
         &session,
         &session_grants,
         &session_pickups,
-        connected_participants,
+        &socket_sessions,
     )
     .await?;
-    Ok(CollaborationRuntimeResponse {
-        session,
-        topology,
-        grants: visible_grants,
-        pickups: visible_pickups,
-        recent_events,
+
+    Ok(CollaborationRuntimeBuild {
+        runtime: CollaborationRuntimeResponse {
+            session: session.clone(),
+            topology,
+            grants: visible_grants,
+            pickups: visible_pickups,
+            recent_events: filter_visible_collaboration_events_for_session(&session, recent_events),
+        },
+        socket_sessions,
     })
+}
+
+async fn fetch_creator_collaboration_counts(
+    pool: &SqlitePool,
+    creator_id: &str,
+) -> AppResult<CreatorCollaborationCountsRow> {
+    sqlx::query_as(
+        r#"
+        SELECT
+            (SELECT COUNT(*)
+             FROM collaboration_sessions
+             WHERE host_creator_id = ?) AS total_sessions,
+            (SELECT COUNT(*)
+             FROM collaboration_sessions
+             WHERE host_creator_id = ? AND status IN ('active', 'pending')) AS active_session_count,
+            (SELECT COUNT(*)
+             FROM collaboration_invites invites
+             JOIN collaboration_sessions sessions
+               ON sessions.id = invites.session_id
+             WHERE sessions.host_creator_id = ?
+               AND invites.state = 'pending') AS pending_invite_count,
+            (SELECT COUNT(*)
+             FROM collaboration_mirror_grants grants
+             JOIN collaboration_sessions sessions
+               ON sessions.id = grants.session_id
+             WHERE sessions.host_creator_id = ?
+               AND grants.state = 'active') AS active_grant_count,
+            (SELECT COUNT(*)
+             FROM collaboration_mirror_grants grants
+             JOIN collaboration_sessions sessions
+               ON sessions.id = grants.session_id
+             WHERE sessions.host_creator_id = ?
+               AND grants.state = 'issued') AS issued_grant_count
+        "#,
+    )
+    .bind(creator_id)
+    .bind(creator_id)
+    .bind(creator_id)
+    .bind(creator_id)
+    .bind(creator_id)
+    .fetch_one(pool)
+    .await
+    .map_err(Into::into)
+}
+
+pub(crate) async fn build_collaboration_runtime_response_for_participant(
+    pool: &SqlitePool,
+    session: CollaborationSessionView,
+) -> AppResult<CollaborationRuntimeResponse> {
+    Ok(build_collaboration_runtime_for_session_view(pool, session)
+        .await?
+        .runtime)
 }
 
 pub(crate) async fn build_collaboration_runtime_response_for_host(
@@ -43,21 +114,26 @@ pub(crate) async fn build_collaboration_runtime_response_for_host(
 ) -> AppResult<CollaborationRuntimeResponse> {
     let host = fetch_collaboration_host_summary(pool, &session.host_creator_id).await?;
     let view = collaboration_session_view_for_host(session, host)?;
-    build_collaboration_runtime_response_for_participant(pool, view).await
+    Ok(build_collaboration_runtime_for_session_view(pool, view)
+        .await?
+        .runtime)
 }
 
 pub(crate) async fn build_creator_collaboration_control_response_for_host(
     pool: &SqlitePool,
     session: CollaborationSession,
 ) -> AppResult<CreatorCollaborationControlResponse> {
-    let runtime = build_collaboration_runtime_response_for_host(pool, session).await?;
-    let socket_sessions =
-        fetch_collaboration_socket_presence_for_session(pool, &runtime.session.id).await?;
-    let pending_invite_count = fetch_collaboration_invites_for_session(pool, &runtime.session.id)
-        .await?
-        .into_iter()
+    let pending_invite_count = session
+        .invites
+        .iter()
         .filter(|invite| invite.state == "pending")
         .count() as i64;
+    let host = fetch_collaboration_host_summary(pool, &session.host_creator_id).await?;
+    let view = collaboration_session_view_for_host(session, host)?;
+    let CollaborationRuntimeBuild {
+        runtime,
+        socket_sessions,
+    } = build_collaboration_runtime_for_session_view(pool, view).await?;
     let active_grant_count = runtime
         .grants
         .iter()
@@ -95,34 +171,32 @@ pub(crate) async fn fetch_creator_live_collaboration_summary(
         fetch_latest_active_or_pending_collaboration_session_for_host(pool, creator_id).await?
     };
 
-    let active_control = if let Some(session) = active_session.clone() {
-        Some(build_creator_collaboration_control_response_for_host(pool, session).await?)
-    } else {
-        None
-    };
-
-    let recent_sessions = fetch_recent_collaboration_sessions_for_host(
-        pool,
-        creator_id,
-        CREATOR_LIVE_RECENT_COLLABORATION_SESSIONS_LIMIT,
-    )
-    .await?;
-    let total_sessions = count_collaboration_sessions_for_host(pool, creator_id).await?;
-    let active_session_count =
-        count_active_or_pending_collaboration_sessions_for_host(pool, creator_id).await?;
-    let pending_invite_count = count_pending_collaboration_invites_for_host(pool, creator_id).await?;
-    let active_grant_count = count_collaboration_grants_for_host_by_state(pool, creator_id, "active").await?;
-    let issued_grant_count = count_collaboration_grants_for_host_by_state(pool, creator_id, "issued").await?;
+    let (active_control, recent_sessions, counts) = tokio::try_join!(
+        async {
+            match active_session.clone() {
+                Some(session) => build_creator_collaboration_control_response_for_host(pool, session)
+                    .await
+                    .map(Some),
+                None => Ok(None),
+            }
+        },
+        fetch_recent_collaboration_sessions_for_host(
+            pool,
+            creator_id,
+            CREATOR_LIVE_RECENT_COLLABORATION_SESSIONS_LIMIT,
+        ),
+        fetch_creator_collaboration_counts(pool, creator_id),
+    )?;
 
     Ok(CreatorLiveCollaborationSummary {
         active_session,
         active_control,
         recent_sessions,
-        total_sessions,
-        active_session_count,
-        pending_invite_count,
-        active_grant_count,
-        issued_grant_count,
+        total_sessions: counts.total_sessions,
+        active_session_count: counts.active_session_count,
+        pending_invite_count: counts.pending_invite_count,
+        active_grant_count: counts.active_grant_count,
+        issued_grant_count: counts.issued_grant_count,
     })
 }
 
@@ -179,80 +253,4 @@ async fn fetch_recent_collaboration_sessions_for_host(
         sessions.push(fetch_collaboration_session_for_host(pool, creator_id, &session_id).await?);
     }
     Ok(sessions)
-}
-
-async fn count_collaboration_sessions_for_host(
-    pool: &SqlitePool,
-    creator_id: &str,
-) -> AppResult<i64> {
-    sqlx::query_scalar(
-        r#"
-        SELECT COUNT(*)
-        FROM collaboration_sessions
-        WHERE host_creator_id = ?
-        "#,
-    )
-    .bind(creator_id)
-    .fetch_one(pool)
-    .await
-    .map_err(Into::into)
-}
-
-async fn count_active_or_pending_collaboration_sessions_for_host(
-    pool: &SqlitePool,
-    creator_id: &str,
-) -> AppResult<i64> {
-    sqlx::query_scalar(
-        r#"
-        SELECT COUNT(*)
-        FROM collaboration_sessions
-        WHERE host_creator_id = ? AND status IN ('active', 'pending')
-        "#,
-    )
-    .bind(creator_id)
-    .fetch_one(pool)
-    .await
-    .map_err(Into::into)
-}
-
-async fn count_pending_collaboration_invites_for_host(
-    pool: &SqlitePool,
-    creator_id: &str,
-) -> AppResult<i64> {
-    sqlx::query_scalar(
-        r#"
-        SELECT COUNT(*)
-        FROM collaboration_invites invites
-        JOIN collaboration_sessions sessions
-          ON sessions.id = invites.session_id
-        WHERE sessions.host_creator_id = ?
-          AND invites.state = 'pending'
-        "#,
-    )
-    .bind(creator_id)
-    .fetch_one(pool)
-    .await
-    .map_err(Into::into)
-}
-
-async fn count_collaboration_grants_for_host_by_state(
-    pool: &SqlitePool,
-    creator_id: &str,
-    state: &str,
-) -> AppResult<i64> {
-    sqlx::query_scalar(
-        r#"
-        SELECT COUNT(*)
-        FROM collaboration_mirror_grants grants
-        JOIN collaboration_sessions sessions
-          ON sessions.id = grants.session_id
-        WHERE sessions.host_creator_id = ?
-          AND grants.state = ?
-        "#,
-    )
-    .bind(creator_id)
-    .bind(state)
-    .fetch_one(pool)
-    .await
-    .map_err(Into::into)
 }

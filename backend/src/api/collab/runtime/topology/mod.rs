@@ -1,8 +1,3 @@
-use super::presence::{
-    fetch_collaboration_socket_presence_for_session,
-    fetch_visible_collaboration_mirror_grants_for_session_view,
-    fetch_visible_collaboration_mirror_pickups_for_session_view,
-};
 use super::*;
 use crate::models::CollaborationRuntimeTopology;
 
@@ -32,21 +27,19 @@ pub(crate) async fn build_collaboration_runtime_topology(
     session: &CollaborationSessionView,
     grants: &[CollaborationMirrorGrant],
     pickups: &[CollaborationMirrorPickup],
-    connected_participants: i64,
+    socket_sessions: &[CollaborationSocketPresence],
 ) -> AppResult<CollaborationRuntimeTopology> {
     let shared_chat = session.chat_mode == "shared";
     let recording_owner_creator_id = match session.recording_policy.as_str() {
         "host_archive" => Some(session.host_creator_id.clone()),
         _ => None,
     };
-    let socket_sessions =
-        fetch_collaboration_socket_presence_for_session(pool, &session.id).await?;
     let host_source_session = resolve_host_source_ingest_session(pool, session).await?;
     let participant_state = build_topology_participants(
         session,
         grants,
         pickups,
-        &socket_sessions,
+        socket_sessions,
         host_source_session.as_ref(),
     );
 
@@ -88,7 +81,10 @@ pub(crate) async fn build_collaboration_runtime_topology(
         shared_chat,
         mix_minus_required: participant_state.mix_minus_required,
         recording_owner_creator_id,
-        connected_participants,
+        connected_participants: socket_sessions
+            .iter()
+            .filter(|socket| !socket.is_stale && socket.disconnected_at.is_none())
+            .count() as i64,
         host_output_participant_ids: participant_state.host_output_participant_ids,
         backstage_participant_ids: participant_state.backstage_participant_ids,
         live_participant_ids: participant_state.live_participant_ids,

@@ -5,14 +5,27 @@ pub(crate) async fn fetch_auth_sessions(
     user_id: &str,
     current_session_id: &str,
 ) -> AppResult<Vec<AuthSession>> {
-    let rows = sqlx::query(
+    fetch_auth_sessions_limited(pool, user_id, current_session_id, None).await
+}
+
+pub(crate) async fn fetch_auth_sessions_limited(
+    pool: &SqlitePool,
+    user_id: &str,
+    current_session_id: &str,
+    limit: Option<usize>,
+) -> AppResult<Vec<AuthSession>> {
+    let mut query = String::from(
         r#"
         SELECT id, label, scopes_json, created_at, expires_at, revoked_at, last_used_at
         FROM auth_sessions
         WHERE user_id = ?
         ORDER BY created_at DESC
         "#,
-    )
+    );
+    if let Some(limit) = limit {
+        query.push_str(&format!(" LIMIT {}", limit.max(1)));
+    }
+    let rows = sqlx::query(&query)
     .bind(user_id)
     .fetch_all(pool)
     .await?;

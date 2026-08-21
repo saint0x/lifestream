@@ -1,4 +1,5 @@
 use super::*;
+use crate::api::notifications::fetch_user_notifications;
 
 #[tokio::test]
 async fn creator_receives_live_notification_even_when_followers_not_notified() -> AppResult<()> {

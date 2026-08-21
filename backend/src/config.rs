@@ -15,8 +15,9 @@ impl Config {
             .unwrap_or_else(|_| "127.0.0.1:8080".to_string())
             .parse()?;
 
+        let backend_root = detect_backend_root()?;
         let database_url = env::var("LIFESTREAM_DATABASE_URL")
-            .unwrap_or_else(|_| "sqlite://lifestream.db?mode=rwc".to_string());
+            .unwrap_or_else(|_| default_database_url(&backend_root));
 
         let max_db_connections = env::var("LIFESTREAM_DB_MAX_CONNECTIONS")
             .ok()
@@ -29,10 +30,29 @@ impl Config {
             max_db_connections,
             media_root: env::var("LIFESTREAM_MEDIA_ROOT")
                 .map(PathBuf::from)
-                .unwrap_or_else(|_| PathBuf::from("./media")),
+                .unwrap_or_else(|_| backend_root.join("media")),
             allowed_origins: parse_allowed_origins(),
         })
     }
+}
+
+fn detect_backend_root() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let cwd = env::current_dir()?;
+    if cwd.join("migrations").is_dir() && cwd.join("src").is_dir() {
+        return Ok(cwd);
+    }
+
+    let nested_backend = cwd.join("backend");
+    if nested_backend.join("migrations").is_dir() && nested_backend.join("src").is_dir() {
+        return Ok(nested_backend);
+    }
+
+    Ok(cwd)
+}
+
+fn default_database_url(backend_root: &PathBuf) -> String {
+    let path = backend_root.join("lifestream.db");
+    format!("sqlite://{}?mode=rwc", path.to_string_lossy())
 }
 
 fn parse_allowed_origins() -> Vec<String> {
@@ -59,7 +79,8 @@ fn parse_allowed_origins() -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_allowed_origins;
+    use super::{default_database_url, detect_backend_root, parse_allowed_origins};
+    use std::path::PathBuf;
 
     #[test]
     fn parses_allowed_origins_from_env_list() {
@@ -80,5 +101,18 @@ mod tests {
         unsafe {
             std::env::remove_var("LIFESTREAM_ALLOWED_ORIGINS");
         }
+    }
+
+    #[test]
+    fn defaults_database_url_into_backend_root() {
+        let url = default_database_url(&PathBuf::from("/tmp/lifestream/backend"));
+        assert_eq!(url, "sqlite:///tmp/lifestream/backend/lifestream.db?mode=rwc");
+    }
+
+    #[test]
+    fn detects_backend_root_from_current_backend_directory() {
+        let cwd = std::env::current_dir().expect("current dir");
+        let backend_root = detect_backend_root().expect("backend root");
+        assert_eq!(backend_root, cwd);
     }
 }

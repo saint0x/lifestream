@@ -124,15 +124,64 @@ pub(crate) async fn fetch_live_streams(
         .await?
     };
 
-    let mut streams = Vec::with_capacity(rows.len());
-    for row in rows {
-        let mut stream = live_stream_from_row(row);
-        stream.viewers = effective_live_viewer_count(pool, &stream.id).await?;
-        streams.push(stream);
-    }
-
+    let mut streams = rows.into_iter().map(live_stream_from_row).collect::<Vec<_>>();
+    apply_effective_live_viewer_counts(pool, &mut streams).await?;
     sort_live_streams(&mut streams, "viewers");
 
+    Ok(streams)
+}
+
+pub(crate) async fn fetch_followed_live_streams(
+    pool: &SqlitePool,
+    user_id: &str,
+) -> AppResult<Vec<LiveStream>> {
+    let fresh_cutoff = stale_live_ingest_cutoff();
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            ls.id, ls.slug, ls.title, ls.category, ls.tags_json, ls.viewers, ls.started_at,
+            ls.thumbnail, ls.language, ls.is_mature, ls.playback_asset_id,
+            ls.poster_relative_path, ls.playback_relative_path,
+            s.id AS streamer_id, s.handle, s.display_name, s.avatar, s.bio, s.followers,
+            s.is_partner, s.is_live
+        FROM user_following uf
+        JOIN streamers s ON s.id = uf.streamer_id
+        JOIN live_streams ls ON ls.streamer_id = s.id
+        JOIN creator_profiles cp ON cp.handle = s.handle
+        WHERE uf.user_id = ?
+          AND (
+            EXISTS (
+                SELECT 1
+                FROM live_ingest_sessions lis
+                WHERE lis.creator_id = cp.id
+                  AND lis.status = 'connected'
+                  AND lis.last_heartbeat_at >= ?
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM collaboration_mirror_pickups cmp
+                JOIN live_ingest_sessions lis
+                  ON lis.creator_id = cmp.host_creator_id
+                 AND lis.broadcast_id = cmp.source_broadcast_id
+                WHERE cmp.guest_creator_id = cp.id
+                  AND cmp.guest_broadcast_id = cp.current_broadcast_id
+                  AND cmp.state = 'active'
+                  AND lis.status = 'connected'
+                  AND lis.last_heartbeat_at >= ?
+            )
+          )
+        ORDER BY ls.viewers DESC
+        "#,
+    )
+    .bind(user_id)
+    .bind(&fresh_cutoff)
+    .bind(&fresh_cutoff)
+    .fetch_all(pool)
+    .await?;
+
+    let mut streams = rows.into_iter().map(live_stream_from_row).collect::<Vec<_>>();
+    apply_effective_live_viewer_counts(pool, &mut streams).await?;
+    sort_live_streams(&mut streams, "viewers");
     Ok(streams)
 }
 
@@ -212,7 +261,7 @@ pub(crate) async fn fetch_live_stream_by_id(pool: &SqlitePool, id: &str) -> AppR
     .await?
     .ok_or(AppError::NotFound)?;
     let mut stream = live_stream_from_row(row);
-    stream.viewers = effective_live_viewer_count(pool, &stream.id).await?;
+    apply_effective_live_viewer_counts(pool, std::slice::from_mut(&mut stream)).await?;
     Ok(stream)
 }
 
@@ -225,17 +274,23 @@ pub(crate) async fn fetch_categories(pool: &SqlitePool) -> AppResult<Vec<Categor
 
     let categories: Vec<Category> = rows
         .into_iter()
-        .map(|row| Category {
-            slug: row.get("slug"),
-            name: row.get("name"),
-            cover_image: row.get("cover_image"),
-            live_viewers: row.get("live_viewers"),
-            live_channels: row.get("live_channels"),
-            tags: from_json(row.get::<String, _>("tags_json")).unwrap_or_default(),
-        })
+        .map(category_from_row)
         .collect();
 
     categories_with_live_totals(pool, categories).await
+}
+
+pub(crate) async fn fetch_categories_for_live_streams(
+    pool: &SqlitePool,
+    live_streams: &[LiveStream],
+) -> AppResult<Vec<Category>> {
+    let rows = sqlx::query(
+        "SELECT slug, name, cover_image, live_viewers, live_channels, tags_json FROM categories ORDER BY live_viewers DESC",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    apply_category_live_totals(rows.into_iter().map(category_from_row).collect(), live_streams)
 }
 
 pub(crate) async fn fetch_category_by_slug(pool: &SqlitePool, slug: &str) -> AppResult<Category> {
@@ -249,14 +304,7 @@ pub(crate) async fn fetch_category_by_slug(pool: &SqlitePool, slug: &str) -> App
 
     let mut categories = categories_with_live_totals(
         pool,
-        vec![Category {
-            slug: row.get("slug"),
-            name: row.get("name"),
-            cover_image: row.get("cover_image"),
-            live_viewers: row.get("live_viewers"),
-            live_channels: row.get("live_channels"),
-            tags: from_json(row.get::<String, _>("tags_json"))?,
-        }],
+        vec![category_from_row(row)],
     )
     .await?;
 
@@ -265,9 +313,77 @@ pub(crate) async fn fetch_category_by_slug(pool: &SqlitePool, slug: &str) -> App
 
 async fn categories_with_live_totals(
     pool: &SqlitePool,
-    mut categories: Vec<Category>,
+    categories: Vec<Category>,
 ) -> AppResult<Vec<Category>> {
     let live_streams = fetch_live_streams(pool, None).await?;
+    apply_category_live_totals(categories, &live_streams)
+}
+
+async fn apply_effective_live_viewer_counts(
+    pool: &SqlitePool,
+    streams: &mut [LiveStream],
+) -> AppResult<()> {
+    if streams.is_empty() {
+        return Ok(());
+    }
+
+    let active_cutoff = active_presence_cutoff();
+    let mut query = sqlx::QueryBuilder::new(
+        r#"
+        SELECT stream_id, COUNT(*) AS count
+        FROM (
+            SELECT stream_id, COALESCE('u:' || user_id, 's:' || session_token_hash) AS viewer_key
+            FROM live_viewer_sessions
+            WHERE disconnected_at IS NULL
+              AND last_seen_at >= 
+        "#,
+    );
+    query.push_bind(active_cutoff);
+    query.push(" AND stream_id IN (");
+    {
+        let mut separated = query.separated(", ");
+        for stream in streams.iter() {
+            separated.push_bind(stream.id.as_str());
+        }
+    }
+    query.push(
+        r#")
+            GROUP BY stream_id, viewer_key
+        ) active_viewers
+        GROUP BY stream_id
+        "#,
+    );
+
+    let rows = query.build().fetch_all(pool).await?;
+    let connected_counts = rows
+        .into_iter()
+        .map(|row| (row.get::<String, _>("stream_id"), row.get::<i64, _>("count")))
+        .collect::<HashMap<_, _>>();
+
+    for stream in streams {
+        if let Some(connected) = connected_counts.get(&stream.id) {
+            stream.viewers = stream.viewers.max(*connected);
+        }
+    }
+
+    Ok(())
+}
+
+fn category_from_row(row: sqlx::sqlite::SqliteRow) -> Category {
+    Category {
+        slug: row.get("slug"),
+        name: row.get("name"),
+        cover_image: row.get("cover_image"),
+        live_viewers: row.get("live_viewers"),
+        live_channels: row.get("live_channels"),
+        tags: from_json(row.get::<String, _>("tags_json")).unwrap_or_default(),
+    }
+}
+
+fn apply_category_live_totals(
+    mut categories: Vec<Category>,
+    live_streams: &[LiveStream],
+) -> AppResult<Vec<Category>> {
     let mut totals_by_category: HashMap<String, (i64, i64)> = HashMap::new();
     for stream in live_streams {
         let entry = totals_by_category

@@ -118,6 +118,8 @@ pub(crate) async fn heartbeat_live_ingest(
     .execute(&state.pool)
     .await?;
 
+    crate::api::creator::ensure_creator_live_settings_row(&state.pool, &session.creator_id)
+        .await?;
     sqlx::query(
         r#"
         UPDATE creator_live_settings

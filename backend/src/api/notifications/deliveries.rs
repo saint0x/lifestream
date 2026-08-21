@@ -179,6 +179,34 @@ pub(crate) async fn reconcile_notification_deliveries_for_read(
     delivery_filter: Option<&str>,
 ) -> AppResult<()> {
     let now = Utc::now().to_rfc3339();
+    let pending_exists: Option<i64> = sqlx::query_scalar(
+        r#"
+        SELECT 1
+        FROM notification_deliveries d
+        JOIN notification_events e ON e.id = d.event_id
+        WHERE d.state IN ('pending', 'retrying')
+          AND COALESCE(d.next_attempt_at, d.sent_at) <= ?
+          AND (? IS NULL OR e.creator_id = ?)
+          AND (? IS NULL OR d.recipient_user_id = ?)
+          AND (? IS NULL OR d.recipient_creator_id = ?)
+          AND (? IS NULL OR d.id = ?)
+        LIMIT 1
+        "#,
+    )
+    .bind(&now)
+    .bind(event_creator_filter)
+    .bind(event_creator_filter)
+    .bind(recipient_user_filter)
+    .bind(recipient_user_filter)
+    .bind(recipient_creator_filter)
+    .bind(recipient_creator_filter)
+    .bind(delivery_filter)
+    .bind(delivery_filter)
+    .fetch_optional(pool)
+    .await?;
+    if pending_exists.is_none() {
+        return Ok(());
+    }
     let rows = sqlx::query(
         r#"
         SELECT d.id

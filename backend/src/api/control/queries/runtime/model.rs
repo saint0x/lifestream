@@ -70,17 +70,6 @@ pub(crate) async fn fetch_live_runtime_output_for_session(
     row.map(live_runtime_output_from_row).transpose()
 }
 
-pub(crate) async fn fetch_current_live_runtime_output(
-    pool: &SqlitePool,
-    creator_id: &str,
-) -> AppResult<Option<LiveRuntimeOutput>> {
-    if let Some(session) = fetch_active_live_ingest_session(pool, creator_id).await? {
-        return fetch_live_runtime_output_for_session(pool, &session.id).await;
-    }
-
-    Ok(None)
-}
-
 pub(crate) async fn fetch_recent_live_runtime_outputs(
     pool: &SqlitePool,
     creator_id: &str,

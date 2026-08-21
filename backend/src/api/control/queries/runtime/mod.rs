@@ -11,8 +11,8 @@ mod store;
 mod targets;
 
 pub(crate) use model::{
-    fetch_current_live_runtime_output, fetch_live_runtime_output_for_session,
-    fetch_recent_live_runtime_outputs, initialize_live_runtime_output,
+    fetch_live_runtime_output_for_session, fetch_recent_live_runtime_outputs,
+    initialize_live_runtime_output,
 };
 pub(crate) use paths::{
     canonical_live_runtime_archive_relative_path,
@@ -28,6 +28,6 @@ pub(crate) use repair::{
 };
 use store::upsert_live_runtime_output;
 pub(crate) use targets::{
-    fetch_current_live_runtime_targets, fetch_live_runtime_targets_for_session,
-    fetch_recent_live_runtime_targets, sync_live_runtime_targets,
+    fetch_live_runtime_targets_for_session, fetch_recent_live_runtime_targets,
+    sync_live_runtime_targets,
 };

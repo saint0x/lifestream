@@ -6,7 +6,8 @@ mod reconciliation;
 mod sockets;
 
 pub(crate) use history::{
-    fetch_auth_sessions, fetch_continue_watching_entry, upsert_watch_history_entry,
+    fetch_auth_sessions, fetch_auth_sessions_limited, fetch_continue_watching_entry,
+    upsert_watch_history_entry,
 };
 #[cfg(test)]
 pub(crate) use live::count_active_live_viewer_sessions;

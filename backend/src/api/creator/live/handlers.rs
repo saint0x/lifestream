@@ -120,6 +120,7 @@ async fn update_creator_live_settings(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
+    ensure_creator_live_settings_row(&state.pool, creator_id).await?;
     let current = fetch_creator_live_settings(&state.pool, creator_id).await?;
     if let Some(value) = input.slow_mode_seconds {
         validate_slow_mode_seconds(value)?;

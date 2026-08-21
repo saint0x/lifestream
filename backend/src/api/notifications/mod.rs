@@ -13,6 +13,8 @@ pub(crate) use deliveries::{
 #[cfg(test)]
 pub(crate) use dispatch::claim_notification_delivery_attempt;
 pub(crate) use dispatch::{dispatch_notification_delivery, enqueue_notification_event};
+#[cfg(test)]
+pub(crate) use inbox::fetch_user_notifications;
 pub(crate) use inbox::{
-    fetch_user_notifications, list_my_notifications, mark_my_notification_read,
+    fetch_user_notifications_limited, list_my_notifications, mark_my_notification_read,
 };

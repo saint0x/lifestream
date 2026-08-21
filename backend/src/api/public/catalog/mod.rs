@@ -1,8 +1,8 @@
 use super::super::discovery::{
     fetch_categories, fetch_category_by_slug, fetch_film_by_id, fetch_film_by_slug, fetch_films,
-    fetch_films_by_genre, fetch_live_stream_by_id, fetch_live_streams_by_category, fetch_series,
+    fetch_films_by_genre, fetch_continue_watching_entries, fetch_live_stream_by_id, fetch_live_streams_by_category, fetch_series,
     fetch_series_by_genre, fetch_series_by_id, fetch_series_by_slug, fetch_streamer_by_id,
-    fetch_streamers, fetch_user,
+    fetch_streamers,
 };
 use super::*;
 

@@ -134,9 +134,10 @@ use collab::{
     fetch_collaboration_participant_for_user, fetch_collaboration_session_by_id,
     fetch_collaboration_session_for_host, fetch_collaboration_session_for_participant,
     fetch_collaboration_sessions_for_host, fetch_collaboration_sessions_for_participant,
-    fetch_collaboration_socket_presence_by_id_raw, fetch_creator_live_collaboration_summary,
-    fetch_visible_collaboration_mirror_grants_for_session_view,
-    fetch_visible_collaboration_mirror_pickups_for_session_view,
+    fetch_collaboration_socket_presence_by_id_raw,
+    fetch_collaboration_socket_presence_for_session, fetch_creator_live_collaboration_summary,
+    filter_visible_collaboration_mirror_grants_for_session_view,
+    filter_visible_collaboration_mirror_pickups_for_session_view,
     filter_visible_collaboration_events_for_session, has_pending_collaboration_invite_for_user,
     load_collaboration_socket_event_bootstrap, publish_collaboration_topology,
     reconcile_single_collaboration_session, reconcile_single_collaboration_socket_session,
@@ -169,7 +170,7 @@ use control::{
     fetch_active_live_ingest_session, fetch_active_live_ingest_session_unreconciled,
     fetch_admin_live_ingest_overview, fetch_admin_live_ingest_session_record,
     fetch_admin_live_ingest_sessions, fetch_creator_live_ingest_session_record,
-    fetch_current_live_runtime_output, fetch_live_ingest_events_for_creator,
+    fetch_live_ingest_events_for_creator,
     fetch_live_ingest_events_for_session, fetch_live_ingest_session_by_id,
     fetch_live_ingest_session_by_id_global, fetch_live_ingest_session_by_id_global_unreconciled,
     fetch_live_ingest_session_by_id_unreconciled, fetch_recent_live_ingest_sessions,
@@ -266,7 +267,6 @@ use mirror::{
     deactivate_collaboration_mirror_pickups_for_grants,
     fetch_collaboration_mirror_grants_for_participant,
     fetch_collaboration_mirror_grants_for_session,
-    fetch_collaboration_mirror_pickups_for_participant,
     fetch_collaboration_mirror_pickups_for_session, issue_mirror_grant_for_participant,
     redeem_collaboration_mirror_grant_internal, revoke_collaboration_mirror_grants_for_participant,
     revoke_collaboration_mirror_grants_for_session,
@@ -274,6 +274,8 @@ use mirror::{
     sync_active_collaboration_mirror_pickups_for_session,
     sync_active_collaboration_mirror_pickups_for_session_and_publish,
 };
+#[cfg(test)]
+use mirror::fetch_collaboration_mirror_pickups_for_participant;
 use moderation::{
     creator_enforcement_action_from_row, fetch_active_live_moderation_action,
     fetch_live_moderation_action_by_id, fetch_live_moderation_action_by_id_raw,
@@ -285,7 +287,7 @@ use notifications::{
     dispatch_notification_delivery, enqueue_notification_event,
     fetch_live_notification_recipient_user_ids, fetch_notification_deliveries,
     fetch_notification_delivery_by_id, fetch_notification_delivery_by_id_raw,
-    fetch_notifications_rows, fetch_user_notifications, reconcile_single_notification_delivery,
+    fetch_notifications_rows, reconcile_single_notification_delivery,
 };
 use playauth::{
     PlaybackSessionRecord, build_media_audio_tracks, build_media_caption_tracks,

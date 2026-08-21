@@ -5,26 +5,9 @@ pub(crate) async fn get_my_following_feed(
     headers: HeaderMap,
 ) -> AppResult<Json<FollowingFeedResponse>> {
     let identity = require_identity(&state.pool, &headers).await?;
-    let followed_streamer_ids = fetch_followed_streamer_ids(&state.pool, &identity.user_id).await?;
-    let mut followed_streamers = Vec::with_capacity(followed_streamer_ids.len());
-    for streamer_id in &followed_streamer_ids {
-        followed_streamers.push(fetch_streamer_by_id(&state.pool, streamer_id).await?);
-    }
-
-    let followed_streamer_id_set: std::collections::HashSet<_> =
-        followed_streamer_ids.into_iter().collect();
-    let live_streams: Vec<LiveStream> = fetch_live_streams(&state.pool, None)
-        .await?
-        .into_iter()
-        .filter(|stream| followed_streamer_id_set.contains(&stream.streamer.id))
-        .collect();
-
-    Ok(Json(FollowingFeedResponse {
-        total_followed_streamers: followed_streamers.len() as i64,
-        live_now_count: live_streams.len() as i64,
-        followed_streamers,
-        live_streams,
-    }))
+    Ok(Json(
+        fetch_following_feed_response(&state.pool, &identity.user_id).await?,
+    ))
 }
 
 pub(crate) async fn add_watchlist(

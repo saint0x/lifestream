@@ -43,6 +43,101 @@ pub(crate) async fn fetch_creator_upload_operations_response(
     let media_assets: Vec<MediaAsset> = fetch_media_assets(pool, creator_id).await?;
     let uploads = fetch_uploads(pool, creator_id).await?;
 
+    Ok(build_creator_upload_operations_response(
+        jobs,
+        ingest_sessions,
+        media_assets,
+        uploads,
+    ))
+}
+
+pub(crate) async fn fetch_creator_upload_operations_summary(
+    pool: &SqlitePool,
+    creator_id: &str,
+) -> AppResult<CreatorUploadOperationsSummary> {
+    let jobs_row = sqlx::query(
+        r#"
+        SELECT
+            COUNT(*) AS total_jobs,
+            SUM(CASE WHEN status = 'created' THEN 1 ELSE 0 END) AS created_jobs,
+            SUM(CASE WHEN status = 'uploaded' THEN 1 ELSE 0 END) AS uploaded_jobs,
+            SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processing_jobs,
+            SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) AS ready_jobs,
+            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_jobs,
+            SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) AS published_jobs,
+            COALESCE(SUM(bytes_expected), 0) AS total_bytes_expected,
+            COALESCE(SUM(bytes_received), 0) AS total_bytes_received
+        FROM upload_jobs
+        WHERE creator_id = ?
+        "#,
+    )
+    .bind(creator_id)
+    .fetch_one(pool)
+    .await?;
+
+    let ingest_row = sqlx::query(
+        r#"
+        SELECT
+            SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_ingest_sessions,
+            SUM(CASE WHEN status != 'completed' THEN 1 ELSE 0 END) AS active_ingest_sessions
+        FROM upload_job_ingest_sessions
+        WHERE creator_id = ?
+        "#,
+    )
+    .bind(creator_id)
+    .fetch_one(pool)
+    .await?;
+
+    let assets_row = sqlx::query(
+        r#"
+        SELECT
+            SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) AS ready_assets,
+            SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processing_assets,
+            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_assets,
+            SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) AS published_assets,
+            COALESCE(SUM(file_size_bytes), 0) AS total_asset_bytes
+        FROM media_assets
+        WHERE creator_id = ?
+        "#,
+    )
+    .bind(creator_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(CreatorUploadOperationsSummary {
+        total_jobs: jobs_row.get("total_jobs"),
+        created_jobs: jobs_row.get::<Option<i64>, _>("created_jobs").unwrap_or(0),
+        uploaded_jobs: jobs_row.get::<Option<i64>, _>("uploaded_jobs").unwrap_or(0),
+        processing_jobs: jobs_row.get::<Option<i64>, _>("processing_jobs").unwrap_or(0),
+        ready_jobs: jobs_row.get::<Option<i64>, _>("ready_jobs").unwrap_or(0),
+        failed_jobs: jobs_row.get::<Option<i64>, _>("failed_jobs").unwrap_or(0),
+        published_jobs: jobs_row.get::<Option<i64>, _>("published_jobs").unwrap_or(0),
+        active_ingest_sessions: ingest_row
+            .get::<Option<i64>, _>("active_ingest_sessions")
+            .unwrap_or(0),
+        completed_ingest_sessions: ingest_row
+            .get::<Option<i64>, _>("completed_ingest_sessions")
+            .unwrap_or(0),
+        ready_assets: assets_row.get::<Option<i64>, _>("ready_assets").unwrap_or(0),
+        processing_assets: assets_row
+            .get::<Option<i64>, _>("processing_assets")
+            .unwrap_or(0),
+        failed_assets: assets_row.get::<Option<i64>, _>("failed_assets").unwrap_or(0),
+        published_assets: assets_row
+            .get::<Option<i64>, _>("published_assets")
+            .unwrap_or(0),
+        total_bytes_expected: jobs_row.get("total_bytes_expected"),
+        total_bytes_received: jobs_row.get("total_bytes_received"),
+        total_asset_bytes: assets_row.get("total_asset_bytes"),
+    })
+}
+
+pub(crate) fn build_creator_upload_operations_response(
+    jobs: Vec<UploadJob>,
+    ingest_sessions: Vec<UploadIngestSession>,
+    media_assets: Vec<MediaAsset>,
+    uploads: Vec<Upload>,
+) -> CreatorUploadOperationsResponse {
     let session_by_job: HashMap<String, UploadIngestSession> = ingest_sessions
         .iter()
         .cloned()
@@ -89,7 +184,7 @@ pub(crate) async fn fetch_creator_upload_operations_response(
         .collect::<Vec<_>>();
 
     let summary = summarize_creator_upload_operations(&records);
-    Ok(CreatorUploadOperationsResponse { summary, records })
+    CreatorUploadOperationsResponse { summary, records }
 }
 
 pub(crate) fn summarize_creator_upload_operations(

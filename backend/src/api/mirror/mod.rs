@@ -20,6 +20,7 @@ pub(crate) use queries::fetch_collaboration_mirror_grant_by_id;
 pub(crate) use queries::{
     fetch_collaboration_mirror_grants_for_participant,
     fetch_collaboration_mirror_grants_for_session,
-    fetch_collaboration_mirror_pickups_for_participant,
     fetch_collaboration_mirror_pickups_for_session,
 };
+#[cfg(test)]
+pub(crate) use queries::fetch_collaboration_mirror_pickups_for_participant;

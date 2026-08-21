@@ -20,7 +20,6 @@ pub(crate) use runtime::{
     canonical_live_runtime_archive_relative_path,
     canonical_live_runtime_archive_staging_relative_path,
     canonical_live_runtime_manifest_relative_path, canonical_live_runtime_spec_relative_path,
-    fetch_current_live_runtime_output, fetch_current_live_runtime_targets,
     fetch_live_runtime_output_for_session, fetch_live_runtime_targets_for_session,
     fetch_recent_live_runtime_outputs, fetch_recent_live_runtime_targets,
     initialize_live_runtime_output, repair_live_runtime_output,

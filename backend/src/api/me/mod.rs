@@ -1,7 +1,6 @@
 use super::discovery::{
-    fetch_billing_plan, fetch_followed_streamer_ids, fetch_live_streams, fetch_streamer_by_id,
-    fetch_user, fetch_user_library, fetch_user_profile_details, fetch_user_settings_bundle,
-    fetch_viewer_app_state, fetch_watchlist_response, resolve_progress_target,
+    fetch_billing_plan, fetch_following_feed_response, fetch_streamer_by_id, fetch_user, fetch_user_library,
+    fetch_user_profile_details, fetch_user_settings_bundle, fetch_viewer_app_state, fetch_watchlist_response, resolve_progress_target,
     validate_watchlist_content,
 };
 use super::notifications::{list_my_notifications, mark_my_notification_read};

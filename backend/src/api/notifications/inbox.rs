@@ -35,8 +35,16 @@ pub(crate) async fn fetch_user_notifications(
     pool: &SqlitePool,
     user_id: &str,
 ) -> AppResult<Vec<UserNotification>> {
+    fetch_user_notifications_limited(pool, user_id, None).await
+}
+
+pub(crate) async fn fetch_user_notifications_limited(
+    pool: &SqlitePool,
+    user_id: &str,
+    limit: Option<usize>,
+) -> AppResult<Vec<UserNotification>> {
     reconcile_notification_deliveries_for_read(pool, None, Some(user_id), None, None).await?;
-    let rows = sqlx::query(
+    let mut query = String::from(
         r#"
         SELECT d.id, e.kind, e.body, d.sent_at, e.amount, e.actor_label, d.state, d.read_at
         FROM notification_deliveries d
@@ -44,7 +52,11 @@ pub(crate) async fn fetch_user_notifications(
         WHERE d.recipient_user_id = ? AND d.channel = 'inbox'
         ORDER BY d.sent_at DESC
         "#,
-    )
+    );
+    if let Some(limit) = limit {
+        query.push_str(&format!(" LIMIT {}", limit.max(1)));
+    }
+    let rows = sqlx::query(&query)
     .bind(user_id)
     .fetch_all(pool)
     .await?;

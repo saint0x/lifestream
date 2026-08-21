@@ -1,28 +1,36 @@
 use super::*;
 
-pub(crate) async fn fetch_visible_collaboration_mirror_pickups_for_session_view(
-    pool: &SqlitePool,
+pub(crate) fn filter_visible_collaboration_mirror_pickups_for_session_view(
     session: &CollaborationSessionView,
-) -> AppResult<Vec<CollaborationMirrorPickup>> {
+    pickups: &[CollaborationMirrorPickup],
+) -> Vec<CollaborationMirrorPickup> {
     if session.participant.role == "host" {
-        fetch_collaboration_mirror_pickups_for_session(pool, &session.id).await
+        pickups.to_vec()
     } else {
-        fetch_collaboration_mirror_pickups_for_participant(pool, &session.participant.id).await
+        pickups
+            .iter()
+            .filter(|pickup| pickup.participant_id == session.participant.id)
+            .cloned()
+            .collect()
     }
 }
 
-pub(crate) async fn fetch_visible_collaboration_mirror_grants_for_session_view(
-    pool: &SqlitePool,
+pub(crate) fn filter_visible_collaboration_mirror_grants_for_session_view(
     session: &CollaborationSessionView,
-) -> AppResult<Vec<CollaborationMirrorGrant>> {
+    grants: &[CollaborationMirrorGrant],
+) -> Vec<CollaborationMirrorGrant> {
     if session.participant.role == "host" {
-        fetch_collaboration_mirror_grants_for_session(pool, &session.id).await
+        grants.to_vec()
     } else {
-        fetch_collaboration_mirror_grants_for_participant(pool, &session.participant.id).await
+        grants
+            .iter()
+            .filter(|grant| grant.participant_id == session.participant.id)
+            .cloned()
+            .collect()
     }
 }
 
-pub(super) async fn fetch_collaboration_socket_presence_for_session(
+pub(crate) async fn fetch_collaboration_socket_presence_for_session(
     pool: &SqlitePool,
     session_id: &str,
 ) -> AppResult<Vec<CollaborationSocketPresence>> {

@@ -74,6 +74,7 @@ pub(crate) async fn fetch_collaboration_mirror_grants_for_session(
     Ok(rows.into_iter().map(|row| grant_from_row(&row)).collect())
 }
 
+#[cfg(test)]
 pub(crate) async fn fetch_collaboration_mirror_pickups_for_participant(
     pool: &SqlitePool,
     participant_id: &str,

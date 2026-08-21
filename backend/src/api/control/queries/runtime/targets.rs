@@ -125,16 +125,6 @@ pub(crate) async fn fetch_live_runtime_targets_for_session(
     rows.into_iter().map(live_runtime_target_from_row).collect()
 }
 
-pub(crate) async fn fetch_current_live_runtime_targets(
-    pool: &SqlitePool,
-    creator_id: &str,
-) -> AppResult<Vec<LiveRuntimeTarget>> {
-    let Some(session) = fetch_active_live_ingest_session(pool, creator_id).await? else {
-        return Ok(Vec::new());
-    };
-    fetch_live_runtime_targets_for_session(pool, &session.id).await
-}
-
 pub(crate) async fn fetch_recent_live_runtime_targets(
     pool: &SqlitePool,
     creator_id: &str,

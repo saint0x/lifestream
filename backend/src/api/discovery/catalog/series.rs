@@ -83,6 +83,17 @@ pub(crate) async fn fetch_series_by_id(
     series_from_row(pool, row, progress).await
 }
 
+pub(crate) async fn fetch_series_preview_by_id(pool: &SqlitePool, id: &str) -> AppResult<Series> {
+    let row = sqlx::query(
+        "SELECT id, slug, title, tagline, synopsis, year, rating, genres_json, images_json, credits_json, score, is_original, trending, hero_color, status, total_episodes FROM series WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    series_preview_from_row(pool, row).await
+}
+
 pub(crate) async fn fetch_episode_by_id(pool: &SqlitePool, episode_id: &str) -> AppResult<Episode> {
     let row = sqlx::query(
         r#"
@@ -142,6 +153,33 @@ async fn series_from_row(
         trending: row.get::<i64, _>("trending") == 1,
         hero_color: row.get("hero_color"),
         seasons: fetch_seasons(pool, &series_id, progress).await?,
+        total_episodes: row.get("total_episodes"),
+        status: row.get("status"),
+    })
+}
+
+async fn series_preview_from_row(
+    pool: &SqlitePool,
+    row: sqlx::sqlite::SqliteRow,
+) -> AppResult<Series> {
+    let series_id: String = row.get("id");
+    Ok(Series {
+        id: series_id.clone(),
+        slug: row.get("slug"),
+        kind: "series".to_string(),
+        title: row.get("title"),
+        tagline: row.get("tagline"),
+        synopsis: row.get("synopsis"),
+        year: row.get("year"),
+        rating: row.get("rating"),
+        genres: from_json(row.get::<String, _>("genres_json"))?,
+        images: from_json(row.get::<String, _>("images_json"))?,
+        credits: from_json(row.get::<String, _>("credits_json"))?,
+        score: row.get("score"),
+        is_original: row.get::<i64, _>("is_original") == 1,
+        trending: row.get::<i64, _>("trending") == 1,
+        hero_color: row.get("hero_color"),
+        seasons: fetch_season_previews(pool, &series_id).await?,
         total_episodes: row.get("total_episodes"),
         status: row.get("status"),
     })
@@ -215,4 +253,20 @@ async fn fetch_seasons(
         });
     }
     Ok(seasons)
+}
+
+async fn fetch_season_previews(pool: &SqlitePool, series_id: &str) -> AppResult<Vec<Season>> {
+    Ok(sqlx::query(
+        "SELECT season_number, title FROM seasons WHERE series_id = ? ORDER BY season_number ASC",
+    )
+    .bind(series_id)
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|season_row| Season {
+        season_number: season_row.get("season_number"),
+        title: season_row.get("title"),
+        episodes: Vec::new(),
+    })
+    .collect())
 }

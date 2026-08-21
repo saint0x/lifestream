@@ -4,6 +4,7 @@ pub(crate) async fn fetch_live_stream_owner_creator_id(
     pool: &SqlitePool,
     stream_id: &str,
 ) -> AppResult<String> {
+    let fresh_cutoff = stale_live_ingest_cutoff();
     let row = sqlx::query(
         r#"
         SELECT cp.id AS creator_id
@@ -11,9 +12,32 @@ pub(crate) async fn fetch_live_stream_owner_creator_id(
         JOIN streamers s ON s.id = ls.streamer_id
         JOIN creator_profiles cp ON cp.handle = s.handle
         WHERE ls.id = ?
+          AND (
+            EXISTS (
+                SELECT 1
+                FROM live_ingest_sessions lis
+                WHERE lis.creator_id = cp.id
+                  AND lis.status = 'connected'
+                  AND lis.last_heartbeat_at >= ?
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM collaboration_mirror_pickups cmp
+                JOIN live_ingest_sessions lis
+                  ON lis.creator_id = cmp.host_creator_id
+                 AND lis.broadcast_id = cmp.source_broadcast_id
+                WHERE cmp.guest_creator_id = cp.id
+                  AND cmp.guest_broadcast_id = cp.current_broadcast_id
+                  AND cmp.state = 'active'
+                  AND lis.status = 'connected'
+                  AND lis.last_heartbeat_at >= ?
+            )
+          )
         "#,
     )
     .bind(stream_id)
+    .bind(&fresh_cutoff)
+    .bind(&fresh_cutoff)
     .fetch_optional(pool)
     .await?
     .ok_or(AppError::NotFound)?;

@@ -4,13 +4,15 @@ pub(crate) async fn build_creator_live_snapshot(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<CreatorLiveSnapshot> {
-    if let Some(session) = fetch_active_live_ingest_session(pool, creator_id).await? {
+    let mut ingest_session = fetch_active_live_ingest_session(pool, creator_id).await?;
+    if let Some(session) = ingest_session.as_ref() {
         if is_live_ingest_session_stale(&session) {
             mark_live_ingest_session_stale_in_db(pool, &session).await?;
+            ingest_session = fetch_active_live_ingest_session_unreconciled(pool, creator_id).await?;
         }
     }
     let broadcasts = fetch_broadcasts(pool, creator_id).await?;
-    let profile = normalize_creator_live_profile(pool, creator_id, broadcasts.clone()).await?;
+    let profile = build_effective_creator_live_profile(pool, creator_id, &broadcasts).await?;
     let current_broadcast = broadcasts
         .iter()
         .find(|item| item.status == "live")
@@ -19,13 +21,37 @@ pub(crate) async fn build_creator_live_snapshot(
         .iter()
         .find(|item| item.status == "ready")
         .cloned();
-    let ingest_session = fetch_active_live_ingest_session(pool, creator_id).await?;
     Ok(CreatorLiveSnapshot {
         profile: contract_creator_profile(profile),
         current_broadcast: current_broadcast.map(contract_broadcast),
         pending_broadcast: pending_broadcast.map(contract_broadcast),
         ingest_session,
     })
+}
+
+async fn build_effective_creator_live_profile(
+    pool: &SqlitePool,
+    creator_id: &str,
+    broadcasts: &[Broadcast],
+) -> AppResult<CreatorProfile> {
+    let mut profile = fetch_creator_profile_persisted(pool, creator_id).await?;
+    let current_broadcast = broadcasts
+        .iter()
+        .find(|item| item.status == "live")
+        .map(|item| item.id.clone());
+    let pending_broadcast = broadcasts
+        .iter()
+        .find(|item| item.status == "ready")
+        .map(|item| item.id.clone());
+    profile.current_broadcast_id = current_broadcast.or(pending_broadcast);
+    profile.live_status = if broadcasts.iter().any(|item| item.status == "live") {
+        "live".to_string()
+    } else if broadcasts.iter().any(|item| item.status == "ready") {
+        "ready".to_string()
+    } else {
+        "offline".to_string()
+    };
+    Ok(profile)
 }
 
 pub(crate) fn contract_live_status(status: &str) -> String {
@@ -61,7 +87,7 @@ pub(crate) async fn normalize_creator_live_profile(
     creator_id: &str,
     broadcasts: Vec<Broadcast>,
 ) -> AppResult<CreatorProfile> {
-    let mut profile = fetch_creator_profile(pool, creator_id).await?;
+    let mut profile = fetch_creator_profile_persisted(pool, creator_id).await?;
     let current_broadcast = broadcasts
         .iter()
         .find(|item| item.status == "live")
@@ -90,7 +116,7 @@ pub(crate) async fn normalize_creator_live_profile(
         .bind(creator_id)
         .execute(pool)
         .await?;
-        profile = fetch_creator_profile(pool, creator_id).await?;
+        profile = fetch_creator_profile_persisted(pool, creator_id).await?;
     }
 
     Ok(profile)

@@ -102,6 +102,7 @@ pub(crate) async fn reset_creator_live_operational_metrics(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<()> {
+    crate::api::creator::ensure_creator_live_settings_row(pool, creator_id).await?;
     sqlx::query(
         r#"
         UPDATE creator_live_settings

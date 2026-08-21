@@ -1,6 +1,44 @@
 use super::*;
+use crate::models::CreatorScene;
 
-const CREATOR_LIVE_HEALTH_SAMPLE_LIMIT: i64 = 24;
+const CREATOR_LIVE_HEALTH_SAMPLE_LIMIT: i64 = 12;
+
+fn default_creator_live_scenes() -> Vec<CreatorScene> {
+    vec![
+        CreatorScene {
+            id: "cam-main".to_string(),
+            label: "Main cam".to_string(),
+            active: true,
+        },
+        CreatorScene {
+            id: "screen".to_string(),
+            label: "Screen + cam".to_string(),
+            active: false,
+        },
+        CreatorScene {
+            id: "slide".to_string(),
+            label: "Slideshow".to_string(),
+            active: false,
+        },
+        CreatorScene {
+            id: "brb".to_string(),
+            label: "BRB loop".to_string(),
+            active: false,
+        },
+    ]
+}
+
+fn default_creator_live_settings() -> CreatorLiveSettings {
+    CreatorLiveSettings {
+        subscriber_only: true,
+        slow_mode_seconds: 3,
+        auto_mod_level: "standard".to_string(),
+        notify_followers_default: true,
+        delivery_class: "standard_hls".to_string(),
+        active_scene_id: "cam-main".to_string(),
+        scenes: default_creator_live_scenes(),
+    }
+}
 
 pub(crate) async fn ensure_creator_live_settings_row(
     pool: &SqlitePool,
@@ -21,15 +59,7 @@ pub(crate) async fn ensure_creator_live_settings_row(
     .bind(1_i64)
     .bind("standard_hls")
     .bind("cam-main")
-    .bind(
-        json!([
-            {"id":"cam-main","label":"Main cam","active":true},
-            {"id":"screen","label":"Screen + cam","active":false},
-            {"id":"slide","label":"Slideshow","active":false},
-            {"id":"brb","label":"BRB loop","active":false}
-        ])
-        .to_string(),
-    )
+    .bind(to_json(&default_creator_live_scenes())?)
     .bind(0_i64)
     .bind(0_i64)
     .bind(0_i64)
@@ -43,7 +73,6 @@ pub(crate) async fn fetch_creator_live_settings(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<CreatorLiveSettings> {
-    ensure_creator_live_settings_row(pool, creator_id).await?;
     let row = sqlx::query(
         r#"
         SELECT subscriber_only, slow_mode_seconds, auto_mod_level, notify_followers_default,
@@ -54,32 +83,32 @@ pub(crate) async fn fetch_creator_live_settings(
     )
     .bind(creator_id)
     .fetch_optional(pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    .await?;
 
-    Ok(CreatorLiveSettings {
-        subscriber_only: row.get::<i64, _>("subscriber_only") == 1,
-        slow_mode_seconds: row.get("slow_mode_seconds"),
-        auto_mod_level: row.get("auto_mod_level"),
-        notify_followers_default: row.get::<i64, _>("notify_followers_default") == 1,
-        delivery_class: row.get("delivery_class"),
-        active_scene_id: row.get("active_scene_id"),
-        scenes: from_json(row.get::<String, _>("scenes_json"))?,
-    })
+    match row {
+        Some(row) => Ok(CreatorLiveSettings {
+            subscriber_only: row.get::<i64, _>("subscriber_only") == 1,
+            slow_mode_seconds: row.get("slow_mode_seconds"),
+            auto_mod_level: row.get("auto_mod_level"),
+            notify_followers_default: row.get::<i64, _>("notify_followers_default") == 1,
+            delivery_class: row.get("delivery_class"),
+            active_scene_id: row.get("active_scene_id"),
+            scenes: from_json(row.get::<String, _>("scenes_json"))?,
+        }),
+        None => Ok(default_creator_live_settings()),
+    }
 }
 
 pub(crate) async fn fetch_creator_live_health(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<CreatorLiveHealth> {
-    ensure_creator_live_settings_row(pool, creator_id).await?;
     let settings_row = sqlx::query(
         "SELECT bitrate_kbps, cpu_percent, dropped_frames, free_disk_gb FROM creator_live_settings WHERE creator_id = ?",
     )
     .bind(creator_id)
     .fetch_optional(pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    .await?;
 
     let sample_rows = sqlx::query(
         r#"
@@ -103,15 +132,24 @@ pub(crate) async fn fetch_creator_live_health(
             cpu_percent: row.get("cpu_percent"),
             dropped_frames: row.get("dropped_frames"),
             free_disk_gb: row.get("free_disk_gb"),
-        })
-        .collect::<Vec<_>>();
+    })
+    .collect::<Vec<_>>();
     samples.reverse();
 
-    Ok(CreatorLiveHealth {
-        current_bitrate_kbps: settings_row.get("bitrate_kbps"),
-        current_cpu_percent: settings_row.get("cpu_percent"),
-        current_dropped_frames: settings_row.get("dropped_frames"),
-        current_free_disk_gb: settings_row.get("free_disk_gb"),
-        samples,
+    Ok(match settings_row {
+        Some(settings_row) => CreatorLiveHealth {
+            current_bitrate_kbps: settings_row.get("bitrate_kbps"),
+            current_cpu_percent: settings_row.get("cpu_percent"),
+            current_dropped_frames: settings_row.get("dropped_frames"),
+            current_free_disk_gb: settings_row.get("free_disk_gb"),
+            samples,
+        },
+        None => CreatorLiveHealth {
+            current_bitrate_kbps: 0,
+            current_cpu_percent: 0,
+            current_dropped_frames: 0,
+            current_free_disk_gb: 0.0,
+            samples,
+        },
     })
 }

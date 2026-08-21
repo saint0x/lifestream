@@ -142,16 +142,20 @@ pub(super) fn planned_output_ids_for_participant(
     outputs: &[CollaborationOutputRoute],
     host_output_participant_ids: &[String],
 ) -> Vec<String> {
+    let mirror_output_id = format!("col-out-mirror-{}", participant.id);
+    let archive_output_id = format!("col-out-archive-{}", participant.id);
+
     outputs
         .iter()
         .filter(|output| {
             if participant.role == "host" || participant.publish_to_host {
                 output.id == format!("col-out-host-{}", session.id)
                     || output.id == format!("col-out-archive-host-{}", session.id)
+                    || output.id == mirror_output_id
+                    || output.id == archive_output_id
                     || output.source_participant_ids == host_output_participant_ids
             } else {
-                output.id == format!("col-out-mirror-{}", participant.id)
-                    || output.id == format!("col-out-archive-{}", participant.id)
+                output.id == mirror_output_id || output.id == archive_output_id
             }
         })
         .map(|output| output.id.clone())
