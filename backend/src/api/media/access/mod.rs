@@ -12,8 +12,8 @@ pub(crate) use filesystem::{
     parse_ffprobe_ratio, sanitize_slug, sanitize_storage_key, sha256_file, slugify,
 };
 pub(crate) use playback::{
-    creator_can_access_media_path, fetch_playback_session_by_id, path_allowed_for_paths,
-    playback_path_allowed_for_asset, validate_playback_session,
+    creator_can_access_media_path, path_allowed_for_paths, playback_path_allowed_for_asset,
+    validate_playback_session,
     validate_playback_session_token_for_path,
 };
 pub(crate) use request::{

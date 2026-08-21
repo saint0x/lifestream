@@ -108,14 +108,6 @@ pub(crate) fn path_allowed_for_paths(
     false
 }
 
-pub(crate) async fn fetch_playback_session_by_id(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> AppResult<PlaybackSession> {
-    let session = fetch_playback_session_record_by_id(pool, session_id).await?;
-    Ok(playback_session_from_record(&session))
-}
-
 pub(crate) async fn validate_playback_session(
     pool: &SqlitePool,
     session_id: &str,

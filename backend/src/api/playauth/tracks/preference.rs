@@ -1,38 +1,42 @@
 use super::*;
 
-pub(crate) async fn fetch_user_subtitle_preference(
-    pool: &SqlitePool,
-    user_id: Option<&str>,
-) -> AppResult<Option<String>> {
-    let Some(user_id) = user_id else {
-        return Ok(None);
-    };
-    let row = sqlx::query("SELECT subtitle_language FROM user_playback_settings WHERE user_id = ?")
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await?;
-    Ok(row.map(|row| row.get("subtitle_language")))
+pub(crate) struct UserPlaybackPreferences {
+    pub(crate) subtitle_language: Option<String>,
+    pub(crate) audio_language: Option<String>,
+    pub(crate) prefer_dubbed: bool,
 }
 
-pub(crate) async fn fetch_user_audio_preferences(
+pub(crate) async fn fetch_user_playback_preferences(
     pool: &SqlitePool,
     user_id: Option<&str>,
-) -> AppResult<(Option<String>, bool)> {
+) -> AppResult<UserPlaybackPreferences> {
     let Some(user_id) = user_id else {
-        return Ok((None, false));
+        return Ok(UserPlaybackPreferences {
+            subtitle_language: None,
+            audio_language: None,
+            prefer_dubbed: false,
+        });
     };
     let row = sqlx::query(
-        "SELECT audio_language, prefer_dubbed FROM user_playback_settings WHERE user_id = ?",
+        r#"
+        SELECT subtitle_language, audio_language, prefer_dubbed
+        FROM user_playback_settings
+        WHERE user_id = ?
+        "#,
     )
     .bind(user_id)
     .fetch_optional(pool)
     .await?;
+
     Ok(row
-        .map(|row| {
-            (
-                Some(row.get::<String, _>("audio_language")),
-                row.get::<i64, _>("prefer_dubbed") == 1,
-            )
+        .map(|row| UserPlaybackPreferences {
+            subtitle_language: row.get("subtitle_language"),
+            audio_language: row.get("audio_language"),
+            prefer_dubbed: row.get::<i64, _>("prefer_dubbed") == 1,
         })
-        .unwrap_or((None, false)))
+        .unwrap_or(UserPlaybackPreferences {
+            subtitle_language: None,
+            audio_language: None,
+            prefer_dubbed: false,
+        }))
 }

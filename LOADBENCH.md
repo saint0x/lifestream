@@ -753,3 +753,33 @@ Final same-binary mixed sweep on Friday, August 21, 2026:
   - The viewer shell and bootstrap shell both remained healthy on the same binary while the authority and deterministic runtime checks stayed green, which is the best evidence so far that the backend is no longer hiding stale-binary wins.
   - `/api/v1/creator/me/live/runtime` is still the main unresolved control-plane hotspot. It is now contract-correct and deterministic, but it still does enough runtime hydration that it remains expensive under the full mixed matrix.
   - `/api/v1/playback/live/:stream/session` remains functionally healthy, but the mixed matrix still shows that write-path contention under concurrent creator/runtime load is the next major production sensitivity after creator live runtime.
+
+- Friday, August 21, 2026 playback grant hot-path pass:
+  - Removed the immediate post-insert playback session re-read and now build the issued playback session directly from the authoritative insert payload.
+  - Collapsed playback user settings hydration into one query and built grant-side preference + preview inputs in parallel before assembling the final tracks.
+  - Verification on the freshly rebuilt foreground binary:
+    - `cargo build` -> passed
+    - `python3 backend/tests/creator-app-state-check.py` -> `creator-app-state|bootstrap|consistent`
+    - `python3 backend/tests/live-runtime-control-check.py` -> `runtime|socket-inspect|connected|terminated`
+    - `/health` -> `ready=true` before and after the mixed sweep
+
+Post-playback-grant-pass mixed sweep on the same Friday, August 21, 2026 fresh rebuilt binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 224.96 | 123.19 ms | 358.23 ms | public list stayed healthy |
+| `GET /api/v1/live/streams/deepsaint-live` | 209.30 | 134.54 ms | 359.59 ms | public detail stayed healthy |
+| `GET /api/v1/bootstrap` | 60.60 | 493.48 ms | 739.91 ms | bootstrap remained in the healthy post-refactor band |
+| `GET /api/v1/me/state` | 47.29 | 766.21 ms | 924.95 ms | viewer shell stayed materially below the old timeout floor |
+| `GET /api/v1/creator/me/state` | 23.60 | 1.19 s | 1.25 s | creator shell remained stable but heavy |
+| `GET /api/v1/creator/me/live/control` | 15.76 | 1.46 s | 2.00 s | still load-sensitive with a few timeout-bound sockets |
+| `GET /api/v1/creator/me/live/runtime` | 15.73 | 1.75 s | 1.90 s | still one of the dominant control-plane hotspots |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 23.63 | 1.00 s | 1.15 s | collaboration control stayed in the improved band |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 23.59 | 1.03 s | 1.15 s | collaboration runtime stayed stable despite some socket read/write noise |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 7.87 | 0.00 us | 0.00 us | still timed out across all `32` sockets under the full mixed overlap, so the next real move must be deeper than the removed re-read |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 136.54 | 172.39 ms | 1.87 s | limiter-driven non-2xx responses remained expected |
+
+- Read of this pass:
+  - The playback grant cleanup removed real redundant work, but the full mixed sweep says the dominant cost of `POST /api/v1/playback/live/:stream/session` is still inside live playback target/runtime readiness validation and shared write contention, not the old session re-fetch.
+  - The broader shell and collaboration lanes held their post-refactor health band on the same fresh binary, so this pass did not regress the stronger control-plane reads.
+  - The highest-value remaining control-plane bottlenecks are still `GET /api/v1/creator/me/live/runtime` and `POST /api/v1/playback/live/:stream/session` under fully overlapped operator traffic.

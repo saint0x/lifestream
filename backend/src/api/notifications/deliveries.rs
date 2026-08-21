@@ -4,27 +4,58 @@ pub(crate) async fn fetch_notifications_rows(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<Vec<CreatorNotification>> {
-    reconcile_notification_deliveries_for_read(pool, None, None, Some(creator_id), None).await?;
-    let legacy_rows = sqlx::query(
-        "SELECT id, kind, body, sent_at, amount, actor FROM creator_notifications WHERE creator_id = ?",
-    )
-    .bind(creator_id)
-    .fetch_all(pool)
-    .await?;
+    fetch_notifications_rows_limited(pool, creator_id, None).await
+}
 
-    let delivery_rows = sqlx::query(
+pub(crate) async fn fetch_notifications_rows_limited(
+    pool: &SqlitePool,
+    creator_id: &str,
+    limit: Option<usize>,
+) -> AppResult<Vec<CreatorNotification>> {
+    reconcile_notification_deliveries_for_read(pool, None, None, Some(creator_id), None).await?;
+    let effective_limit = limit.unwrap_or(i64::MAX as usize).max(1) as i64;
+    let rows = sqlx::query(
         r#"
-        SELECT d.id, e.kind, e.body, d.sent_at, e.amount, e.actor_label, d.state, d.read_at
-        FROM notification_deliveries d
-        JOIN notification_events e ON e.id = d.event_id
-        WHERE d.recipient_creator_id = ? AND d.channel = 'inbox'
+        SELECT id, kind, body, sent_at, amount, actor, delivery_state, read_at
+        FROM (
+            SELECT
+                id,
+                kind,
+                body,
+                sent_at,
+                amount,
+                actor,
+                NULL AS delivery_state,
+                NULL AS read_at
+            FROM creator_notifications
+            WHERE creator_id = ?
+
+            UNION ALL
+
+            SELECT
+                d.id AS id,
+                e.kind AS kind,
+                e.body AS body,
+                d.sent_at AS sent_at,
+                e.amount AS amount,
+                e.actor_label AS actor,
+                d.state AS delivery_state,
+                d.read_at AS read_at
+            FROM notification_deliveries d
+            JOIN notification_events e ON e.id = d.event_id
+            WHERE d.recipient_creator_id = ? AND d.channel = 'inbox'
+        )
+        ORDER BY sent_at DESC
+        LIMIT ?
         "#,
     )
     .bind(creator_id)
+    .bind(creator_id)
+    .bind(effective_limit)
     .fetch_all(pool)
     .await?;
 
-    let mut notifications: Vec<CreatorNotification> = legacy_rows
+    Ok(rows
         .into_iter()
         .map(|row| CreatorNotification {
             id: row.get("id"),
@@ -33,24 +64,10 @@ pub(crate) async fn fetch_notifications_rows(
             sent_at: row.get("sent_at"),
             amount: row.get("amount"),
             actor: row.get("actor"),
-            delivery_state: None,
-            read_at: None,
+            delivery_state: row.get("delivery_state"),
+            read_at: row.get("read_at"),
         })
-        .collect();
-
-    notifications.extend(delivery_rows.into_iter().map(|row| CreatorNotification {
-        id: row.get("id"),
-        kind: row.get("kind"),
-        body: row.get("body"),
-        sent_at: row.get("sent_at"),
-        amount: row.get("amount"),
-        actor: row.get("actor_label"),
-        delivery_state: Some(row.get("state")),
-        read_at: row.get("read_at"),
-    }));
-
-    notifications.sort_by(|a, b| b.sent_at.cmp(&a.sent_at));
-    Ok(notifications)
+        .collect())
 }
 
 pub(crate) async fn fetch_notification_deliveries(

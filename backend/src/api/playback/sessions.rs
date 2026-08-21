@@ -2,6 +2,25 @@ use super::grants::{build_live_playback_grant, build_upload_playback_grant};
 use super::*;
 use crate::api::control::ensure_live_runtime_output_ready_for_playback;
 
+fn inserted_playback_session(
+    session_id: String,
+    content_id: String,
+    content_kind: String,
+    access_scope: String,
+    created_at: String,
+    expires_at: String,
+) -> PlaybackSession {
+    PlaybackSession {
+        id: session_id,
+        content_id,
+        content_kind,
+        access_scope,
+        created_at: created_at.clone(),
+        expires_at,
+        last_used_at: created_at,
+    }
+}
+
 pub(crate) async fn create_upload_playback_session(
     State(state): State<SharedState>,
     headers: HeaderMap,
@@ -68,7 +87,14 @@ pub(crate) async fn create_live_playback_session(
     .execute(&state.pool)
     .await?;
 
-    let session = fetch_playback_session_by_id(&state.pool, &session_id).await?;
+    let session = inserted_playback_session(
+        session_id,
+        stream_id,
+        "live".to_string(),
+        "live".to_string(),
+        now_rfc3339,
+        expires_at,
+    );
     Ok(Json(
         build_live_playback_grant(
             &state.pool,
@@ -90,6 +116,7 @@ async fn create_playback_session_for_content_id(
     let target = fetch_upload_playback_target(&state.pool, &content_id).await?;
     let access =
         resolve_upload_playback_access(&state.pool, maybe_identity.as_ref(), &target).await?;
+    let access_scope = access.access_scope.clone();
     let now = Utc::now();
     let session_id = format!("pbs-{}", Uuid::new_v4().simple());
     let playback_token = format!("pbt_{}", Uuid::new_v4().simple());
@@ -120,14 +147,21 @@ async fn create_playback_session_for_content_id(
     .bind(&content_id)
     .bind(&target.asset.kind)
     .bind(hash_token(&playback_token))
-    .bind(access.access_scope)
+    .bind(&access_scope)
     .bind(&now_rfc3339)
     .bind(&expires_at)
     .bind(&now_rfc3339)
     .execute(&state.pool)
     .await?;
 
-    let session = fetch_playback_session_by_id(&state.pool, &session_id).await?;
+    let session = inserted_playback_session(
+        session_id,
+        content_id,
+        target.asset.kind.clone(),
+        access_scope,
+        now_rfc3339,
+        expires_at,
+    );
     Ok(Json(
         build_upload_playback_grant(
             &state.pool,

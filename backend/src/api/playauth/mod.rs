@@ -61,5 +61,5 @@ pub(super) use sessions::{
 pub(super) use tracks::{
     build_media_audio_tracks, build_media_caption_tracks, build_media_preview_tracks,
     default_audio_track_id, default_caption_track_id, default_preview_track_id,
-    fetch_user_audio_preferences, fetch_user_subtitle_preference,
+    fetch_user_playback_preferences,
 };

@@ -237,8 +237,8 @@ use me::{
 };
 use media::access::{
     check_database, ensure_parent_dir, fetch_admin_playback_session_record,
-    fetch_admin_playback_sessions, fetch_playback_session_by_id, media_api_url,
-    media_path_for_relative, parse_ffprobe_ratio, path_allowed_for_paths,
+    fetch_admin_playback_sessions, media_api_url, media_path_for_relative,
+    parse_ffprobe_ratio, path_allowed_for_paths,
     playback_path_allowed_for_asset, require_ingest_token, require_upload_token,
     rewrite_hls_manifest_media_uri_line, rewrite_hls_manifest_reference, sanitize_slug,
     sanitize_storage_key, serve_media_file, sha256_file, slugify, validate_playback_session,
@@ -296,7 +296,7 @@ use playauth::{
     expire_playback_sessions_for_auth_session, expire_playback_sessions_for_upload,
     fetch_active_creator_membership, fetch_live_stream_playback_target,
     fetch_playback_session_record_by_id, fetch_upload_playback_target,
-    fetch_user_audio_preferences, fetch_user_subtitle_preference, playback_session_from_record,
+    fetch_user_playback_preferences, playback_session_from_record,
     reconcile_invalid_playback_sessions, reconcile_playback_sessions_for_read,
     reconcile_playback_sessions_for_user, reconcile_single_playback_session,
     resolve_upload_access_terms, resolve_upload_playback_access,

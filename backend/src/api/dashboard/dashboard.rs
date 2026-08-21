@@ -3,8 +3,7 @@ use super::analytics::{
     summarize_creator_analytics, summarize_creator_revenue,
 };
 use super::content::{
-    fetch_broadcasts, fetch_creator_content_summary, fetch_filtered_uploads_unreconciled,
-    fetch_uploads,
+    fetch_creator_content_summary, fetch_filtered_uploads_unreconciled, fetch_uploads,
 };
 use super::*;
 use crate::api::creator::fetch_creator_profile_persisted;
@@ -12,6 +11,7 @@ use crate::api::control::{
     build_live_runtime_advisory, describe_declared_live_runtime_artifact_health,
     fetch_live_runtime_output_for_session,
 };
+use crate::api::notifications::fetch_notifications_rows_limited;
 use crate::models::LiveRuntimeTelemetrySummary;
 
 const CREATOR_DASHBOARD_ANALYTICS_LIMIT: usize = 14;
@@ -21,6 +21,7 @@ const CREATOR_DASHBOARD_NOTIFICATIONS_LIMIT: usize = 20;
 const CREATOR_DASHBOARD_UPLOADS_LIMIT: usize = 20;
 const CREATOR_APP_STATE_DASHBOARD_NOTIFICATIONS_LIMIT: usize = 10;
 const CREATOR_APP_STATE_UPLOADS_LIMIT: usize = 20;
+const CREATOR_APP_STATE_RECENT_ENDED_BROADCAST_LIMIT: i64 = 12;
 
 async fn fetch_creator_live_health_for_app_state(
     pool: &SqlitePool,
@@ -194,6 +195,75 @@ async fn fetch_creator_live_collaboration_summary_for_app_state(
         active_grant_count: counts.get("active_grant_count"),
         issued_grant_count: counts.get("issued_grant_count"),
     })
+}
+
+async fn fetch_broadcasts_for_app_state(
+    pool: &SqlitePool,
+    creator_id: &str,
+) -> AppResult<Vec<Broadcast>> {
+    let (active_rows, ended_rows) = tokio::try_join!(
+        sqlx::query(
+            r#"
+            SELECT id, title, category, tags_json, status, started_at, ended_at, duration_sec,
+                   peak_viewers, average_viewers, chat_messages, new_followers, new_subscribers,
+                   revenue, thumbnail, is_mature
+            FROM broadcasts
+            WHERE creator_id = ?
+              AND status IN ('live', 'ready', 'scheduled')
+            ORDER BY
+                CASE status
+                    WHEN 'live' THEN 0
+                    WHEN 'ready' THEN 1
+                    WHEN 'scheduled' THEN 2
+                    ELSE 3
+                END,
+                started_at DESC
+            "#
+        )
+        .bind(creator_id)
+        .fetch_all(pool),
+        sqlx::query(
+            r#"
+            SELECT id, title, category, tags_json, status, started_at, ended_at, duration_sec,
+                   peak_viewers, average_viewers, chat_messages, new_followers, new_subscribers,
+                   revenue, thumbnail, is_mature
+            FROM broadcasts
+            WHERE creator_id = ?
+              AND status = 'ended'
+            ORDER BY started_at DESC
+            LIMIT ?
+            "#
+        )
+        .bind(creator_id)
+        .bind(CREATOR_APP_STATE_RECENT_ENDED_BROADCAST_LIMIT)
+        .fetch_all(pool),
+    )?;
+
+    let mut broadcasts = Vec::with_capacity(active_rows.len() + ended_rows.len());
+    broadcasts.extend(active_rows.into_iter().map(row_to_broadcast));
+    broadcasts.extend(ended_rows.into_iter().map(row_to_broadcast));
+    Ok(broadcasts)
+}
+
+fn row_to_broadcast(row: sqlx::sqlite::SqliteRow) -> Broadcast {
+    Broadcast {
+        id: row.get("id"),
+        title: row.get("title"),
+        category: row.get("category"),
+        tags: from_json(row.get::<String, _>("tags_json")).unwrap_or_default(),
+        status: row.get("status"),
+        started_at: row.get("started_at"),
+        ended_at: row.get("ended_at"),
+        duration_sec: row.get("duration_sec"),
+        peak_viewers: row.get("peak_viewers"),
+        average_viewers: row.get("average_viewers"),
+        chat_messages: row.get("chat_messages"),
+        new_followers: row.get("new_followers"),
+        new_subscribers: row.get("new_subscribers"),
+        revenue: row.get("revenue"),
+        thumbnail: row.get("thumbnail"),
+        is_mature: row.get::<i64, _>("is_mature") == 1,
+    }
 }
 
 fn empty_live_runtime_telemetry_summary() -> LiveRuntimeTelemetrySummary {
@@ -414,7 +484,7 @@ pub(crate) async fn fetch_creator_dashboard_shell(
 ) -> AppResult<CreatorDashboard> {
     let (profile, broadcasts) = tokio::try_join!(
         fetch_creator_profile_persisted(pool, creator_id),
-        fetch_broadcasts(pool, creator_id),
+        fetch_broadcasts_for_app_state(pool, creator_id),
     )?;
     let operational_state = fetch_creator_operational_state(pool, &profile).await?;
     Ok(creator_dashboard_payload_for_app_state_from_parts(
@@ -443,8 +513,12 @@ pub(crate) async fn fetch_creator_app_state(
         active_session,
     ) = tokio::try_join!(
         fetch_creator_profile(pool, creator_id),
-        fetch_broadcasts(pool, creator_id),
-        fetch_notifications_rows(pool, creator_id),
+        fetch_broadcasts_for_app_state(pool, creator_id),
+        fetch_notifications_rows_limited(
+            pool,
+            creator_id,
+            Some(CREATOR_APP_STATE_DASHBOARD_NOTIFICATIONS_LIMIT),
+        ),
         fetch_creator_live_settings(pool, creator_id),
         fetch_creator_content_summary(pool, creator_id, content_query),
         fetch_filtered_uploads_unreconciled(pool, creator_id, content_query, Some(CREATOR_APP_STATE_UPLOADS_LIMIT)),

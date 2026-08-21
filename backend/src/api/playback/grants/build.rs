@@ -1,6 +1,12 @@
 use super::*;
 use crate::models::{PlaybackAudioTrack, PlaybackCaptionTrack, PlaybackPreviewTrack};
 
+struct PlaybackGrantTracks {
+    audio_tracks: Vec<PlaybackAudioTrack>,
+    caption_tracks: Vec<PlaybackCaptionTrack>,
+    preview_tracks: Vec<PlaybackPreviewTrack>,
+}
+
 pub(crate) async fn build_playback_grant_from_session_record(
     state: &SharedState,
     session_record: &PlaybackSessionRecord,
@@ -47,7 +53,11 @@ pub(crate) async fn build_live_playback_grant(
         .poster_relative_path
         .as_ref()
         .map(|path| format!("/api/v1/media/{path}?playbackToken={playback_token}"));
-    let audio_tracks = build_playback_audio_tracks(
+    let PlaybackGrantTracks {
+        audio_tracks,
+        caption_tracks,
+        preview_tracks,
+    } = build_playback_grant_tracks(
         pool,
         maybe_identity,
         &target.asset.status,
@@ -57,17 +67,6 @@ pub(crate) async fn build_live_playback_grant(
         playback_token,
     )
     .await?;
-    let caption_tracks = build_playback_caption_tracks(
-        pool,
-        maybe_identity,
-        &target.asset.status,
-        &target.asset.variants,
-        playback_token,
-    )
-    .await?;
-    let preview_tracks =
-        build_playback_preview_tracks(pool, &target.asset.status, &target.asset.id, playback_token)
-            .await?;
 
     Ok(PlaybackGrant {
         session,
@@ -107,7 +106,11 @@ pub(crate) async fn build_upload_playback_grant(
         .poster_path
         .as_ref()
         .map(|path| format!("/api/v1/media/{path}?playbackToken={playback_token}"));
-    let audio_tracks = build_playback_audio_tracks(
+    let PlaybackGrantTracks {
+        audio_tracks,
+        caption_tracks,
+        preview_tracks,
+    } = build_playback_grant_tracks(
         pool,
         maybe_identity,
         &target.asset.status,
@@ -117,17 +120,6 @@ pub(crate) async fn build_upload_playback_grant(
         playback_token,
     )
     .await?;
-    let caption_tracks = build_playback_caption_tracks(
-        pool,
-        maybe_identity,
-        &target.asset.status,
-        &target.asset.variants,
-        playback_token,
-    )
-    .await?;
-    let preview_tracks =
-        build_playback_preview_tracks(pool, &target.asset.status, &target.asset.id, playback_token)
-            .await?;
 
     Ok(PlaybackGrant {
         session,
@@ -151,7 +143,7 @@ pub(crate) async fn build_upload_playback_grant(
     })
 }
 
-async fn build_playback_audio_tracks(
+async fn build_playback_grant_tracks(
     pool: &SqlitePool,
     maybe_identity: Option<&RequestIdentity>,
     status: &str,
@@ -159,55 +151,39 @@ async fn build_playback_audio_tracks(
     variants: &[MediaAssetVariant],
     audio_codec: Option<&str>,
     playback_token: &str,
-) -> AppResult<Vec<PlaybackAudioTrack>> {
-    let (preferred_audio_language, prefer_dubbed) = fetch_user_audio_preferences(
-        pool,
-        maybe_identity.map(|identity| identity.user_id.as_str()),
-    )
-    .await?;
-    Ok(build_media_audio_tracks(
+) -> AppResult<PlaybackGrantTracks> {
+    let user_id = maybe_identity.map(|identity| identity.user_id.as_str());
+    let (preferences, preview_track_rows) = tokio::try_join!(
+        fetch_user_playback_preferences(pool, user_id),
+        fetch_media_preview_track_rows(pool, asset_id),
+    )?;
+
+    let audio_tracks = build_media_audio_tracks(
         status,
         asset_id,
         variants,
         audio_codec,
         Some(playback_token),
-        preferred_audio_language.as_deref(),
-        prefer_dubbed,
-    ))
-}
-
-async fn build_playback_caption_tracks(
-    pool: &SqlitePool,
-    maybe_identity: Option<&RequestIdentity>,
-    status: &str,
-    variants: &[MediaAssetVariant],
-    playback_token: &str,
-) -> AppResult<Vec<PlaybackCaptionTrack>> {
-    let preferred_subtitle_language = fetch_user_subtitle_preference(
-        pool,
-        maybe_identity.map(|identity| identity.user_id.as_str()),
-    )
-    .await?;
-    Ok(build_media_caption_tracks(
+        preferences.audio_language.as_deref(),
+        preferences.prefer_dubbed,
+    );
+    let caption_tracks = build_media_caption_tracks(
         status,
         variants,
         Some(playback_token),
-        preferred_subtitle_language.as_deref(),
-    ))
-}
-
-async fn build_playback_preview_tracks(
-    pool: &SqlitePool,
-    status: &str,
-    asset_id: &str,
-    playback_token: &str,
-) -> AppResult<Vec<PlaybackPreviewTrack>> {
-    let preview_track_rows = fetch_media_preview_track_rows(pool, asset_id).await?;
-    Ok(build_media_preview_tracks(
+        preferences.subtitle_language.as_deref(),
+    );
+    let preview_tracks = build_media_preview_tracks(
         status,
         &preview_track_rows,
         Some(playback_token),
-    ))
+    );
+
+    Ok(PlaybackGrantTracks {
+        audio_tracks,
+        caption_tracks,
+        preview_tracks,
+    })
 }
 
 fn playback_identity_from_session_record(
