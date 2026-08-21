@@ -102,7 +102,7 @@ pub(crate) async fn mark_live_ingest_session_stale_in_db(
 }
 
 pub(crate) async fn reconcile_stale_live_ingest_sessions(state: SharedState) -> AppResult<()> {
-    let cutoff = (Utc::now() - chrono::Duration::seconds(20)).to_rfc3339();
+    let cutoff = stale_live_ingest_cutoff();
     let rows = sqlx::query(
         r#"
         SELECT id, creator_id, broadcast_id, previous_session_id, protocol, contribution_class, contribution_state,

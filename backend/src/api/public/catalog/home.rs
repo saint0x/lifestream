@@ -37,40 +37,18 @@ pub(crate) async fn bootstrap(
         Some(identity) => Some(fetch_user(&state.pool, &identity.user_id).await?),
         None => None,
     };
-    let viewer = match identity.as_ref() {
-        Some(identity) => Some(
-            fetch_viewer_app_state(&state.pool, &identity.user_id, &identity.session_id).await?,
-        ),
-        None => None,
-    };
     let creator = match identity.as_ref() {
         Some(identity) if identity.creator_id.is_some() => {
             Some(creator_dashboard_payload(&state.pool, identity).await?)
         }
         _ => None,
     };
-    let creator_state = match identity.as_ref() {
-        Some(identity) if identity.creator_id.is_some() => Some(
-            fetch_creator_app_state(
-                &state,
-                identity,
-                &CreatorContentQuery {
-                    kind: None,
-                    status: None,
-                    q: None,
-                    sort: None,
-                },
-            )
-            .await?,
-        ),
-        _ => None,
-    };
 
     Ok(Json(serde_json::json!({
         "home": home,
         "me": me,
-        "viewer": viewer,
+        "viewer": null,
         "creator": creator,
-        "creatorState": creator_state
+        "creatorState": null
     })))
 }

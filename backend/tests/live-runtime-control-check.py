@@ -10,7 +10,7 @@ from pathlib import Path
 BASE = os.environ.get("LIFESTREAM_BASE_URL", "http://127.0.0.1:8080")
 DB = os.environ.get(
     "LIFESTREAM_DB_PATH",
-    str(Path(__file__).resolve().parents[2] / "lifestream.db"),
+    str(Path(__file__).resolve().parents[1] / "lifestream.db"),
 )
 AUTH = "Bearer lifestream-local-dev-token"
 HEADERS = {"Authorization": AUTH, "Content-Type": "application/json"}
@@ -122,7 +122,7 @@ runtime_report = req(
         "runtimeState": "healthy",
         "packagingStatus": "ready",
         "archiveStatus": "not_started",
-        "manifestRelativePath": f"live/{live[1]['profile']['id']}/{broadcast['id']}/master.m3u8",
+        "manifestRelativePath": f"live/{live[1]['profile']['id']}/{broadcast['id']}/{session['id']}/master.m3u8",
         "archiveRelativePath": None,
         "lastError": None,
     },
@@ -162,7 +162,7 @@ repair = req(
         "runtimeState": "healthy",
         "packagingStatus": "ready",
         "archiveStatus": "finalizing",
-        "archiveRelativePath": f"archive/{live[1]['profile']['id']}/{broadcast['id']}/archive.mp4",
+        "archiveRelativePath": f"archive/{live[1]['profile']['id']}/{broadcast['id']}/{session['id']}/final.mp4",
         "clearLastError": True,
     },
     HEADERS,

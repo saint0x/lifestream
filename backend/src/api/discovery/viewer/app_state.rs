@@ -1,12 +1,21 @@
 use super::*;
 
+const VIEWER_APP_STATE_NOTIFICATIONS_LIMIT: usize = 20;
+const VIEWER_APP_STATE_SESSIONS_LIMIT: usize = 8;
+const VIEWER_APP_STATE_HISTORY_LIMIT: usize = 20;
+const VIEWER_APP_STATE_CONTINUE_WATCHING_LIMIT: usize = 12;
+
 pub(crate) async fn fetch_viewer_app_state(
     pool: &SqlitePool,
     user_id: &str,
     current_session_id: &str,
 ) -> AppResult<ViewerAppState> {
     let user = fetch_user(pool, user_id).await?;
-    let library = fetch_user_library(pool, user_id).await?;
+    let mut library = fetch_user_library(pool, user_id).await?;
+    library
+        .continue_watching
+        .truncate(VIEWER_APP_STATE_CONTINUE_WATCHING_LIMIT);
+    library.history.truncate(VIEWER_APP_STATE_HISTORY_LIMIT);
     let watchlist = fetch_watchlist_response(pool, user_id).await?;
 
     let followed_streamer_ids = fetch_followed_streamer_ids(pool, user_id).await?;
@@ -37,7 +46,15 @@ pub(crate) async fn fetch_viewer_app_state(
         profile: fetch_user_profile_details(pool, user_id).await?,
         settings: fetch_user_settings_bundle(pool, user_id).await?,
         plan: fetch_billing_plan(pool, user_id).await?,
-        notifications: fetch_user_notifications(pool, user_id).await?,
-        sessions: fetch_auth_sessions(pool, user_id, current_session_id).await?,
+        notifications: fetch_user_notifications(pool, user_id)
+            .await?
+            .into_iter()
+            .take(VIEWER_APP_STATE_NOTIFICATIONS_LIMIT)
+            .collect(),
+        sessions: fetch_auth_sessions(pool, user_id, current_session_id)
+            .await?
+            .into_iter()
+            .take(VIEWER_APP_STATE_SESSIONS_LIMIT)
+            .collect(),
     })
 }

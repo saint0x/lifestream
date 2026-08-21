@@ -8,6 +8,69 @@ use super::content::{
 };
 use super::*;
 
+const CREATOR_DASHBOARD_ANALYTICS_LIMIT: usize = 14;
+const CREATOR_DASHBOARD_REVENUE_LIMIT: usize = 14;
+const CREATOR_DASHBOARD_RECENT_BROADCAST_LIMIT: usize = 12;
+const CREATOR_DASHBOARD_NOTIFICATIONS_LIMIT: usize = 20;
+const CREATOR_DASHBOARD_UPLOADS_LIMIT: usize = 20;
+const CREATOR_APP_STATE_DASHBOARD_NOTIFICATIONS_LIMIT: usize = 10;
+const CREATOR_APP_STATE_UPLOADS_LIMIT: usize = 20;
+const CREATOR_APP_STATE_LIVE_HEALTH_SAMPLE_LIMIT: usize = 8;
+const CREATOR_APP_STATE_SUBSCRIBER_TIER_LIMIT: usize = 6;
+const CREATOR_APP_STATE_COLLABORATION_SESSION_LIMIT: usize = 2;
+const CREATOR_APP_STATE_ACTIVE_RUNTIME_TARGET_LIMIT: usize = 8;
+
+fn truncate_to_last<T>(items: &mut Vec<T>, limit: usize) {
+    if items.len() > limit {
+        let drain_count = items.len() - limit;
+        items.drain(0..drain_count);
+    }
+}
+
+fn trim_creator_live_collaboration_summary_for_app_state(
+    collaboration: &mut CreatorLiveCollaborationSummary,
+) {
+    collaboration.active_control = None;
+    collaboration
+        .recent_sessions
+        .truncate(CREATOR_APP_STATE_COLLABORATION_SESSION_LIMIT);
+}
+
+fn trim_creator_live_control_for_app_state(response: &mut CreatorLiveControlResponse) {
+    trim_creator_live_collaboration_summary_for_app_state(&mut response.collaboration);
+    response
+        .subscriber_tiers
+        .truncate(CREATOR_APP_STATE_SUBSCRIBER_TIER_LIMIT);
+    truncate_to_last(
+        &mut response.health.samples,
+        CREATOR_APP_STATE_LIVE_HEALTH_SAMPLE_LIMIT,
+    );
+    truncate_to_last(
+        &mut response.viewer_history,
+        CREATOR_APP_STATE_LIVE_HEALTH_SAMPLE_LIMIT,
+    );
+    truncate_to_last(
+        &mut response.bitrate_history,
+        CREATOR_APP_STATE_LIVE_HEALTH_SAMPLE_LIMIT,
+    );
+}
+
+fn trim_creator_live_runtime_for_app_state(response: &mut CreatorLiveRuntimeResponse) {
+    trim_creator_live_collaboration_summary_for_app_state(&mut response.collaboration);
+    truncate_to_last(
+        &mut response.health.samples,
+        CREATOR_APP_STATE_LIVE_HEALTH_SAMPLE_LIMIT,
+    );
+    response
+        .active_runtime_targets
+        .truncate(CREATOR_APP_STATE_ACTIVE_RUNTIME_TARGET_LIMIT);
+    response.recent_sessions.clear();
+    response.recent_runtime_outputs.clear();
+    response.recent_runtime_targets.clear();
+    response.recent_telemetry.clear();
+    response.recent_events.clear();
+}
+
 pub(crate) async fn creator_dashboard_payload(
     pool: &SqlitePool,
     identity: &RequestIdentity,
@@ -39,6 +102,7 @@ pub(crate) async fn creator_dashboard_payload(
         .iter()
         .filter(|item| item.status == "ended")
         .cloned()
+        .take(CREATOR_DASHBOARD_RECENT_BROADCAST_LIMIT)
         .collect();
 
     Ok(CreatorDashboard {
@@ -46,16 +110,32 @@ pub(crate) async fn creator_dashboard_payload(
         current_broadcast: current_broadcast.map(contract_broadcast),
         scheduled_broadcasts: contract_broadcasts(scheduled_broadcasts),
         recent_broadcasts: contract_broadcasts(recent_broadcasts),
-        analytics,
+        analytics: analytics
+            .into_iter()
+            .rev()
+            .take(CREATOR_DASHBOARD_ANALYTICS_LIMIT)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect(),
         traffic_sources,
         top_content,
-        revenue,
+        revenue: revenue
+            .into_iter()
+            .take(CREATOR_DASHBOARD_REVENUE_LIMIT)
+            .collect(),
         analytics_summary,
         revenue_summary,
         subscriber_tiers,
         operational_state,
-        notifications,
-        uploads,
+        notifications: notifications
+            .into_iter()
+            .take(CREATOR_DASHBOARD_NOTIFICATIONS_LIMIT)
+            .collect(),
+        uploads: uploads
+            .into_iter()
+            .take(CREATOR_DASHBOARD_UPLOADS_LIMIT)
+            .collect(),
     })
 }
 
@@ -66,16 +146,28 @@ pub(crate) async fn fetch_creator_app_state(
 ) -> AppResult<CreatorAppState> {
     let creator_id = identity.require_creator_scope()?;
     let pool = &state.pool;
-    let dashboard = creator_dashboard_payload(pool, identity).await?;
-    let live_control = fetch_authoritative_creator_live_control_response(state, creator_id).await?;
-    let live_runtime = fetch_authoritative_creator_live_runtime_response(state, creator_id).await?;
+    let mut dashboard = creator_dashboard_payload(pool, identity).await?;
+    dashboard.uploads.clear();
+    dashboard
+        .notifications
+        .truncate(CREATOR_APP_STATE_DASHBOARD_NOTIFICATIONS_LIMIT);
+    let mut live_control =
+        fetch_authoritative_creator_live_control_response(state, creator_id).await?;
+    trim_creator_live_control_for_app_state(&mut live_control);
+    let mut live_runtime =
+        fetch_authoritative_creator_live_runtime_response(state, creator_id).await?;
+    trim_creator_live_runtime_for_app_state(&mut live_runtime);
     let uploads = fetch_uploads(pool, creator_id).await?;
     let filtered_uploads = filter_creator_uploads(uploads.clone(), content_query)?;
     let content = CreatorContentResponse {
         summary: summarize_creator_content(&uploads, filtered_uploads.len() as i64),
-        uploads: filtered_uploads,
+        uploads: filtered_uploads
+            .into_iter()
+            .take(CREATOR_APP_STATE_UPLOADS_LIMIT)
+            .collect(),
     };
-    let upload_operations = fetch_creator_upload_operations_response(pool, creator_id).await?;
+    let mut upload_operations = fetch_creator_upload_operations_response(pool, creator_id).await?;
+    upload_operations.records.clear();
 
     Ok(CreatorAppState {
         dashboard,
