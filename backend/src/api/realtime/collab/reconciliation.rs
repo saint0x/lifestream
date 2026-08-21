@@ -39,6 +39,9 @@ pub(crate) async fn reconcile_collaboration_session_expiry_for_read(
     state: &SharedState,
     session_id: &str,
 ) -> AppResult<()> {
+    if !collaboration_session_requires_reconciliation_for_read(&state.pool, session_id).await? {
+        return Ok(());
+    }
     let _ = reconcile_single_collaboration_session(state.clone(), session_id).await?;
     Ok(())
 }
@@ -49,6 +52,54 @@ pub(crate) async fn reconcile_collaboration_expiry_for_host_read(
 ) -> AppResult<()> {
     let now = Utc::now().to_rfc3339();
     let cutoff = active_presence_cutoff();
+    let expired_exists: Option<String> = sqlx::query_scalar(
+        r#"
+        SELECT session_id
+        FROM (
+            SELECT i.session_id AS session_id
+            FROM collaboration_invites i
+            JOIN collaboration_sessions s ON s.id = i.session_id
+            WHERE s.host_creator_id = ?
+              AND i.state = 'pending'
+              AND i.expires_at <= ?
+            UNION
+            SELECT g.session_id AS session_id
+            FROM collaboration_mirror_grants g
+            JOIN collaboration_sessions s ON s.id = g.session_id
+            WHERE s.host_creator_id = ?
+              AND g.state IN ('issued', 'active')
+              AND g.expires_at <= ?
+            UNION
+            SELECT css.collaboration_session_id AS session_id
+            FROM collaboration_socket_sessions css
+            JOIN collaboration_sessions s ON s.id = css.collaboration_session_id
+            WHERE s.host_creator_id = ?
+              AND css.disconnected_at IS NULL
+              AND css.last_seen_at < ?
+            UNION
+            SELECT s.id AS session_id
+            FROM collaboration_sessions s
+            JOIN broadcasts b ON b.id = s.source_broadcast_id
+            WHERE s.host_creator_id = ?
+              AND s.status != 'ended'
+              AND b.status NOT IN ('ready', 'live')
+        )
+        LIMIT 1
+        "#,
+    )
+    .bind(creator_id)
+    .bind(&now)
+    .bind(creator_id)
+    .bind(&now)
+    .bind(creator_id)
+    .bind(&cutoff)
+    .bind(creator_id)
+    .fetch_optional(&state.pool)
+    .await?;
+    if expired_exists.is_none() {
+        return Ok(());
+    }
+
     let rows = sqlx::query(
         r#"
         SELECT DISTINCT session_id
@@ -152,4 +203,57 @@ pub(crate) async fn reconcile_collaboration_expiry_for_participant_read(
         reconcile_collaboration_session_expiry_for_read(state, &session_id).await?;
     }
     Ok(())
+}
+
+async fn collaboration_session_requires_reconciliation_for_read(
+    pool: &SqlitePool,
+    session_id: &str,
+) -> AppResult<bool> {
+    let now = Utc::now().to_rfc3339();
+    let cutoff = active_presence_cutoff();
+    let requires_reconciliation: Option<i64> = sqlx::query_scalar(
+        r#"
+        SELECT 1
+        FROM collaboration_sessions s
+        LEFT JOIN broadcasts b
+          ON b.id = s.source_broadcast_id
+        WHERE s.id = ?
+          AND (
+              EXISTS (
+                  SELECT 1
+                  FROM collaboration_invites i
+                  WHERE i.session_id = s.id
+                    AND i.state = 'pending'
+                    AND i.expires_at <= ?
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM collaboration_mirror_grants g
+                  WHERE g.session_id = s.id
+                    AND g.state IN ('issued', 'active')
+                    AND g.expires_at <= ?
+              )
+              OR EXISTS (
+                  SELECT 1
+                  FROM collaboration_socket_sessions css
+                  WHERE css.collaboration_session_id = s.id
+                    AND css.disconnected_at IS NULL
+                    AND css.last_seen_at < ?
+              )
+              OR (
+                  s.status != 'ended'
+                  AND b.status NOT IN ('ready', 'live')
+              )
+          )
+        LIMIT 1
+        "#,
+    )
+    .bind(session_id)
+    .bind(&now)
+    .bind(&now)
+    .bind(&cutoff)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(requires_reconciliation.is_some())
 }

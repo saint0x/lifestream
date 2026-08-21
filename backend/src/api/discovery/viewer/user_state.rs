@@ -1,6 +1,4 @@
 use super::*;
-use futures_util::future::join_all;
-
 #[derive(Clone)]
 pub(crate) struct UserRecord {
     pub(crate) id: String,
@@ -80,28 +78,21 @@ pub(crate) async fn fetch_watchlist_response(
         });
     }
 
-    let resolved = join_all(
-        watchlist_ids
-            .into_iter()
-            .map(|content_id| async move {
-                if let Ok(item) = fetch_series_preview_by_id(pool, &content_id).await {
-                    return Ok::<_, AppError>(WatchlistItem::Series(item));
-                }
-                if let Ok(item) = fetch_film_by_id(pool, &content_id, None).await {
-                    return Ok(WatchlistItem::Film(item));
-                }
-                Err(AppError::NotFound)
-            }),
-    )
-    .await;
+    let series_ids = fetch_existing_series_watchlist_ids(pool, &watchlist_ids).await?;
+    let series_id_set = series_ids.iter().cloned().collect::<std::collections::HashSet<_>>();
+    let film_ids = watchlist_ids
+        .iter()
+        .filter(|id| !series_id_set.contains(*id))
+        .cloned()
+        .collect::<Vec<_>>();
 
-    let mut series = Vec::new();
-    let mut films = Vec::new();
-    for item in resolved {
-        match item? {
-            WatchlistItem::Series(entry) => series.push(entry),
-            WatchlistItem::Film(entry) => films.push(entry),
-        }
+    let (series, films) = tokio::try_join!(
+        fetch_series_previews_by_ids(pool, &series_ids),
+        fetch_films_by_ids(pool, &film_ids),
+    )?;
+
+    if series.len() + films.len() != watchlist_ids.len() {
+        return Err(AppError::NotFound);
     }
 
     Ok(WatchlistResponse {
@@ -287,11 +278,6 @@ async fn fetch_followed_streamers(
     )
 }
 
-enum WatchlistItem {
-    Series(Series),
-    Film(Film),
-}
-
 pub(crate) async fn fetch_creator_id_for_user(
     pool: &SqlitePool,
     user_id: &str,
@@ -301,4 +287,27 @@ pub(crate) async fn fetch_creator_id_for_user(
         .fetch_optional(pool)
         .await?;
     Ok(row.map(|row| row.get("id")))
+}
+
+async fn fetch_existing_series_watchlist_ids(
+    pool: &SqlitePool,
+    watchlist_ids: &[String],
+) -> AppResult<Vec<String>> {
+    if watchlist_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let placeholders = vec!["?"; watchlist_ids.len()].join(", ");
+    let query =
+        format!("SELECT id FROM series WHERE id IN ({placeholders}) ORDER BY id ASC");
+    let mut statement = sqlx::query(&query);
+    for id in watchlist_ids {
+        statement = statement.bind(id);
+    }
+    Ok(statement
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|row| row.get("id"))
+        .collect())
 }

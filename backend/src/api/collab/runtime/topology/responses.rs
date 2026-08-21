@@ -5,7 +5,26 @@ use super::presence::{
 };
 use super::*;
 
-const CREATOR_LIVE_RECENT_COLLABORATION_SESSIONS_LIMIT: i64 = 3;
+const CREATOR_LIVE_RECENT_COLLABORATION_SESSIONS_LIMIT: i64 = 1;
+const FULL_COLLABORATION_EVENT_LIMIT: i64 = 100;
+
+#[derive(Clone, Copy)]
+struct CollaborationRuntimeBuildOptions {
+    event_limit: i64,
+    include_socket_sessions_in_response: bool,
+}
+
+impl CollaborationRuntimeBuildOptions {
+    const FULL: Self = Self {
+        event_limit: FULL_COLLABORATION_EVENT_LIMIT,
+        include_socket_sessions_in_response: true,
+    };
+
+    const COMPACT: Self = Self {
+        event_limit: 0,
+        include_socket_sessions_in_response: false,
+    };
+}
 
 struct CollaborationRuntimeBuild {
     runtime: CollaborationRuntimeResponse,
@@ -24,13 +43,18 @@ struct CreatorCollaborationCountsRow {
 async fn build_collaboration_runtime_for_session_view(
     pool: &SqlitePool,
     session: CollaborationSessionView,
+    options: CollaborationRuntimeBuildOptions,
 ) -> AppResult<CollaborationRuntimeBuild> {
-    let (session_grants, session_pickups, recent_events, socket_sessions) = tokio::try_join!(
+    let (session_grants, session_pickups, socket_sessions) = tokio::try_join!(
         fetch_collaboration_mirror_grants_for_session(pool, &session.id),
         fetch_collaboration_mirror_pickups_for_session(pool, &session.id),
-        fetch_collaboration_events(pool, &session.id, 0, 100),
         fetch_collaboration_socket_presence_for_session(pool, &session.id),
     )?;
+    let recent_events = if options.event_limit > 0 {
+        fetch_collaboration_events(pool, &session.id, 0, options.event_limit).await?
+    } else {
+        Vec::new()
+    };
     let visible_grants =
         filter_visible_collaboration_mirror_grants_for_session_view(&session, &session_grants);
     let visible_pickups =
@@ -103,7 +127,11 @@ pub(crate) async fn build_collaboration_runtime_response_for_participant(
     pool: &SqlitePool,
     session: CollaborationSessionView,
 ) -> AppResult<CollaborationRuntimeResponse> {
-    Ok(build_collaboration_runtime_for_session_view(pool, session)
+    Ok(build_collaboration_runtime_for_session_view(
+        pool,
+        session,
+        CollaborationRuntimeBuildOptions::FULL,
+    )
         .await?
         .runtime)
 }
@@ -114,7 +142,11 @@ pub(crate) async fn build_collaboration_runtime_response_for_host(
 ) -> AppResult<CollaborationRuntimeResponse> {
     let host = fetch_collaboration_host_summary(pool, &session.host_creator_id).await?;
     let view = collaboration_session_view_for_host(session, host)?;
-    Ok(build_collaboration_runtime_for_session_view(pool, view)
+    Ok(build_collaboration_runtime_for_session_view(
+        pool,
+        view,
+        CollaborationRuntimeBuildOptions::FULL,
+    )
         .await?
         .runtime)
 }
@@ -122,6 +154,19 @@ pub(crate) async fn build_collaboration_runtime_response_for_host(
 pub(crate) async fn build_creator_collaboration_control_response_for_host(
     pool: &SqlitePool,
     session: CollaborationSession,
+) -> AppResult<CreatorCollaborationControlResponse> {
+    build_creator_collaboration_control_response_for_host_with_options(
+        pool,
+        session,
+        CollaborationRuntimeBuildOptions::FULL,
+    )
+    .await
+}
+
+async fn build_creator_collaboration_control_response_for_host_with_options(
+    pool: &SqlitePool,
+    session: CollaborationSession,
+    options: CollaborationRuntimeBuildOptions,
 ) -> AppResult<CreatorCollaborationControlResponse> {
     let pending_invite_count = session
         .invites
@@ -133,7 +178,7 @@ pub(crate) async fn build_creator_collaboration_control_response_for_host(
     let CollaborationRuntimeBuild {
         runtime,
         socket_sessions,
-    } = build_collaboration_runtime_for_session_view(pool, view).await?;
+    } = build_collaboration_runtime_for_session_view(pool, view, options).await?;
     let active_grant_count = runtime
         .grants
         .iter()
@@ -150,7 +195,11 @@ pub(crate) async fn build_creator_collaboration_control_response_for_host(
         .count() as i64;
     Ok(CreatorCollaborationControlResponse {
         runtime,
-        socket_sessions,
+        socket_sessions: if options.include_socket_sessions_in_response {
+            socket_sessions
+        } else {
+            Vec::new()
+        },
         pending_invite_count,
         active_grant_count,
         issued_grant_count,
@@ -174,9 +223,15 @@ pub(crate) async fn fetch_creator_live_collaboration_summary(
     let (active_control, recent_sessions, counts) = tokio::try_join!(
         async {
             match active_session.clone() {
-                Some(session) => build_creator_collaboration_control_response_for_host(pool, session)
+                Some(session) => {
+                    build_creator_collaboration_control_response_for_host_with_options(
+                        pool,
+                        session,
+                        CollaborationRuntimeBuildOptions::COMPACT,
+                    )
                     .await
-                    .map(Some),
+                    .map(Some)
+                }
                 None => Ok(None),
             }
         },

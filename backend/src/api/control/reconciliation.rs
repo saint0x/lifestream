@@ -134,6 +134,28 @@ pub(crate) async fn reconcile_stale_live_ingest_sessions_for_read(
     session_filter: Option<&str>,
 ) -> AppResult<()> {
     let cutoff = stale_live_ingest_cutoff();
+    let stale_exists: Option<i64> = sqlx::query_scalar(
+        r#"
+        SELECT 1
+        FROM live_ingest_sessions
+        WHERE status = 'connected'
+          AND last_heartbeat_at < ?
+          AND (? IS NULL OR creator_id = ?)
+          AND (? IS NULL OR id = ?)
+        LIMIT 1
+        "#,
+    )
+    .bind(&cutoff)
+    .bind(creator_filter)
+    .bind(creator_filter)
+    .bind(session_filter)
+    .bind(session_filter)
+    .fetch_optional(pool)
+    .await?;
+    if stale_exists.is_none() {
+        return Ok(());
+    }
+
     let rows = sqlx::query(
         r#"
         SELECT id, creator_id, broadcast_id, previous_session_id, protocol, contribution_class, contribution_state,

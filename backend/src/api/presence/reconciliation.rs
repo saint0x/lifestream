@@ -43,6 +43,25 @@ pub(crate) async fn reconcile_stale_creator_live_socket_sessions_for_read(
 ) -> AppResult<()> {
     let cutoff = active_presence_cutoff();
     let now = Utc::now().to_rfc3339();
+    let stale_exists: Option<i64> = sqlx::query_scalar(
+        r#"
+        SELECT 1
+        FROM creator_live_socket_sessions
+        WHERE disconnected_at IS NULL
+          AND last_seen_at < ?
+          AND (?2 IS NULL OR creator_id = ?2)
+          AND (?3 IS NULL OR user_id = ?3)
+        LIMIT 1
+        "#,
+    )
+    .bind(&cutoff)
+    .bind(creator_filter)
+    .bind(user_filter)
+    .fetch_optional(pool)
+    .await?;
+    if stale_exists.is_none() {
+        return Ok(());
+    }
 
     sqlx::query(
         r#"

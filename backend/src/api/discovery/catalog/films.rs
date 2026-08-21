@@ -118,6 +118,47 @@ pub(crate) async fn fetch_film_by_id(
     film_from_row(row, progress)
 }
 
+pub(crate) async fn fetch_films_by_ids(pool: &SqlitePool, ids: &[String]) -> AppResult<Vec<Film>> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let placeholders = vec!["?"; ids.len()].join(", ");
+    let query = format!(
+        r#"
+        SELECT id, slug, title, tagline, synopsis, year, rating, genres_json, images_json, credits_json, score,
+               is_original, trending, hero_color, duration_sec,
+               CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM media_assets ma
+                    WHERE ma.upload_id = films.id
+                      AND ma.status IN ('ready', 'published')
+               ) THEN 1 ELSE 0 END AS playback_ready
+        FROM films
+        WHERE id IN ({placeholders})
+        "#
+    );
+    let mut statement = sqlx::query(&query);
+    for id in ids {
+        statement = statement.bind(id);
+    }
+    let rows = statement.fetch_all(pool).await?;
+
+    let mut by_id = std::collections::HashMap::with_capacity(rows.len());
+    for row in rows {
+        let film = film_from_row(row, None)?;
+        by_id.insert(film.id.clone(), film);
+    }
+
+    let mut ordered = Vec::with_capacity(ids.len());
+    for id in ids {
+        if let Some(film) = by_id.remove(id) {
+            ordered.push(film);
+        }
+    }
+    Ok(ordered)
+}
+
 fn film_from_row(
     row: sqlx::sqlite::SqliteRow,
     progress: Option<&ContinueWatchingEntry>,

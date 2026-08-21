@@ -32,7 +32,7 @@ pub(crate) use queries::{
     fetch_live_ingest_session_by_id_global_unreconciled,
     fetch_live_ingest_session_by_id_unreconciled, fetch_live_runtime_output_for_session,
     fetch_live_runtime_targets_for_session, fetch_live_runtime_telemetry_summary,
-    fetch_live_runtime_telemetry_for_session, fetch_live_runtime_telemetry_summary_for_session,
+    fetch_live_runtime_telemetry_for_session,
     fetch_recent_live_ingest_sessions, fetch_recent_live_runtime_outputs,
     fetch_recent_live_runtime_targets, fetch_recent_live_runtime_telemetry,
     fetch_terminalizable_live_ingest_sessions_for_broadcast, initialize_live_runtime_output,

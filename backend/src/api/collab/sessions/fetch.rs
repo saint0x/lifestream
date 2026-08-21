@@ -88,6 +88,11 @@ pub(crate) async fn fetch_collaboration_session_by_id(
     .await?
     .ok_or(AppError::NotFound)?;
 
+    let (invites, participants) = tokio::try_join!(
+        fetch_collaboration_invites_for_session(pool, session_id),
+        fetch_collaboration_participants_for_session(pool, session_id),
+    )?;
+
     Ok(CollaborationSession {
         id: row.get("id"),
         host_creator_id: row.get("host_creator_id"),
@@ -101,8 +106,8 @@ pub(crate) async fn fetch_collaboration_session_by_id(
         updated_at: row.get("updated_at"),
         activated_at: row.get("activated_at"),
         ended_at: row.get("ended_at"),
-        invites: fetch_collaboration_invites_for_session(pool, session_id).await?,
-        participants: fetch_collaboration_participants_for_session(pool, session_id).await?,
+        invites,
+        participants,
     })
 }
 

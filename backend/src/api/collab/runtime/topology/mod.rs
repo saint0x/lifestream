@@ -84,7 +84,9 @@ pub(crate) async fn build_collaboration_runtime_topology(
         connected_participants: socket_sessions
             .iter()
             .filter(|socket| !socket.is_stale && socket.disconnected_at.is_none())
-            .count() as i64,
+            .filter_map(|socket| socket.participant_id.as_deref())
+            .collect::<std::collections::BTreeSet<_>>()
+            .len() as i64,
         host_output_participant_ids: participant_state.host_output_participant_ids,
         backstage_participant_ids: participant_state.backstage_participant_ids,
         live_participant_ids: participant_state.live_participant_ids,

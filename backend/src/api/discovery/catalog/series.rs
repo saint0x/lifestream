@@ -83,15 +83,37 @@ pub(crate) async fn fetch_series_by_id(
     series_from_row(pool, row, progress).await
 }
 
-pub(crate) async fn fetch_series_preview_by_id(pool: &SqlitePool, id: &str) -> AppResult<Series> {
-    let row = sqlx::query(
-        "SELECT id, slug, title, tagline, synopsis, year, rating, genres_json, images_json, credits_json, score, is_original, trending, hero_color, status, total_episodes FROM series WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
-    series_preview_from_row(pool, row).await
+pub(crate) async fn fetch_series_previews_by_ids(
+    pool: &SqlitePool,
+    ids: &[String],
+) -> AppResult<Vec<Series>> {
+    if ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let placeholders = vec!["?"; ids.len()].join(", ");
+    let query = format!(
+        "SELECT id, slug, title, tagline, synopsis, year, rating, genres_json, images_json, credits_json, score, is_original, trending, hero_color, status, total_episodes FROM series WHERE id IN ({placeholders})"
+    );
+    let mut statement = sqlx::query(&query);
+    for id in ids {
+        statement = statement.bind(id);
+    }
+    let rows = statement.fetch_all(pool).await?;
+
+    let mut by_id = std::collections::HashMap::with_capacity(rows.len());
+    for row in rows {
+        let series = series_preview_from_row(pool, row).await?;
+        by_id.insert(series.id.clone(), series);
+    }
+
+    let mut ordered = Vec::with_capacity(ids.len());
+    for id in ids {
+        if let Some(series) = by_id.remove(id) {
+            ordered.push(series);
+        }
+    }
+    Ok(ordered)
 }
 
 pub(crate) async fn fetch_episode_by_id(pool: &SqlitePool, episode_id: &str) -> AppResult<Episode> {

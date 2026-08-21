@@ -11,7 +11,7 @@ pub(crate) async fn build_creator_live_snapshot(
             ingest_session = fetch_active_live_ingest_session_unreconciled(pool, creator_id).await?;
         }
     }
-    let broadcasts = fetch_broadcasts(pool, creator_id).await?;
+    let broadcasts = fetch_live_snapshot_broadcasts(pool, creator_id).await?;
     let profile = build_effective_creator_live_profile(pool, creator_id, &broadcasts).await?;
     let current_broadcast = broadcasts
         .iter()
@@ -52,6 +52,55 @@ async fn build_effective_creator_live_profile(
         "offline".to_string()
     };
     Ok(profile)
+}
+
+async fn fetch_live_snapshot_broadcasts(
+    pool: &SqlitePool,
+    creator_id: &str,
+) -> AppResult<Vec<Broadcast>> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, title, category, tags_json, status, started_at, ended_at, duration_sec,
+               peak_viewers, average_viewers, chat_messages, new_followers, new_subscribers,
+               revenue, thumbnail, is_mature
+        FROM broadcasts
+        WHERE creator_id = ?
+          AND status IN ('live', 'ready')
+        ORDER BY
+            CASE status
+                WHEN 'live' THEN 0
+                WHEN 'ready' THEN 1
+                ELSE 2
+            END,
+            started_at DESC
+        LIMIT 2
+        "#,
+    )
+    .bind(creator_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| Broadcast {
+            id: row.get("id"),
+            title: row.get("title"),
+            category: row.get("category"),
+            tags: from_json(row.get::<String, _>("tags_json")).unwrap_or_default(),
+            status: row.get("status"),
+            started_at: row.get("started_at"),
+            ended_at: row.get("ended_at"),
+            duration_sec: row.get("duration_sec"),
+            peak_viewers: row.get("peak_viewers"),
+            average_viewers: row.get("average_viewers"),
+            chat_messages: row.get("chat_messages"),
+            new_followers: row.get("new_followers"),
+            new_subscribers: row.get("new_subscribers"),
+            revenue: row.get("revenue"),
+            thumbnail: row.get("thumbnail"),
+            is_mature: row.get::<i64, _>("is_mature") == 1,
+        })
+        .collect())
 }
 
 pub(crate) fn contract_live_status(status: &str) -> String {

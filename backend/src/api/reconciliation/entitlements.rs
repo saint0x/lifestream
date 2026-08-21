@@ -9,6 +9,39 @@ pub(crate) async fn reconcile_expired_user_entitlements_for_read(
     user_filter: Option<&str>,
 ) -> AppResult<()> {
     let now = Utc::now().to_rfc3339();
+    let expired_exists: Option<i64> = sqlx::query_scalar(
+        r#"
+        SELECT 1
+        FROM (
+            SELECT 1
+            FROM creator_memberships
+            WHERE status IN ('active', 'canceling')
+              AND COALESCE(ends_at, renews_at) IS NOT NULL
+              AND COALESCE(ends_at, renews_at) <= ?
+              AND (? IS NULL OR user_id = ?)
+            UNION ALL
+            SELECT 1
+            FROM content_purchases
+            WHERE status = 'active'
+              AND expires_at IS NOT NULL
+              AND expires_at <= ?
+              AND (? IS NULL OR user_id = ?)
+        )
+        LIMIT 1
+        "#,
+    )
+    .bind(&now)
+    .bind(user_filter)
+    .bind(user_filter)
+    .bind(&now)
+    .bind(user_filter)
+    .bind(user_filter)
+    .fetch_optional(pool)
+    .await?;
+    if expired_exists.is_none() {
+        return Ok(());
+    }
+
     let expired_memberships = sqlx::query(
         r#"
         SELECT DISTINCT user_id, creator_id

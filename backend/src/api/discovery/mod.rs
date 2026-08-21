@@ -5,9 +5,9 @@ mod live;
 mod viewer;
 
 pub(crate) use catalog::{
-    fetch_film_by_id, fetch_film_by_slug, fetch_films, fetch_films_by_genre, fetch_series,
-    fetch_series_by_genre, fetch_series_by_id, fetch_series_by_slug, fetch_series_preview_by_id,
-    resolve_progress_target,
+    fetch_film_by_id, fetch_film_by_slug, fetch_films, fetch_films_by_genre, fetch_films_by_ids,
+    fetch_series, fetch_series_by_genre, fetch_series_by_id, fetch_series_by_slug,
+    fetch_series_previews_by_ids, resolve_progress_target,
     validate_watchlist_content,
 };
 pub(crate) use live::{

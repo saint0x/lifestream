@@ -22,7 +22,7 @@ impl Config {
         let max_db_connections = env::var("LIFESTREAM_DB_MAX_CONNECTIONS")
             .ok()
             .and_then(|value| value.parse().ok())
-            .unwrap_or(12);
+            .unwrap_or(8);
 
         Ok(Self {
             bind_addr,

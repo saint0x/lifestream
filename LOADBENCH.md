@@ -297,6 +297,116 @@ Interpretation:
 - The creator shell is no longer the main collapse point; the worst remaining production pain is shared mixed-load contention between viewer state reads, creator runtime reads, and write-heavy chat/playback traffic on the same SQLite control-plane store.
 - The bootstrap path is materially better after removing the full dashboard hydrate from bootstrap.
 - The remaining work is no longer “placeholder cleanup”; it is core concurrency architecture work around the viewer shell and the live runtime/control fanout under mixed read-write pressure.
+
+After batching watchlist hydration, adding fast no-op guards to viewer entitlement reconciliation, stale creator-live socket reconciliation, and host collaboration expiry reconciliation on Friday, August 21, 2026:
+
+Latest full mixed sweep on the updated build:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 410.71 | 72.67 ms | 448.03 ms | strongest public listing result of the day so far |
+| `GET /api/v1/live/streams/deepsaint-live` | 376.88 | 76.48 ms | 477.09 ms | public detail improved with the same viewer-side contention cuts |
+| `GET /api/v1/bootstrap` | 7.93 | timeout | timeout | still starved when the full operator stack is active |
+| `GET /api/v1/me/state` | 10.90 | 239.13 ms | 967.08 ms | improved from `7.88 req/s` on the prior newest-build sweep; timeout pressure remains but the viewer shell is materially healthier |
+| `GET /api/v1/creator/me/state` | 23.78 | 1.12 s | 1.50 s | broadly flat versus the prior sweep |
+| `GET /api/v1/creator/me/live/control` | 15.85 | 1.62 s | 1.99 s | still heavy under shared operator load |
+| `GET /api/v1/creator/me/live/runtime` | 7.93 | timeout | timeout | still the dominant remaining control-plane bottleneck |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 15.87 | 1.52 s | 1.66 s | stable but heavy |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 15.86 | 1.56 s | 1.65 s | stable but still bounded by collaboration/runtime hydration cost |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 22.55 | 1.36 s | 1.78 s | playback issuance improved materially from `15.72 req/s` |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 209.12 | 122.31 ms | 1.68 s | non-2xxs were expected chat limiter responses |
+
+What moved:
+
+- The viewer-side cuts helped real mixed-load behavior: `me/state` climbed from `7.88 req/s` to `10.90 req/s`, and public live lanes moved sharply upward.
+- The remaining collapse is no longer primarily the viewer shell. It is the creator live runtime/control and collaboration-runtime graph under the full mixed read/write operator stack.
+- The next highest-value work is to reduce authoritative creator runtime hydration cost directly, especially the embedded collaboration control/runtime payload and recent-runtime history reads.
+
+After splitting creator-wide collaboration summaries onto a compact control projection, then reducing creator live runtime recent-history windows to the minimum exercised by current checks on Friday, August 21, 2026:
+
+First mixed sweep on the compact collaboration-summary build:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | lane reset | n/a | n/a | two public lanes saw transient `Connection reset by peer`, but `/health` stayed green immediately after, so this looked like overload rather than a process crash |
+| `GET /api/v1/creator/me/live/runtime` | 7.93 | 1.88 s | 1.98 s | no longer pure timeout floor in this run, but still far too heavy |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 23.82 | 1.10 s | 1.56 s | materially better than the prior `15.86 req/s` band |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 226.22 | 114.08 ms | 1.20 s | expected limiter responses remained the non-2xx source |
+
+Repeat mixed sweep on the same compact collaboration-summary build:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 256.61 | 104.44 ms | 472.19 ms | public lane reset did not reproduce on the immediate rerun |
+| `GET /api/v1/live/streams/deepsaint-live` | 244.22 | 112.84 ms | 472.43 ms | stable on rerun |
+| `GET /api/v1/bootstrap` | 7.93 | 1.52 s | 1.99 s | still heavily starved |
+| `GET /api/v1/me/state` | 7.93 | timeout | timeout | viewer shell regressed on this rerun |
+| `GET /api/v1/creator/me/state` | 23.79 | 1.23 s | 1.43 s | stable |
+| `GET /api/v1/creator/me/live/control` | 15.87 | 1.39 s | 1.99 s | slightly healthier p50 than the prior pass |
+| `GET /api/v1/creator/me/live/runtime` | 7.93 | timeout | timeout | runtime still collapsed under the full shared sweep |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 15.86 | 1.10 s | 1.17 s | meaningful p50 improvement on the session-specific control lane |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 15.86 | 1.06 s | 1.98 s | somewhat healthier session-specific runtime lane |
+
+Latest mixed sweep after trimming creator live runtime recent-session/output/target/telemetry/event windows to `1`:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 430.36 | 64.93 ms | 396.46 ms | best public listing result of the day so far |
+| `GET /api/v1/live/streams/deepsaint-live` | 370.17 | 76.27 ms | 401.86 ms | public detail stayed strong |
+| `GET /api/v1/bootstrap` | 7.99 | timeout | timeout | bootstrap still starved under the full sweep |
+| `GET /api/v1/me/state` | 7.93 | 1.98 s | 1.98 s | viewer shell regressed back toward timeout behavior on this build |
+| `GET /api/v1/creator/me/state` | 23.80 | 1.10 s | 1.38 s | creator shell remained stable |
+| `GET /api/v1/creator/me/live/control` | 15.87 | 1.73 s | 2.00 s | control did not materially improve from the history trim |
+| `GET /api/v1/creator/me/live/runtime` | 7.86 | timeout | timeout | the history trim alone was not enough to move the dominant runtime bottleneck |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 16.62 | 1.44 s | 1.57 s | slight improvement in the session-specific control lane |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 15.85 | 1.45 s | 1.53 s | stable, but still heavy |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 15.85 | 1.47 s | 1.61 s | playback remained available |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 221.77 | 113.99 ms | 1.53 s | expected limiter responses remained the non-2xx source |
+
+Current interpretation:
+
+- The compact collaboration-summary split materially helped the session-specific collaboration control/runtime lanes and did not break the runtime smoke coverage.
+- The creator-wide `live/runtime` endpoint remains the single biggest unresolved control-plane bottleneck under the full mixed sweep.
+- The latest history trim improved public lanes further but was not sufficient to move `creator/me/live/runtime` off the timeout floor or keep `me/state` consistently healthy under the full operator stack.
+- The next pass should target deeper runtime-read architecture, not more shallow payload trimming: most likely the remaining authoritative runtime advisory/output/telemetry assembly and any shared SQLite write contention those reads still trigger indirectly.
+
+After removing deep runtime artifact reconciliation/inspection from the hot creator runtime read path, then swapping the creator runtime hot path onto a compact session telemetry summary on Friday, August 21, 2026:
+
+Mixed sweep after removing deep artifact reconciliation/inspection from `GET /api/v1/creator/me/live/runtime`:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 310.89 | 86.67 ms | 461.16 ms | public reads remained healthy |
+| `GET /api/v1/live/streams/deepsaint-live` | 296.71 | 95.00 ms | 470.27 ms | public detail remained healthy |
+| `GET /api/v1/bootstrap` | 12.78 | 1.13 s | 1.86 s | materially healthier than the `7.99 req/s` timeout-floor run |
+| `GET /api/v1/me/state` | 7.88 | timeout | timeout | viewer shell still collapsed under the full operator mix |
+| `GET /api/v1/creator/me/state` | 23.63 | 1.16 s | 1.27 s | creator shell stayed stable |
+| `GET /api/v1/creator/me/live/control` | 15.75 | 1.75 s | 1.97 s | still heavy |
+| `GET /api/v1/creator/me/live/runtime` | 7.87 | timeout | timeout | hot-path artifact inspection removal alone did not move the runtime lane |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 15.73 | 1.68 s | 1.72 s | stable |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 15.74 | 1.68 s | 1.79 s | stable |
+
+Mixed sweep after replacing the hot runtime path’s full session telemetry summary with a compact aggregate plus latest-sample derivation:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 177.20 | 164.65 ms | 524.81 ms | public reads stayed available but slowed under the latest build’s shared sweep |
+| `GET /api/v1/live/streams/deepsaint-live` | 173.71 | 156.96 ms | 529.49 ms | similar story on public detail |
+| `GET /api/v1/bootstrap` | 7.86 | timeout | timeout | regressed back to the timeout floor under this sweep |
+| `GET /api/v1/me/state` | 7.88 | timeout | timeout | unchanged from the worst viewer-shell mixed-load band |
+| `GET /api/v1/creator/me/state` | 23.64 | 1.12 s | 1.30 s | creator shell still stable |
+| `GET /api/v1/creator/me/live/control` | 15.74 | 1.63 s | 1.90 s | slightly healthier p50 than the prior no-inspection-only sweep |
+| `GET /api/v1/creator/me/live/runtime` | 7.88 | timeout | timeout | the compact telemetry summary still did not move the creator runtime lane off the timeout floor |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 15.72 | 1.48 s | 1.55 s | stable |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 15.72 | 1.48 s | 1.55 s | stable |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 222.33 | 120.43 ms | 1.24 s | expected limiter responses remained the non-2xx source |
+
+Updated interpretation:
+
+- Removing deep artifact inspection from the hot creator runtime path was architecturally correct and runtime-safe, but it was not the dominant bottleneck.
+- Replacing the full telemetry summary with a compact hot-path summary also did not materially improve `GET /api/v1/creator/me/live/runtime` under the full shared sweep.
+- The creator runtime timeout floor now appears to be dominated by broader shared read/write pressure and/or the remaining live-runtime assembly fanout rather than any single already-trimmed artifact or telemetry query.
+- The next meaningful pass should likely go after shared SQLite concurrency architecture directly or collapse more of the creator live runtime assembly into precomputed/runtime-owned state instead of request-time composition.
   Result: pass; fresh trace recorded at `backend/tests/live-runtime-control-20260821-current.trace.fozzy`
 - `fozzy trace verify tests/live-runtime-control-20260821-current.trace.fozzy --strict --json`
   Result: pass
@@ -602,3 +712,44 @@ Post-joined-account-bundle mixed sweep on the same Friday, August 21, 2026 autho
 - A remaining likely next move is to trim or decouple the upload-heavy portions of `creator/me/state` under operator-panel mixed load, because the shell still saturates before the rest of the control plane does.
 - The next likely highest-value move is to cut repeated collaboration/runtime hydration from `creator/me/live/runtime` and the host collaboration endpoints, because after the latest shell fix those are now the dominant heavy paths in the mixed sweep.
 - Media-plane codec, transcoding, and player-side runtime work remain outside this document. This report is strictly for the Rust control plane.
+
+- Friday, August 21, 2026 creator-live runtime and collaboration hot-path pass:
+  - Locked the SQLite default pool size to `8` after a fresh rebuilt bakeoff across `2`, `4`, `8`, and `12`, where `8` gave the best overall mixed-lane balance without the playback regressions seen at `4` and `12`.
+  - Removed unconditional collaboration-session reconciliation from the direct read path by adding a session-scoped no-op eligibility guard before full reconciliation runs.
+  - Stopped creator live snapshot reads from loading full broadcast history when the hot shell only needs the current `live` or `ready` broadcast window.
+  - Parallelized collaboration session invite and participant hydration so host/session reads stop serializing independent subqueries.
+  - Fixed collaboration topology `connectedParticipants` to count distinct active participants instead of socket tabs.
+  - Fixed creator live runtime `recentEvents` to read from the active session window so the authoritative runtime feed surfaces `connected`, `heartbeat_recorded`, and `runtime_reported` together.
+
+- Verification on the fresh rebuilt binary from Friday, August 21, 2026:
+  - `cargo build` -> passed
+  - `python3 backend/tests/live-runtime-control-check.py` -> `runtime|socket-inspect|connected|terminated`
+  - `python3 backend/tests/creator-app-state-check.py` -> `creator-app-state|bootstrap|consistent`
+  - `fozzy doctor --deep --scenario tests/live-runtime-control.pass.fozzy.json --runs 5 --seed 20260821 --json` -> `ok=true`, `consistent=true`
+  - `fozzy test --det --strict-verify tests/live-runtime-control.pass.fozzy.json --json` -> `pass`
+  - `fozzy run tests/live-runtime-control.pass.fozzy.json --det --record tests/live-runtime-control-20260821-current.trace.2.fozzy --proc-backend host --fs-backend host --http-backend host --json` -> `pass`
+  - `fozzy trace verify tests/live-runtime-control-20260821-current.trace.2.fozzy --strict --json` -> `ok=true`
+  - `fozzy replay tests/live-runtime-control-20260821-current.trace.2.fozzy --json` -> `pass`
+  - `fozzy ci tests/live-runtime-control-20260821-current.trace.2.fozzy --json` -> `ok=true`
+
+Final same-binary mixed sweep on Friday, August 21, 2026:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 187.73 | 159.85 ms | 389.24 ms | public listing stayed healthy |
+| `GET /api/v1/live/streams/deepsaint-live` | 183.84 | 159.73 ms | 385.51 ms | public detail stayed healthy |
+| `GET /api/v1/bootstrap` | 55.23 | 486.34 ms | 749.97 ms | still materially ahead of the earlier timeout-bound floor |
+| `GET /api/v1/me/state` | 55.41 | 555.26 ms | 872.73 ms | viewer shell stayed off the old timeout floor |
+| `GET /api/v1/creator/me/state` | 23.61 | 1.15 s | 1.25 s | still heavy but stable |
+| `GET /api/v1/creator/me/live/control` | 19.67 | 1.43 s | 1.85 s | improved over the old `~15.7 req/s` floor |
+| `GET /api/v1/creator/me/live/runtime` | 15.73 | 1.66 s | 1.81 s | event-window fix kept correctness green, but this lane remains a top bottleneck |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 23.61 | 1.01 s | 1.10 s | materially improved from the older `~15.7 req/s` band |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 25.35 | 1.01 s | 1.09 s | materially improved and now the clearest win of this pass |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 15.74 | 1.86 s | 1.91 s | still stable but remains write-pressure sensitive under full overlap |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 137.41 | 185.91 ms | 1.82 s | limiter-driven non-2xx responses remained expected |
+
+- Read of this pass:
+  - The creator live and collaboration read-path cuts were real: the direct collaboration host endpoints moved from the old `~15.7 req/s` saturation floor into the low-to-mid `20s req/s` range on the same rebuilt binary.
+  - The viewer shell and bootstrap shell both remained healthy on the same binary while the authority and deterministic runtime checks stayed green, which is the best evidence so far that the backend is no longer hiding stale-binary wins.
+  - `/api/v1/creator/me/live/runtime` is still the main unresolved control-plane hotspot. It is now contract-correct and deterministic, but it still does enough runtime hydration that it remains expensive under the full mixed matrix.
+  - `/api/v1/playback/live/:stream/session` remains functionally healthy, but the mixed matrix still shows that write-path contention under concurrent creator/runtime load is the next major production sensitivity after creator live runtime.
