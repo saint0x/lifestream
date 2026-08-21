@@ -1,7 +1,7 @@
 use super::discovery::fetch_user;
 use super::moderation::{
     can_bypass_live_chat_restrictions, fetch_active_live_moderation_action,
-    fetch_live_stream_owner_creator_id,
+    fetch_live_stream_owner_context,
 };
 use super::*;
 use axum::extract::ws::{Message, WebSocket};
@@ -31,19 +31,26 @@ pub(crate) async fn persist_chat_message(
         ));
     }
 
-    let stream_creator_id = fetch_live_stream_owner_creator_id(&state.pool, stream_id).await?;
+    let stream_owner = fetch_live_stream_owner_context(&state.pool, stream_id).await?;
+    let stream_creator_id = stream_owner.creator_id.clone();
     enforce_collaboration_chat_participation_permissions(
         &state.pool,
-        stream_id,
-        &stream_creator_id,
+        stream_owner.current_broadcast_id.as_deref(),
         &identity.user_id,
     )
     .await?;
-    let stream_settings = fetch_creator_live_settings(&state.pool, &stream_creator_id).await?;
-    let bypass_restrictions =
-        can_bypass_live_chat_restrictions(&state.pool, &stream_creator_id, identity).await?;
-    let moderation_action =
-        fetch_active_live_moderation_action(&state.pool, stream_id, &identity.user_id).await?;
+    let (stream_settings, bypass_restrictions, moderation_action, has_active_membership) =
+        tokio::try_join!(
+            fetch_creator_live_settings(&state.pool, &stream_creator_id),
+            can_bypass_live_chat_restrictions(&state.pool, &stream_creator_id, identity),
+            fetch_active_live_moderation_action(&state.pool, stream_id, &identity.user_id),
+            fetch_active_creator_membership(
+                &state.pool,
+                &identity.user_id,
+                &stream_creator_id,
+                None,
+            ),
+        )?;
     if let Some(action) = moderation_action.as_ref() {
         match action.action_type.as_str() {
             "ban" | "mute" => {
@@ -54,15 +61,7 @@ pub(crate) async fn persist_chat_message(
     }
 
     if !bypass_restrictions {
-        if stream_settings.subscriber_only
-            && !fetch_active_creator_membership(
-                &state.pool,
-                &identity.user_id,
-                &stream_creator_id,
-                None,
-            )
-            .await?
-        {
+        if stream_settings.subscriber_only && !has_active_membership {
             return Err(AppError::PaymentRequired(
                 "subscriber-only chat requires an active creator membership".to_string(),
             ));
@@ -89,9 +88,7 @@ pub(crate) async fn persist_chat_message(
 
     let user = fetch_user(&state.pool, &identity.user_id).await?;
     let mut badges = Vec::new();
-    if fetch_active_creator_membership(&state.pool, &identity.user_id, &stream_creator_id, None)
-        .await?
-    {
+    if has_active_membership {
         badges.push("subscriber".to_string());
     }
     if identity.creator_id.is_some() {
@@ -166,32 +163,41 @@ pub(crate) async fn send_chat_message_rejected(
 
 async fn enforce_collaboration_chat_participation_permissions(
     pool: &SqlitePool,
-    _stream_id: &str,
-    creator_id: &str,
+    current_broadcast_id: Option<&str>,
     user_id: &str,
 ) -> AppResult<()> {
-    let profile = fetch_creator_profile(pool, creator_id).await?;
-    let Some(current_broadcast_id) = profile.current_broadcast_id.as_deref() else {
+    let Some(current_broadcast_id) = current_broadcast_id else {
         return Ok(());
     };
-    let Some(session) =
-        fetch_active_collaboration_session_for_broadcast(pool, current_broadcast_id).await?
-    else {
+    let row = sqlx::query(
+        r#"
+        SELECT p.state, p.can_speak_in_chat
+        FROM collaboration_sessions s
+        LEFT JOIN collaboration_participants p
+          ON p.session_id = s.id
+         AND p.user_id = ?
+        WHERE s.source_broadcast_id = ?
+          AND s.status = 'active'
+          AND s.chat_mode = 'shared'
+        ORDER BY s.created_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(user_id)
+    .bind(current_broadcast_id)
+    .fetch_optional(pool)
+    .await?;
+    let Some(row) = row else {
         return Ok(());
     };
-    if session.status != "active" || session.chat_mode != "shared" {
+    let participant_state = row.get::<Option<String>, _>("state");
+    if matches!(participant_state.as_deref(), Some("left" | "removed")) {
         return Ok(());
     }
-    let participant =
-        match fetch_collaboration_participant_for_user(pool, &session.id, user_id).await {
-            Ok(participant) => participant,
-            Err(AppError::NotFound) => return Ok(()),
-            Err(error) => return Err(error),
-        };
-    if matches!(participant.state.as_str(), "left" | "removed") {
+    let Some(can_speak_in_chat) = row.get::<Option<i64>, _>("can_speak_in_chat") else {
         return Ok(());
-    }
-    if participant.can_speak_in_chat {
+    };
+    if can_speak_in_chat == 1 {
         return Ok(());
     }
     Err(AppError::Forbidden)

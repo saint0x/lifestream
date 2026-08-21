@@ -670,6 +670,7 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
         State(state.clone()),
         HeaderMap::new(),
         Path(guest_stream_id.clone()),
+        None,
     )
     .await?
     .0;

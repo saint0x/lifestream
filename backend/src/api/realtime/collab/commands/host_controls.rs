@@ -102,6 +102,7 @@ pub(super) async fn execute_remove_participant(
             json!({
                 "participantId": participant_id,
                 "removedAt": now,
+                "reason": "host_removed",
             }),
         )
         .await?;

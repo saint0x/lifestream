@@ -10,7 +10,10 @@ use axum::http::HeaderValue;
 use sqlx::SqlitePool;
 use tokio::sync::{Mutex, broadcast};
 
-use crate::models::{HealthDependencyStatus, WsEvent};
+use crate::models::{
+    CreatorLiveControlResponse, CreatorLiveRuntimeResponse, HealthDependencyStatus, PlaybackGrant,
+    WsEvent,
+};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -19,6 +22,9 @@ pub struct AppState {
     pub cors_allowed_origins: Vec<HeaderValue>,
     pub realtime: RealtimeHub,
     pub rate_limits: RateLimitStore,
+    pub reconciliation_gates: ReconciliationGateStore,
+    pub request_coalescer: RequestCoalescerStore,
+    pub live_response_cache: LiveResponseCacheStore,
     pub metrics: MetricsStore,
     pub background_worker: BackgroundWorkerHealthStore,
     pub binary_probe_cache: BinaryProbeCacheStore,
@@ -37,6 +43,9 @@ impl AppState {
             cors_allowed_origins,
             realtime: RealtimeHub::default(),
             rate_limits: RateLimitStore::default(),
+            reconciliation_gates: ReconciliationGateStore::default(),
+            request_coalescer: RequestCoalescerStore::default(),
+            live_response_cache: LiveResponseCacheStore::default(),
             metrics: MetricsStore::default(),
             background_worker: BackgroundWorkerHealthStore::default(),
             binary_probe_cache: BinaryProbeCacheStore::default(),
@@ -75,6 +84,23 @@ pub struct MetricsStore {
 }
 
 #[derive(Clone, Default)]
+pub struct ReconciliationGateStore {
+    inner: Arc<Mutex<HashMap<String, Instant>>>,
+}
+
+#[derive(Clone, Default)]
+pub struct RequestCoalescerStore {
+    inner: Arc<Mutex<HashMap<String, Arc<Mutex<()>>>>>,
+}
+
+#[derive(Clone, Default)]
+pub struct LiveResponseCacheStore {
+    control: Arc<Mutex<HashMap<String, TimedCacheEntry<CreatorLiveControlResponse>>>>,
+    runtime: Arc<Mutex<HashMap<String, TimedCacheEntry<CreatorLiveRuntimeResponse>>>>,
+    live_playback_grants: Arc<Mutex<HashMap<String, TimedCacheEntry<PlaybackGrant>>>>,
+}
+
+#[derive(Clone, Default)]
 pub struct BackgroundWorkerHealthStore {
     inner: Arc<Mutex<BackgroundWorkerHealthState>>,
 }
@@ -98,6 +124,12 @@ struct BackgroundWorkerHealthState {
     last_success: Option<Instant>,
     consecutive_failures: u64,
     last_error: Option<String>,
+}
+
+#[derive(Clone)]
+struct TimedCacheEntry<T> {
+    value: T,
+    stored_at: Instant,
 }
 
 #[derive(Clone)]
@@ -217,6 +249,105 @@ impl RateLimitStore {
         bucket.push_back(now);
         Ok(())
     }
+}
+
+impl ReconciliationGateStore {
+    pub async fn should_run(&self, key: &str, min_interval: Duration) -> bool {
+        let now = Instant::now();
+        let mut guard = self.inner.lock().await;
+        match guard.get(key).copied() {
+            Some(last_run) if now.duration_since(last_run) < min_interval => false,
+            _ => {
+                guard.insert(key.to_string(), now);
+                true
+            }
+        }
+    }
+}
+
+impl RequestCoalescerStore {
+    pub async fn acquire(&self, key: &str) -> tokio::sync::OwnedMutexGuard<()> {
+        let lock = {
+            let mut guard = self.inner.lock().await;
+            guard
+                .entry(key.to_string())
+                .or_insert_with(|| Arc::new(Mutex::new(())))
+                .clone()
+        };
+        lock.lock_owned().await
+    }
+}
+
+impl LiveResponseCacheStore {
+    pub async fn get_control(
+        &self,
+        creator_id: &str,
+        ttl: Duration,
+    ) -> Option<CreatorLiveControlResponse> {
+        get_timed_cache_value(&self.control, creator_id, ttl).await
+    }
+
+    pub async fn put_control(&self, creator_id: &str, value: CreatorLiveControlResponse) {
+        put_timed_cache_value(&self.control, creator_id, value).await;
+    }
+
+    pub async fn get_runtime(
+        &self,
+        creator_id: &str,
+        ttl: Duration,
+    ) -> Option<CreatorLiveRuntimeResponse> {
+        get_timed_cache_value(&self.runtime, creator_id, ttl).await
+    }
+
+    pub async fn put_runtime(&self, creator_id: &str, value: CreatorLiveRuntimeResponse) {
+        put_timed_cache_value(&self.runtime, creator_id, value).await;
+    }
+
+    pub async fn invalidate_creator_live(&self, creator_id: &str) {
+        self.control.lock().await.remove(creator_id);
+        self.runtime.lock().await.remove(creator_id);
+    }
+
+    pub async fn get_live_playback_grant(
+        &self,
+        key: &str,
+        ttl: Duration,
+    ) -> Option<PlaybackGrant> {
+        get_timed_cache_value(&self.live_playback_grants, key, ttl).await
+    }
+
+    pub async fn put_live_playback_grant(&self, key: &str, value: PlaybackGrant) {
+        put_timed_cache_value(&self.live_playback_grants, key, value).await;
+    }
+}
+
+async fn get_timed_cache_value<T: Clone>(
+    store: &Arc<Mutex<HashMap<String, TimedCacheEntry<T>>>>,
+    key: &str,
+    ttl: Duration,
+) -> Option<T> {
+    let mut guard = store.lock().await;
+    if let Some(entry) = guard.get(key) {
+        if entry.stored_at.elapsed() <= ttl {
+            return Some(entry.value.clone());
+        }
+    }
+    guard.remove(key);
+    None
+}
+
+async fn put_timed_cache_value<T: Clone>(
+    store: &Arc<Mutex<HashMap<String, TimedCacheEntry<T>>>>,
+    key: &str,
+    value: T,
+) {
+    store.lock().await.insert(
+        key.to_string(),
+        TimedCacheEntry {
+            value,
+            stored_at: Instant::now(),
+        },
+    );
 }
 
 impl MetricsStore {

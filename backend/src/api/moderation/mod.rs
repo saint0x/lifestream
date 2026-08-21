@@ -11,7 +11,8 @@ pub(crate) use audit::{
 };
 pub(crate) use authz::{
     authorize_live_stream_moderation, authorize_live_stream_owner,
-    can_bypass_live_chat_restrictions, fetch_live_stream_owner_creator_id,
+    can_bypass_live_chat_restrictions, fetch_live_stream_owner_context,
+    fetch_live_stream_owner_creator_id,
     validate_live_moderation_subject,
 };
 pub(crate) use queries::{

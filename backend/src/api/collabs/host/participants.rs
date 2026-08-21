@@ -255,6 +255,7 @@ pub(crate) async fn remove_collaboration_participant(
         json!({
             "participantId": participant_id,
             "removedAt": now,
+            "reason": "host_removed",
         }),
     )
     .await?;

@@ -154,7 +154,7 @@ async function main() {
       method: "POST",
       token: HOST,
       body: {
-        inviteeUserId: "usr-2",
+        inviteeUserId: "usr-platform",
         role: "guest",
         mirrorToGuestChannel: false,
         message: "pending invite revoke validation",

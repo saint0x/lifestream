@@ -72,7 +72,14 @@ bootstrap = req("/api/v1/bootstrap", token=HOST)
 assert bootstrap[0] == 200, bootstrap
 assert bootstrap[1]["creator"]["profile"]["id"] == state[1]["dashboard"]["profile"]["id"], bootstrap
 assert bootstrap[1]["creator"]["profile"]["liveStatus"] != "ready", bootstrap
-assert bootstrap[1]["creatorState"] is None, bootstrap
+assert (
+    bootstrap[1]["creatorState"]["dashboard"]["profile"]["id"]
+    == state[1]["dashboard"]["profile"]["id"]
+), bootstrap
+assert (
+    bootstrap[1]["creatorState"]["uploadOperations"]["summary"]["totalJobs"]
+    == state[1]["uploadOperations"]["summary"]["totalJobs"]
+), bootstrap
 
 upload_operations = req("/api/v1/creator/me/upload-operations", token=HOST)
 assert upload_operations[0] == 200, upload_operations

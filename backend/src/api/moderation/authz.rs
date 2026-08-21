@@ -1,13 +1,18 @@
 use super::*;
 
-pub(crate) async fn fetch_live_stream_owner_creator_id(
+pub(crate) struct LiveStreamOwnerContext {
+    pub(crate) creator_id: String,
+    pub(crate) current_broadcast_id: Option<String>,
+}
+
+pub(crate) async fn fetch_live_stream_owner_context(
     pool: &SqlitePool,
     stream_id: &str,
-) -> AppResult<String> {
+) -> AppResult<LiveStreamOwnerContext> {
     let fresh_cutoff = stale_live_ingest_cutoff();
     let row = sqlx::query(
         r#"
-        SELECT cp.id AS creator_id
+        SELECT cp.id AS creator_id, cp.current_broadcast_id
         FROM live_streams ls
         JOIN streamers s ON s.id = ls.streamer_id
         JOIN creator_profiles cp ON cp.handle = s.handle
@@ -41,7 +46,20 @@ pub(crate) async fn fetch_live_stream_owner_creator_id(
     .fetch_optional(pool)
     .await?
     .ok_or(AppError::NotFound)?;
-    Ok(row.get("creator_id"))
+
+    Ok(LiveStreamOwnerContext {
+        creator_id: row.get("creator_id"),
+        current_broadcast_id: row.get("current_broadcast_id"),
+    })
+}
+
+pub(crate) async fn fetch_live_stream_owner_creator_id(
+    pool: &SqlitePool,
+    stream_id: &str,
+) -> AppResult<String> {
+    Ok(fetch_live_stream_owner_context(pool, stream_id)
+        .await?
+        .creator_id)
 }
 
 pub(crate) async fn authorize_live_stream_owner(

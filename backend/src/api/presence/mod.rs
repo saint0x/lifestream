@@ -19,7 +19,9 @@ pub(crate) use live::{
 };
 pub(crate) use reconciliation::{
     active_presence_cutoff, reconcile_single_creator_live_socket_session,
-    reconcile_stale_creator_live_socket_sessions_for_read, reconcile_stale_presence_sessions,
+    reconcile_stale_creator_live_socket_sessions_for_read,
+    reconcile_stale_creator_live_socket_sessions_for_read_coalesced,
+    reconcile_stale_presence_sessions,
 };
 pub(crate) use sockets::{
     count_active_collaboration_socket_sessions, count_all_active_collaboration_socket_sessions,

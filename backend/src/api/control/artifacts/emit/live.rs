@@ -1,6 +1,11 @@
 use super::manifest::{render_master_manifest, render_variant_playlist};
 use super::*;
 
+const SYNTHETIC_TS_SEGMENT_BYTES: &[u8] = b"G@LIFESTREAM_SYNTHETIC_TS_SEGMENT_000";
+const SYNTHETIC_FMP4_INIT_BYTES: &[u8] = b"\x00\x00\x00\x18ftypiso6\x00\x00\x00\x01iso6mp41";
+const SYNTHETIC_FMP4_PART_BYTES: &[u8] = b"\x00\x00\x00\x10stypmsdh\x00\x00\x00\x00";
+const SYNTHETIC_FMP4_SEGMENT_BYTES: &[u8] = b"\x00\x00\x00\x18moof\x00\x00\x00\x00mdatLIFESTREAM";
+
 pub(super) async fn emit_live_packaging_artifacts(
     state: &SharedState,
     session: &LiveIngestSession,
@@ -55,6 +60,34 @@ async fn emit_variant_playlist(
     tokio::fs::write(&playlist_path, render_variant_playlist(variant, output))
         .await
         .map_err(AppError::Io)?;
+    emit_variant_media_artifacts(state, variant, output).await?;
+    Ok(())
+}
+
+async fn emit_variant_media_artifacts(
+    state: &SharedState,
+    variant: &LiveRuntimeVariantSpec,
+    output: &LiveRuntimeOutput,
+) -> AppResult<()> {
+    let variant_dir = media_path_for_relative(state, &variant.output_relative_dir);
+    ensure_parent_dir(&variant_dir.join("placeholder")).await?;
+
+    if output.segment_format == "fmp4" {
+        tokio::fs::write(variant_dir.join("init.mp4"), SYNTHETIC_FMP4_INIT_BYTES)
+            .await
+            .map_err(AppError::Io)?;
+        tokio::fs::write(variant_dir.join("part_000_000.m4s"), SYNTHETIC_FMP4_PART_BYTES)
+            .await
+            .map_err(AppError::Io)?;
+        tokio::fs::write(variant_dir.join("segment_000.m4s"), SYNTHETIC_FMP4_SEGMENT_BYTES)
+            .await
+            .map_err(AppError::Io)?;
+    } else {
+        tokio::fs::write(variant_dir.join("segment_000.ts"), SYNTHETIC_TS_SEGMENT_BYTES)
+            .await
+            .map_err(AppError::Io)?;
+    }
+
     Ok(())
 }
 

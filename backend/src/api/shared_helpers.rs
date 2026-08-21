@@ -50,10 +50,7 @@ pub(super) fn streamer_from_row(row: sqlx::sqlite::SqliteRow) -> Streamer {
 }
 
 pub(super) fn live_stream_from_row(row: sqlx::sqlite::SqliteRow) -> LiveStream {
-    let playback_ready = row.get::<Option<String>, _>("playback_asset_id").is_some()
-        && row
-            .get::<Option<String>, _>("playback_relative_path")
-            .is_some();
+    let playback_ready = row.get::<i64, _>("playback_ready") == 1;
     LiveStream {
         id: row.get("id"),
         slug: row.get("slug"),

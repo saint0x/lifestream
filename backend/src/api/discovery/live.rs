@@ -47,6 +47,34 @@ pub(crate) async fn fetch_live_streams(
                 ls.id, ls.slug, ls.title, ls.category, ls.tags_json, ls.viewers, ls.started_at,
                 ls.thumbnail, ls.language, ls.is_mature, ls.playback_asset_id,
                 ls.poster_relative_path, ls.playback_relative_path,
+                CASE
+                    WHEN ls.playback_asset_id IS NOT NULL
+                     AND ls.playback_relative_path IS NOT NULL
+                     AND (
+                        EXISTS (
+                            SELECT 1
+                            FROM live_ingest_sessions lis_ready
+                            WHERE lis_ready.creator_id = cp.id
+                              AND lis_ready.status = 'connected'
+                              AND lis_ready.last_heartbeat_at >= ?
+                              AND lis_ready.last_source_probe_at IS NOT NULL
+                        )
+                        OR EXISTS (
+                            SELECT 1
+                            FROM collaboration_mirror_pickups cmp_ready
+                            JOIN live_ingest_sessions lis_ready
+                              ON lis_ready.creator_id = cmp_ready.host_creator_id
+                             AND lis_ready.broadcast_id = cmp_ready.source_broadcast_id
+                            WHERE cmp_ready.guest_creator_id = cp.id
+                              AND cmp_ready.guest_broadcast_id = cp.current_broadcast_id
+                              AND cmp_ready.state = 'active'
+                              AND lis_ready.status = 'connected'
+                              AND lis_ready.last_heartbeat_at >= ?
+                              AND lis_ready.last_source_probe_at IS NOT NULL
+                        )
+                     )
+                    THEN 1 ELSE 0
+                END AS playback_ready,
                 s.id AS streamer_id, s.handle, s.display_name, s.avatar, s.bio, s.followers,
                 s.is_partner, s.is_live
             FROM live_streams ls
@@ -77,6 +105,8 @@ pub(crate) async fn fetch_live_streams(
             ORDER BY ls.viewers DESC
             "#,
         )
+        .bind(&fresh_cutoff)
+        .bind(&fresh_cutoff)
         .bind(slug)
         .bind(&fresh_cutoff)
         .bind(&fresh_cutoff)
@@ -89,6 +119,34 @@ pub(crate) async fn fetch_live_streams(
                 ls.id, ls.slug, ls.title, ls.category, ls.tags_json, ls.viewers, ls.started_at,
                 ls.thumbnail, ls.language, ls.is_mature, ls.playback_asset_id,
                 ls.poster_relative_path, ls.playback_relative_path,
+                CASE
+                    WHEN ls.playback_asset_id IS NOT NULL
+                     AND ls.playback_relative_path IS NOT NULL
+                     AND (
+                        EXISTS (
+                            SELECT 1
+                            FROM live_ingest_sessions lis_ready
+                            WHERE lis_ready.creator_id = cp.id
+                              AND lis_ready.status = 'connected'
+                              AND lis_ready.last_heartbeat_at >= ?
+                              AND lis_ready.last_source_probe_at IS NOT NULL
+                        )
+                        OR EXISTS (
+                            SELECT 1
+                            FROM collaboration_mirror_pickups cmp_ready
+                            JOIN live_ingest_sessions lis_ready
+                              ON lis_ready.creator_id = cmp_ready.host_creator_id
+                             AND lis_ready.broadcast_id = cmp_ready.source_broadcast_id
+                            WHERE cmp_ready.guest_creator_id = cp.id
+                              AND cmp_ready.guest_broadcast_id = cp.current_broadcast_id
+                              AND cmp_ready.state = 'active'
+                              AND lis_ready.status = 'connected'
+                              AND lis_ready.last_heartbeat_at >= ?
+                              AND lis_ready.last_source_probe_at IS NOT NULL
+                        )
+                     )
+                    THEN 1 ELSE 0
+                END AS playback_ready,
                 s.id AS streamer_id, s.handle, s.display_name, s.avatar, s.bio, s.followers,
                 s.is_partner, s.is_live
             FROM live_streams ls
@@ -120,6 +178,8 @@ pub(crate) async fn fetch_live_streams(
         )
         .bind(&fresh_cutoff)
         .bind(&fresh_cutoff)
+        .bind(&fresh_cutoff)
+        .bind(&fresh_cutoff)
         .fetch_all(pool)
         .await?
     };
@@ -142,6 +202,34 @@ pub(crate) async fn fetch_followed_live_streams(
             ls.id, ls.slug, ls.title, ls.category, ls.tags_json, ls.viewers, ls.started_at,
             ls.thumbnail, ls.language, ls.is_mature, ls.playback_asset_id,
             ls.poster_relative_path, ls.playback_relative_path,
+            CASE
+                WHEN ls.playback_asset_id IS NOT NULL
+                 AND ls.playback_relative_path IS NOT NULL
+                 AND (
+                    EXISTS (
+                        SELECT 1
+                        FROM live_ingest_sessions lis_ready
+                        WHERE lis_ready.creator_id = cp.id
+                          AND lis_ready.status = 'connected'
+                          AND lis_ready.last_heartbeat_at >= ?
+                          AND lis_ready.last_source_probe_at IS NOT NULL
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM collaboration_mirror_pickups cmp_ready
+                        JOIN live_ingest_sessions lis_ready
+                          ON lis_ready.creator_id = cmp_ready.host_creator_id
+                         AND lis_ready.broadcast_id = cmp_ready.source_broadcast_id
+                        WHERE cmp_ready.guest_creator_id = cp.id
+                          AND cmp_ready.guest_broadcast_id = cp.current_broadcast_id
+                          AND cmp_ready.state = 'active'
+                          AND lis_ready.status = 'connected'
+                          AND lis_ready.last_heartbeat_at >= ?
+                          AND lis_ready.last_source_probe_at IS NOT NULL
+                    )
+                 )
+                THEN 1 ELSE 0
+            END AS playback_ready,
             s.id AS streamer_id, s.handle, s.display_name, s.avatar, s.bio, s.followers,
             s.is_partner, s.is_live
         FROM user_following uf
@@ -173,6 +261,8 @@ pub(crate) async fn fetch_followed_live_streams(
         ORDER BY ls.viewers DESC
         "#,
     )
+    .bind(&fresh_cutoff)
+    .bind(&fresh_cutoff)
     .bind(user_id)
     .bind(&fresh_cutoff)
     .bind(&fresh_cutoff)
@@ -225,6 +315,34 @@ pub(crate) async fn fetch_live_stream_by_id(pool: &SqlitePool, id: &str) -> AppR
             ls.id, ls.slug, ls.title, ls.category, ls.tags_json, ls.viewers, ls.started_at,
             ls.thumbnail, ls.language, ls.is_mature, ls.playback_asset_id,
             ls.poster_relative_path, ls.playback_relative_path,
+            CASE
+                WHEN ls.playback_asset_id IS NOT NULL
+                 AND ls.playback_relative_path IS NOT NULL
+                 AND (
+                    EXISTS (
+                        SELECT 1
+                        FROM live_ingest_sessions lis_ready
+                        WHERE lis_ready.creator_id = cp.id
+                          AND lis_ready.status = 'connected'
+                          AND lis_ready.last_heartbeat_at >= ?
+                          AND lis_ready.last_source_probe_at IS NOT NULL
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM collaboration_mirror_pickups cmp_ready
+                        JOIN live_ingest_sessions lis_ready
+                          ON lis_ready.creator_id = cmp_ready.host_creator_id
+                         AND lis_ready.broadcast_id = cmp_ready.source_broadcast_id
+                        WHERE cmp_ready.guest_creator_id = cp.id
+                          AND cmp_ready.guest_broadcast_id = cp.current_broadcast_id
+                          AND cmp_ready.state = 'active'
+                          AND lis_ready.status = 'connected'
+                          AND lis_ready.last_heartbeat_at >= ?
+                          AND lis_ready.last_source_probe_at IS NOT NULL
+                    )
+                 )
+                THEN 1 ELSE 0
+            END AS playback_ready,
             s.id AS streamer_id, s.handle, s.display_name, s.avatar, s.bio, s.followers,
             s.is_partner, s.is_live
         FROM live_streams ls
@@ -254,6 +372,8 @@ pub(crate) async fn fetch_live_stream_by_id(pool: &SqlitePool, id: &str) -> AppR
           )
         "#,
     )
+    .bind(&fresh_cutoff)
+    .bind(&fresh_cutoff)
     .bind(id)
     .bind(&fresh_cutoff)
     .bind(&fresh_cutoff)

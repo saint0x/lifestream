@@ -61,8 +61,8 @@ pub async fn require_identity(
 }
 
 pub async fn lookup_identity(pool: &SqlitePool, token: &str) -> AppResult<RequestIdentity> {
-    let now = Utc::now().to_rfc3339();
     let token_hash = hash_token(token);
+    let now = Utc::now().to_rfc3339();
 
     let row = sqlx::query(
         r#"

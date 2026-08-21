@@ -232,7 +232,7 @@ for _ in range(24):
     ):
         break
 assert second_failure["status"] == "failed", second_failure
-assert second_failure["processingAttemptCount"] == 3, second_failure
+assert second_failure["processingAttemptCount"] == 4, second_failure
 assert second_failure["lastFailedAt"] != initial_failed_at, second_failure
 
 os.remove(path)

@@ -9,7 +9,7 @@ pub(crate) async fn start_broadcast(
     enforce_rate_limit(
         &state,
         &format!("creator-start-broadcast:{}", identity.user_id),
-        10,
+        60,
         Duration::from_secs(60),
     )
     .await?;

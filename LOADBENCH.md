@@ -259,6 +259,21 @@ Deterministic validation on the same Friday, August 21, 2026 current build:
   Result: pass
 - `fozzy run tests/live-runtime-control.pass.fozzy.json --det --strict-verify --seed 20260821 --record tests/live-runtime-control-20260821-current.trace.fozzy --proc-backend host --fs-backend host --http-backend host --json`
 
+## Final control-plane hardening on Friday, August 21, 2026
+
+- Replaced `/api/v1/bootstrap` placeholder null shells with the real aggregated payload for `home`, `me`, `viewer`, `creator`, and `creatorState`.
+- Removed the stale auth identity cache so session authority now always resolves from SQLite truth instead of short-lived in-process guesses.
+- Fixed auth session listing so the current session is always included in limited viewer-state reads even after heavy short-lived session churn.
+- Fixed collaboration websocket control teardown by moving follow-on collaboration topology and creator-live fanout off the command stack and by emitting explicit `host_removed` participant-removal reasons.
+- Raised the creator broadcast start limiter from `10/min` to `60/min` so legitimate creator lifecycle churn does not trip the control-plane guardrail during dense live operations.
+
+Targeted end-to-end checks rerun cleanly on the final debug binary:
+
+- `python3 backend/tests/live-watch-interactions-check.py`
+- `python3 backend/tests/viewer-app-state-check.py`
+- `node backend/tests/collaboration-websocket-control-check.js`
+- `node backend/tests/live-chat-replay-check.js`
+
 After removing read-time creator profile normalization writes, switching live control/runtime hot paths to persisted profile reads, eliminating `creator_live_settings` write-on-read behavior, and compacting bootstrap’s creator shell on Friday, August 21, 2026:
 
 Deterministic validation on the newest build:
@@ -829,3 +844,164 @@ Post-shared-contention-pass mixed sweep on the same Friday, August 21, 2026 fres
   - The mixed sweep still pins those same lanes when the whole platform is active, which means the current ceiling is shared concurrency pressure across the control plane rather than local endpoint logic alone.
   - The shared SQLite/snapshot pass did produce real wins anyway: `me/state` improved materially and both collaboration host endpoints moved from the low-20 req/s band into the low-to-mid 30s.
   - The next highest-value work is now at the contention architecture layer: reducing shared database pressure between heavy read shells and playback session writes, or splitting the hottest live reads away from the write-sensitive issuance path.
+
+- Friday, August 21, 2026 reconciliation-gate and chat-write simplification pass:
+  - Added in-process reconciliation gates for creator-live socket stale-session cleanup and collaboration host expiry reads so hot live read routes stop re-running the same read-triggered reconciliation work on every concurrent request.
+  - Simplified the live chat write path by:
+    - collapsing stream-owner lookup into one context fetch,
+    - replacing full collaboration-session hydration with a direct shared-chat permission query,
+    - and removing the duplicate active-membership lookup before insert.
+  - Verification on the freshly rebuilt foreground binary:
+    - `cargo build` -> passed
+    - `python3 backend/tests/creator-app-state-check.py` -> `creator-app-state|bootstrap|consistent`
+    - `python3 backend/tests/live-runtime-control-check.py` -> `runtime|socket-inspect|connected|terminated`
+    - `/health` -> `ready=true` before and after the mixed sweep
+
+Post-reconciliation-gate and chat-write pass mixed sweep on the same Friday, August 21, 2026 fresh rebuilt binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 223.92 | 131.31 ms | 398.43 ms | public list stayed healthy |
+| `GET /api/v1/live/streams/deepsaint-live` | 206.61 | 142.95 ms | 406.81 ms | public detail stayed healthy |
+| `GET /api/v1/bootstrap` | 58.57 | 529.63 ms | 810.98 ms | bootstrap remained in the same healthy band |
+| `GET /api/v1/me/state` | 44.08 | 831.29 ms | 963.22 ms | no meaningful win versus the prior pass |
+| `GET /api/v1/creator/me/state` | 23.58 | 1.28 s | 1.38 s | creator shell remained unchanged in practice |
+| `GET /api/v1/creator/me/live/control` | 15.74 | 1.49 s | 1.52 s | still timeout-bound under overlap |
+| `GET /api/v1/creator/me/live/runtime` | 15.74 | 1.74 s | 1.97 s | still pinned under the mixed matrix |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 23.62 | 1.09 s | 1.14 s | no meaningful improvement over the older low-20 req/s band in this rerun |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 23.65 | 1.09 s | 1.12 s | also effectively unchanged in this rerun |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 7.87 | 0.00 us | 0.00 us | still timeout-bound under full overlap |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 136.05 | 107.60 ms | 405.64 ms | chat latency tightened, but without a broader platform-level breakthrough |
+
+- Read of this pass:
+  - The reconciliation gates and chat-path collapse were correctness-safe and removed real unnecessary work, but the full mixed sweep says they were not the decisive fix for the remaining overlap ceiling.
+  - The platform-wide bottleneck pair is still the same: `GET /api/v1/creator/me/live/runtime` and `POST /api/v1/playback/live/:stream/session` under fully overlapped load.
+  - The strongest remaining thesis is still architectural contention between heavy live read shells and write-sensitive playback/chat/session mutation traffic on the same SQLite authority plane.
+
+- Friday, August 21, 2026 short-lived live-response microcache pass:
+  - Added a tiny in-process authoritative microcache for creator live control and creator live runtime responses with a `125 ms` TTL to collapse bursty duplicate read graphs during overlap.
+  - The cache sat behind the authoritative wrappers only, after reconciliation gates, so the underlying source of truth and response construction logic remained unchanged.
+  - Verification on the freshly rebuilt foreground binary:
+    - `cargo build` -> passed
+    - `python3 backend/tests/creator-app-state-check.py` -> `creator-app-state|bootstrap|consistent`
+    - `python3 backend/tests/live-runtime-control-check.py` -> `runtime|socket-inspect|connected|terminated`
+    - `/health` -> `ready=true` before and after the mixed sweep
+
+Post-live-response-microcache mixed sweep on the same Friday, August 21, 2026 fresh rebuilt binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 214.44 | 137.44 ms | 409.74 ms | public list remained healthy |
+| `GET /api/v1/live/streams/deepsaint-live` | 200.92 | 146.93 ms | 406.04 ms | public detail remained healthy |
+| `GET /api/v1/bootstrap` | 55.10 | 550.05 ms | 845.81 ms | no meaningful gain |
+| `GET /api/v1/me/state` | 39.34 | 880.29 ms | 981.58 ms | slightly worse in this rerun |
+| `GET /api/v1/creator/me/state` | 23.62 | 1.32 s | 1.43 s | unchanged in practice |
+| `GET /api/v1/creator/me/live/control` | 15.73 | 1.54 s | 1.56 s | still timeout-bound under overlap |
+| `GET /api/v1/creator/me/live/runtime` | 15.73 | 1.70 s | 1.94 s | no meaningful improvement under the mixed matrix |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 23.60 | 1.14 s | 1.21 s | effectively unchanged |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 23.59 | 1.14 s | 1.21 s | effectively unchanged |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 7.87 | 0.00 us | 0.00 us | still timeout-bound under full overlap |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 126.76 | 151.11 ms | 397.00 ms | slightly worse in this rerun |
+
+- Read of this pass:
+  - The short-lived live-response microcache was safe, but it did not produce the overlap win we need and in this rerun it was neutral-to-worse.
+  - That makes it a rejected optimization for the current bottleneck, not the path to completion.
+  - The remaining highest-confidence target is still the persisted playback session issuance architecture itself, because the lane stays isolated-fast but overlap-slow and still writes through the same SQLite authority plane.
+
+- Friday, August 21, 2026 request-coalescing, widened live cache, and auth-session write-collapse pass:
+  - Added per-key in-flight request coalescing for:
+    - authoritative creator live control reads,
+    - authoritative creator live runtime reads,
+    - live playback grant issuance.
+  - Raised the default SQLite pool ceiling from `8` to `32` connections for production-shaped overlap.
+  - Parallelized creator live control assembly so snapshot, settings, health, and subscriber-tier reads no longer serialize unnecessarily.
+  - Widened burst-absorption windows to production-sensible values:
+    - creator live authoritative response cache -> `750 ms`
+    - live playback grant cache -> `5 s`
+  - Removed the highest-frequency auth write amplification by adding a short-lived in-memory auth identity cache:
+    - authenticated requests now reuse a cached identity for `5 s`,
+    - and no longer perform a `last_used_at` update on every single cached request.
+  - Verification on the freshly rebuilt foreground binary:
+    - `cargo build` -> passed
+    - `python3 backend/tests/creator-app-state-check.py` -> `creator-app-state|bootstrap|consistent`
+    - `python3 backend/tests/live-runtime-control-check.py` -> `runtime|socket-inspect|connected|terminated`
+    - `/health` -> `ready=true` before and after the mixed sweep
+
+Focused isolated probes on the same Friday, August 21, 2026 fresh rebuilt binary after the auth/cache/coalescing pass:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/creator/me/live/control` | 330.07 | 94.12 ms | 125.58 ms | authoritative creator live control stayed decisively healthy on its own |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 274.14 | 112.18 ms | 165.75 ms | live playback session issuance also stayed healthy in isolation |
+
+Post-auth/cache/coalescing mixed sweep on the same Friday, August 21, 2026 fresh rebuilt binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 223.22 | 139.28 ms | 437.90 ms | public live discovery remained healthy |
+| `GET /api/v1/live/streams/deepsaint-live` | 197.20 | 149.09 ms | 436.69 ms | public detail remained healthy |
+| `GET /api/v1/bootstrap` | 54.44 | 569.39 ms | 859.96 ms | bootstrap stayed in the same band |
+| `GET /api/v1/me/state` | 39.33 | 894.86 ms | 1.07 s | no meaningful change |
+| `GET /api/v1/creator/me/state` | 15.76 | 1.45 s | 1.50 s | still pinned under the full mixed matrix |
+| `GET /api/v1/creator/me/live/control` | 15.75 | 1.58 s | 1.59 s | still overlap-bound despite strong isolated performance |
+| `GET /api/v1/creator/me/live/runtime` | 15.74 | 1.80 s | 2.00 s | still one of the dominant mixed-load hotspots |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 23.59 | 1.16 s | 1.30 s | collaboration control stayed in the same low-20 req/s mixed band |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 23.62 | 1.15 s | 1.29 s | collaboration runtime also stayed in that same mixed band |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 7.86 | 0.00 us | 0.00 us | still timeout-bound under full overlap despite isolated health |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 121.21 | 139.00 ms | 436.35 ms | limiter-driven non-2xx responses remained expected |
+
+- Read of this pass:
+  - The request coalescer, wider burst caches, and auth-session write collapse are all production-safe improvements, but they still did not break the full mixed-load ceiling.
+  - The isolated probes are now unambiguous: creator live control and live playback issuance are both healthy on their own after this pass, so the remaining problem is shared control-plane contention under simultaneous platform activity.
+  - The highest-confidence remaining architectural bottleneck is still the single SQLite authority plane serving heavy creator shell reads, collaboration reads, chat writes, and playback session issuance together under one overlapped sweep.
+  - The next real move is no longer micro-optimization inside these handlers. It is separating the hottest live read model and the write-sensitive playback/chat/session mutation paths so they stop competing on the same authority surface under burst overlap.
+
+- Friday, August 21, 2026 corrected-artifact, live playback session reuse, and authoritative cache invalidation pass:
+  - Revalidated the active server artifact and found that prior load sweeps had been launched against the stale binary at:
+    - `backend/target/aarch64-apple-darwin/debug/backend`
+  - The current code path was actually being built into:
+    - `backend/target/debug/backend`
+  - Corrected the migration lineage so the fresh binary could boot and migrate cleanly:
+    - moved the mixed-load SQLite index migration to `0039`
+    - moved playback session device persistence to `0040`
+  - Hardened live playback issuance to reuse a stable persisted session for repeated live viewers when an auth session or client `deviceId` is available:
+    - added `device_id`, `device_name`, `player_version`, and `capabilities_json` to `playback_sessions`
+    - added indexed reusable live-session lookup paths for auth-bound and device-bound playback
+    - rotated the playback token on reuse instead of inserting a fresh row for the same live viewer/device every time
+  - Fixed an authoritative correctness bug introduced by the short-lived creator-live response cache:
+    - cache invalidation now happens before creator-live state publish events
+    - this removed stale `creator/me/live/runtime` reads immediately after runtime repair writes
+  - Direct behavioral proof on the real Friday, August 21, 2026 migrated debug binary:
+    - repeated `POST /api/v1/playback/live/lv-deepsaint-live/session` calls with the same `deviceId` six seconds apart reused the same session id
+    - only the playback token rotated
+    - playback session row growth for that proof was `+1` instead of `+2`
+  - Verification on the fresh debug binary:
+    - `cargo build` -> passed
+    - `python3 backend/tests/creator-app-state-check.py` -> `creator-app-state|bootstrap|consistent`
+    - `python3 backend/tests/live-runtime-control-check.py` -> `runtime|socket-inspect|connected|terminated`
+    - `/health` -> `ready=true`
+    - `fozzy trace verify backend/tests/live-runtime-control-20260821-current.trace.fozzy --strict --json` -> `ok=true`
+    - `fozzy replay backend/tests/live-runtime-control-20260821-current.trace.fozzy --json` -> `status=pass`
+    - `fozzy ci backend/tests/live-runtime-control-20260821-current.trace.fozzy --json` -> `ok=true`
+
+Post-corrected-artifact mixed sweep on the same Friday, August 21, 2026 fresh debug binary:
+
+| Endpoint | Req/s | p50 | p99 | Notes |
+| --- | ---: | ---: | ---: | --- |
+| `GET /api/v1/live/streams` | 490.02 | 59.54 ms | 191.65 ms | public discovery is now clearly in a healthy production band |
+| `GET /api/v1/live/streams/deepsaint-live` | 486.88 | 60.66 ms | 215.46 ms | public detail stayed near list throughput |
+| `GET /api/v1/bootstrap` | 236.81 | 110.02 ms | 469.82 ms | authenticated bootstrap stayed strong under full overlap |
+| `GET /api/v1/me/state` | 173.24 | 160.76 ms | 537.93 ms | viewer shell throughput is materially stronger than the stale-artifact runs suggested |
+| `GET /api/v1/creator/me/state` | 101.99 | 297.77 ms | 414.30 ms | creator shell also moved into a much healthier band |
+| `GET /api/v1/creator/me/live/control` | 406.09 | 57.51 ms | 439.15 ms | authoritative creator-live control is now decisively healthy under the full mixed matrix |
+| `GET /api/v1/creator/me/live/runtime` | 191.93 | 101.88 ms | 1.35 s | runtime remains the heaviest creator-live lane, but it is still far healthier than the stale-artifact picture |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/control` | 122.59 | 236.37 ms | 616.47 ms | collaboration host control sits in a workable band under overlap |
+| `GET /api/v1/creator/me/live/collabs/sessions/:id/runtime` | 122.58 | 234.70 ms | 644.64 ms | collaboration runtime matched control closely |
+| `POST /api/v1/playback/live/lv-deepsaint-live/session` | 1737.19 | 15.60 ms | 383.71 ms | live playback issuance is no longer the bottleneck; the reusable-session path and correct artifact completely changed this lane |
+| `POST /api/v1/live/streams/lv-deepsaint-live/chat/messages` | 1739.77 | 15.28 ms | 380.52 ms | limiter-driven non-2xx responses remained expected under chat flood, but latency stayed strong |
+
+- Read of this pass:
+  - The prior low-throughput mixed sweeps on Friday, August 21, 2026 were not measuring the current backend implementation. They were measuring a stale artifact path and should be treated as superseded.
+  - On the real current binary, the control plane is in a substantially healthier place than previously believed: public discovery, viewer state, creator state, creator live control, collaboration reads, live playback issuance, and chat all hold strong mixed-load numbers concurrently.
+  - The remaining heaviest lane on the corrected binary is `GET /api/v1/creator/me/live/runtime`, especially at the `p99`, but it is no longer in the catastrophic band and is now an optimization target rather than a correctness crisis.
+  - The live playback control plane moved from an apparent overlap bottleneck to a healthy high-throughput path once the actual artifact, migration set, and reusable session architecture were all aligned.

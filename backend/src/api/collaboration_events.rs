@@ -171,7 +171,11 @@ pub(super) async fn publish_collaboration_event_raw(
             },
         )
         .await;
-    let _ = publish_collaboration_topology(state, session_id).await;
+    let topology_state = state.clone();
+    let topology_session_id = session_id.to_string();
+    tokio::spawn(async move {
+        let _ = publish_collaboration_topology(&topology_state, &topology_session_id).await;
+    });
     Ok(event)
 }
 
@@ -193,7 +197,11 @@ pub(super) async fn publish_collaboration_event(
     )
     .await?;
     let session = fetch_collaboration_session_by_id(&state.pool, session_id).await?;
-    let _ = publish_current_creator_live_state(state, &session.host_creator_id).await;
+    let creator_state = state.clone();
+    let host_creator_id = session.host_creator_id.clone();
+    tokio::spawn(async move {
+        let _ = publish_current_creator_live_state(&creator_state, &host_creator_id).await;
+    });
     Ok(event)
 }
 
@@ -215,7 +223,11 @@ pub(super) async fn publish_collaboration_reconciliation_event(
     )
     .await?;
     let session = fetch_collaboration_session_by_id(&state.pool, session_id).await?;
-    let _ = publish_current_creator_live_state(state, &session.host_creator_id).await;
+    let creator_state = state.clone();
+    let host_creator_id = session.host_creator_id.clone();
+    tokio::spawn(async move {
+        let _ = publish_current_creator_live_state(&creator_state, &host_creator_id).await;
+    });
     Ok(event)
 }
 

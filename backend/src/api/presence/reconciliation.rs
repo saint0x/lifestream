@@ -1,5 +1,7 @@
 use super::*;
 
+const READ_RECONCILIATION_MIN_INTERVAL: Duration = Duration::from_millis(750);
+
 pub(crate) async fn reconcile_stale_presence_sessions(state: SharedState) -> AppResult<()> {
     let cutoff = active_presence_cutoff();
     let now = Utc::now().to_rfc3339();
@@ -34,6 +36,27 @@ pub(crate) async fn reconcile_stale_presence_sessions(state: SharedState) -> App
     }
 
     Ok(())
+}
+
+pub(crate) async fn reconcile_stale_creator_live_socket_sessions_for_read_coalesced(
+    state: &SharedState,
+    creator_filter: Option<&str>,
+    user_filter: Option<&str>,
+) -> AppResult<()> {
+    let gate_key = format!(
+        "creator-live-sockets:{}:{}",
+        creator_filter.unwrap_or("*"),
+        user_filter.unwrap_or("*"),
+    );
+    if !state
+        .reconciliation_gates
+        .should_run(&gate_key, READ_RECONCILIATION_MIN_INTERVAL)
+        .await
+    {
+        return Ok(());
+    }
+    reconcile_stale_creator_live_socket_sessions_for_read(&state.pool, creator_filter, user_filter)
+        .await
 }
 
 pub(crate) async fn reconcile_stale_creator_live_socket_sessions_for_read(

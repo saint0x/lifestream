@@ -139,6 +139,16 @@ def build_fixture() -> Fixture:
             "droppedFrames": 3,
             "cpuPercent": 42,
             "freeDiskGb": 602.5,
+            "sourceProbe": {
+                "containerFormat": "mpegts",
+                "videoCodec": "h264",
+                "audioCodec": "aac",
+                "width": 1920,
+                "height": 1080,
+                "frameRate": 59.94,
+                "audioSampleRateHz": 48000,
+                "audioChannels": 2,
+            },
         },
         {"Content-Type": "application/json", "x-ingest-token": ingest_token},
     )

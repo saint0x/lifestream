@@ -19,7 +19,9 @@ pub(crate) async fn fetch_auth_sessions_limited(
         SELECT id, label, scopes_json, created_at, expires_at, revoked_at, last_used_at
         FROM auth_sessions
         WHERE user_id = ?
-        ORDER BY created_at DESC
+        ORDER BY
+            CASE WHEN id = ? THEN 0 ELSE 1 END,
+            created_at DESC
         "#,
     );
     if let Some(limit) = limit {
@@ -27,6 +29,7 @@ pub(crate) async fn fetch_auth_sessions_limited(
     }
     let rows = sqlx::query(&query)
     .bind(user_id)
+    .bind(current_session_id)
     .fetch_all(pool)
     .await?;
 

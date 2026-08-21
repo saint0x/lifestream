@@ -29,6 +29,8 @@ assert any(session["isCurrent"] for session in state[1]["sessions"]), state
 bootstrap = req("/api/v1/bootstrap", token=HOST)
 assert bootstrap[0] == 200, bootstrap
 assert bootstrap[1]["me"]["handle"] == state[1]["user"]["handle"], bootstrap
-assert bootstrap[1]["viewer"] is None, bootstrap
+assert bootstrap[1]["viewer"]["user"]["handle"] == state[1]["user"]["handle"], bootstrap
+assert bootstrap[1]["viewer"]["plan"]["planName"] == state[1]["plan"]["planName"], bootstrap
+assert bootstrap[1]["home"] is not None, bootstrap
 
 print("viewer-app-state|bootstrap|consistent")

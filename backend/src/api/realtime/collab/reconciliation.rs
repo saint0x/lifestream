@@ -1,5 +1,7 @@
 use super::*;
 
+const HOST_READ_RECONCILIATION_MIN_INTERVAL: Duration = Duration::from_millis(750);
+
 pub(crate) fn validate_collaboration_socket_access(
     session: &CollaborationSessionView,
 ) -> AppResult<()> {
@@ -50,6 +52,14 @@ pub(crate) async fn reconcile_collaboration_expiry_for_host_read(
     state: &SharedState,
     creator_id: &str,
 ) -> AppResult<()> {
+    let gate_key = format!("collab-host-read:{creator_id}");
+    if !state
+        .reconciliation_gates
+        .should_run(&gate_key, HOST_READ_RECONCILIATION_MIN_INTERVAL)
+        .await
+    {
+        return Ok(());
+    }
     let now = Utc::now().to_rfc3339();
     let cutoff = active_presence_cutoff();
     let expired_exists: Option<String> = sqlx::query_scalar(

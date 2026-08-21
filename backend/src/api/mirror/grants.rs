@@ -31,6 +31,8 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_participant(
     .bind(participant_id)
     .execute(&state.pool)
     .await?;
+    deactivate_collaboration_mirror_pickups_for_grants(state, &grants, "revoked", revoked_at)
+        .await?;
     publish_collaboration_mirror_grant_revoked_events(
         state,
         session_id,
@@ -40,8 +42,6 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_participant(
         reason,
     )
     .await?;
-    deactivate_collaboration_mirror_pickups_for_grants(state, &grants, "revoked", revoked_at)
-        .await?;
     Ok(())
 }
 
@@ -64,6 +64,8 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_session(
     .bind(session_id)
     .execute(&state.pool)
     .await?;
+    deactivate_collaboration_mirror_pickups_for_grants(state, &grants, "revoked", revoked_at)
+        .await?;
     publish_collaboration_mirror_grant_revoked_events(
         state,
         session_id,
@@ -73,8 +75,6 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_session(
         reason,
     )
     .await?;
-    deactivate_collaboration_mirror_pickups_for_grants(state, &grants, "revoked", revoked_at)
-        .await?;
     Ok(())
 }
 
@@ -97,6 +97,8 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_session_raw(
     .bind(session_id)
     .execute(&state.pool)
     .await?;
+    deactivate_collaboration_mirror_pickups_for_grants(state, &grants, "revoked", revoked_at)
+        .await?;
     publish_collaboration_mirror_grant_revoked_events_raw(
         state,
         session_id,
@@ -106,8 +108,6 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_session_raw(
         reason,
     )
     .await?;
-    deactivate_collaboration_mirror_pickups_for_grants(state, &grants, "revoked", revoked_at)
-        .await?;
     Ok(())
 }
 

@@ -7,8 +7,10 @@ use crate::api::control::{
     fetch_live_runtime_telemetry_summary,
     fetch_recent_live_runtime_targets, fetch_recent_live_runtime_telemetry,
 };
+use crate::api::presence::reconcile_stale_creator_live_socket_sessions_for_read_coalesced;
 use crate::models::{LiveRuntimeTelemetry, LiveRuntimeTelemetrySummary};
 
+const CREATOR_LIVE_RESPONSE_CACHE_TTL: Duration = Duration::from_millis(750);
 const CREATOR_LIVE_RECENT_SESSION_LIMIT: i64 = 1;
 const CREATOR_LIVE_RECENT_RUNTIME_OUTPUT_LIMIT: i64 = 1;
 const CREATOR_LIVE_RECENT_RUNTIME_TARGET_LIMIT: i64 = 1;
@@ -161,13 +163,14 @@ pub(crate) async fn fetch_creator_live_control_response(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<CreatorLiveControlResponse> {
-    reconcile_stale_creator_live_socket_sessions_for_read(pool, Some(creator_id), None).await?;
-    let snapshot = build_creator_live_snapshot(pool, creator_id).await?;
-    let settings = fetch_creator_live_settings(pool, creator_id).await?;
-    let health = fetch_creator_live_health(pool, creator_id).await?;
+    let (snapshot, settings, health, subscriber_tiers) = tokio::try_join!(
+        build_creator_live_snapshot(pool, creator_id),
+        fetch_creator_live_settings(pool, creator_id),
+        fetch_creator_live_health(pool, creator_id),
+        fetch_creator_subscriber_tiers(pool, creator_id),
+    )?;
     let collaboration =
         fetch_creator_live_collaboration_summary(pool, creator_id, &snapshot).await?;
-    let subscriber_tiers = fetch_creator_subscriber_tiers(pool, creator_id).await?;
     let viewer_history = health.samples.iter().map(|sample| sample.viewers).collect();
     let bitrate_history = health
         .samples
@@ -206,7 +209,6 @@ pub(crate) async fn fetch_creator_live_runtime_response(
     pool: &SqlitePool,
     creator_id: &str,
 ) -> AppResult<CreatorLiveRuntimeResponse> {
-    reconcile_stale_creator_live_socket_sessions_for_read(pool, Some(creator_id), None).await?;
     let (snapshot, health) = tokio::try_join!(
         build_creator_live_snapshot(pool, creator_id),
         fetch_creator_live_health(pool, creator_id),
@@ -346,14 +348,72 @@ pub(crate) async fn fetch_authoritative_creator_live_control_response(
     state: &SharedState,
     creator_id: &str,
 ) -> AppResult<CreatorLiveControlResponse> {
+    if let Some(cached) = state
+        .live_response_cache
+        .get_control(creator_id, CREATOR_LIVE_RESPONSE_CACHE_TTL)
+        .await
+    {
+        return Ok(cached);
+    }
+    let _coalesced = state
+        .request_coalescer
+        .acquire(&format!("creator-live-control:{creator_id}"))
+        .await;
+    if let Some(cached) = state
+        .live_response_cache
+        .get_control(creator_id, CREATOR_LIVE_RESPONSE_CACHE_TTL)
+        .await
+    {
+        return Ok(cached);
+    }
+    reconcile_stale_creator_live_socket_sessions_for_read_coalesced(
+        state,
+        Some(creator_id),
+        None,
+    )
+    .await?;
     reconcile_collaboration_expiry_for_host_read(state, creator_id).await?;
-    fetch_creator_live_control_response(&state.pool, creator_id).await
+    let response = fetch_creator_live_control_response(&state.pool, creator_id).await?;
+    state
+        .live_response_cache
+        .put_control(creator_id, response.clone())
+        .await;
+    Ok(response)
 }
 
 pub(crate) async fn fetch_authoritative_creator_live_runtime_response(
     state: &SharedState,
     creator_id: &str,
 ) -> AppResult<CreatorLiveRuntimeResponse> {
+    if let Some(cached) = state
+        .live_response_cache
+        .get_runtime(creator_id, CREATOR_LIVE_RESPONSE_CACHE_TTL)
+        .await
+    {
+        return Ok(cached);
+    }
+    let _coalesced = state
+        .request_coalescer
+        .acquire(&format!("creator-live-runtime:{creator_id}"))
+        .await;
+    if let Some(cached) = state
+        .live_response_cache
+        .get_runtime(creator_id, CREATOR_LIVE_RESPONSE_CACHE_TTL)
+        .await
+    {
+        return Ok(cached);
+    }
+    reconcile_stale_creator_live_socket_sessions_for_read_coalesced(
+        state,
+        Some(creator_id),
+        None,
+    )
+    .await?;
     reconcile_collaboration_expiry_for_host_read(state, creator_id).await?;
-    fetch_creator_live_runtime_response(&state.pool, creator_id).await
+    let response = fetch_creator_live_runtime_response(&state.pool, creator_id).await?;
+    state
+        .live_response_cache
+        .put_runtime(creator_id, response.clone())
+        .await;
+    Ok(response)
 }

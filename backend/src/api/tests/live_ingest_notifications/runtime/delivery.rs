@@ -232,10 +232,14 @@ async fn live_media_playlist_rewrites_tokenized_ll_hls_uris_and_honors_blocking_
     )
     .await?;
 
-    let playback =
-        create_live_playback_session(State(state.clone()), HeaderMap::new(), Path(stream_id))
-            .await?
-            .0;
+    let playback = create_live_playback_session(
+        State(state.clone()),
+        HeaderMap::new(),
+        Path(stream_id),
+        None,
+    )
+    .await?
+    .0;
 
     let first_response = serve_media_file(
         State(state.clone()),

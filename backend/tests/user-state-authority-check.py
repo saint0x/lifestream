@@ -1,15 +1,20 @@
+import hashlib
 import json
+import sqlite3
 import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
+DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
 HOST = "Bearer lifestream-local-dev-token"
 
 
-def req(path, method="GET", token=None, body=None):
+def req(path, method="GET", token=None, body=None, extra_headers=None):
     headers = {}
     if token:
         headers["Authorization"] = token
+    if extra_headers:
+        headers.update(extra_headers)
     data = None
     if body is not None:
         data = json.dumps(body).encode()
@@ -24,6 +29,92 @@ def req(path, method="GET", token=None, body=None):
         return exc.code, json.loads(raw) if raw else None
 
 
+def ensure_owner_session():
+    conn = sqlite3.connect(DB)
+    now = "2026-08-21T00:00:00Z"
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO auth_sessions (
+            id, user_id, label, token_hash, scopes_json, created_at, expires_at, revoked_at, last_used_at
+        ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL)
+        """,
+        (
+            "sess-user-state-authority-owner",
+            "usr-1",
+            "user-state-authority-owner",
+            hashlib.sha256("lifestream-local-dev-token".encode()).hexdigest(),
+            json.dumps(["user", "creator", "creator:write", "admin"]),
+            now,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def ensure_live_stream():
+    streams = req("/api/v1/live/streams", token=HOST)
+    assert streams[0] == 200, streams
+    existing = next(
+        (item for item in streams[1] if item["streamer"]["handle"] == "deepsaint"),
+        None,
+    )
+    if existing is not None:
+        return existing["id"], None
+
+    live = req("/api/v1/creator/me/live", token=HOST)
+    assert live[0] == 200, live
+    current = live[1]["currentBroadcast"] or live[1]["pendingBroadcast"]
+    if current is None:
+        started = req(
+            "/api/v1/creator/me/broadcasts/start",
+            "POST",
+            HOST,
+            {
+                "title": "user state authority validation",
+                "category": "Tech",
+                "tags": ["user-state", "authority", "validation"],
+                "isMature": False,
+                "notifyFollowers": False,
+            },
+        )
+        assert started[0] == 200, started
+        broadcast_id = started[1]["id"]
+    else:
+        broadcast_id = current["id"]
+
+    refreshed = req("/api/v1/creator/me/live", token=HOST)
+    assert refreshed[0] == 200, refreshed
+    connected = req(
+        "/api/v1/ingest/live/connect",
+        "POST",
+        None,
+        {
+            "streamKey": refreshed[1]["profile"]["streamKey"],
+            "protocol": "rtmp",
+            "ingestServer": "rtmp-us-east-1",
+            "broadcastId": broadcast_id,
+        },
+    )
+    assert connected[0] == 200, connected
+    heartbeat = req(
+        f"/api/v1/ingest/live/{connected[1]['session']['id']}/heartbeat",
+        "POST",
+        None,
+        {
+            "bitrateKbps": 4200,
+            "viewers": 144,
+            "droppedFrames": 0,
+            "cpuPercent": 22,
+            "freeDiskGb": 512.0,
+        },
+        {"x-ingest-token": connected[1]["ingestToken"]},
+    )
+    assert heartbeat[0] == 200, heartbeat
+    return connected[1]["liveStreamId"], connected[1]
+
+
+ensure_owner_session()
+live_stream_id, created_session = ensure_live_stream()
 cleanup_film = req("/api/v1/me/progress/film-afterglow", "DELETE", HOST)
 assert cleanup_film[0] == 200, cleanup_film
 cleanup_series = req("/api/v1/me/progress/ser-northlight", "DELETE", HOST)
@@ -31,7 +122,7 @@ assert cleanup_series[0] == 200, cleanup_series
 
 streams = req("/api/v1/live/streams", token=HOST)
 assert streams[0] == 200 and len(streams[1]) > 0, streams
-live_stream_id = streams[1][0]["id"]
+assert any(item["id"] == live_stream_id for item in streams[1]), streams
 
 series_catalog = req("/api/v1/catalog/series", token=HOST)
 assert series_catalog[0] == 200 and len(series_catalog[1]) >= 2, series_catalog
@@ -144,5 +235,15 @@ assert (
     and series_entry["progressSec"] == 1280
     and series_entry["durationSec"] == northlight_episode["durationSec"]
 ), series_entry
+
+if created_session is not None:
+    ended = req(
+        f"/api/v1/ingest/live/{created_session['session']['id']}/disconnect",
+        "POST",
+        None,
+        None,
+        {"x-ingest-token": created_session["ingestToken"]},
+    )
+    assert ended[0] == 200, ended
 
 print("user-state-authority-pass")
