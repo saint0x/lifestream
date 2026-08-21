@@ -125,7 +125,7 @@ fn build_collaboration_output_targets(
         .outputs
         .iter()
         .map(|route| LiveRuntimeTarget {
-            id: format!("lrt-route-{}", route.id),
+            id: format!("lrt-route-{}-{}", session.id, route.id),
             session_id: session.id.clone(),
             creator_id: session.creator_id.clone(),
             broadcast_id: session.broadcast_id.clone(),
@@ -155,7 +155,7 @@ fn build_collaboration_program_targets(
         .programs
         .iter()
         .map(|program| LiveRuntimeTarget {
-            id: format!("lrt-program-{}", program.id),
+            id: format!("lrt-program-{}-{}", session.id, program.id),
             session_id: session.id.clone(),
             creator_id: session.creator_id.clone(),
             broadcast_id: session.broadcast_id.clone(),

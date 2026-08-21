@@ -193,7 +193,7 @@ pub(super) async fn publish_collaboration_event(
     )
     .await?;
     let session = fetch_collaboration_session_by_id(&state.pool, session_id).await?;
-    let _ = publish_authoritative_creator_live_state(state, &session.host_creator_id).await;
+    let _ = publish_current_creator_live_state(state, &session.host_creator_id).await;
     Ok(event)
 }
 

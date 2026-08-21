@@ -4,6 +4,9 @@ use super::topology::{
 };
 use super::*;
 use crate::api::collab::end_collaboration_session_internal_raw;
+use crate::api::control::{
+    fetch_live_runtime_output_for_session, sync_live_runtime_output_artifacts,
+};
 
 pub(crate) async fn publish_collaboration_topology(
     state: &SharedState,
@@ -35,6 +38,11 @@ async fn sync_collaboration_runtime_persistence(
     };
     if active_session.broadcast_id != session.source_broadcast_id {
         return Ok(());
+    }
+    if let Some(runtime_output) =
+        fetch_live_runtime_output_for_session(&state.pool, &active_session.id).await?
+    {
+        sync_live_runtime_output_artifacts(state, &active_session, &runtime_output).await?;
     }
     persist_live_runtime_spec(state, &active_session).await?;
     Ok(())

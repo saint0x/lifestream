@@ -10,7 +10,7 @@ use axum::http::HeaderValue;
 use sqlx::SqlitePool;
 use tokio::sync::{Mutex, broadcast};
 
-use crate::models::WsEvent;
+use crate::models::{HealthDependencyStatus, WsEvent};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -21,6 +21,7 @@ pub struct AppState {
     pub rate_limits: RateLimitStore,
     pub metrics: MetricsStore,
     pub background_worker: BackgroundWorkerHealthStore,
+    pub binary_probe_cache: BinaryProbeCacheStore,
     started_at: Instant,
 }
 
@@ -38,6 +39,7 @@ impl AppState {
             rate_limits: RateLimitStore::default(),
             metrics: MetricsStore::default(),
             background_worker: BackgroundWorkerHealthStore::default(),
+            binary_probe_cache: BinaryProbeCacheStore::default(),
             started_at: Instant::now(),
         }
     }
@@ -75,6 +77,11 @@ pub struct MetricsStore {
 #[derive(Clone, Default)]
 pub struct BackgroundWorkerHealthStore {
     inner: Arc<Mutex<BackgroundWorkerHealthState>>,
+}
+
+#[derive(Clone, Default)]
+pub struct BinaryProbeCacheStore {
+    inner: Arc<Mutex<HashMap<String, HealthDependencyStatus>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -281,5 +288,15 @@ impl BackgroundWorkerHealthStore {
             consecutive_failures: guard.consecutive_failures,
             last_error: guard.last_error.clone(),
         }
+    }
+}
+
+impl BinaryProbeCacheStore {
+    pub async fn get(&self, binary: &str) -> Option<HealthDependencyStatus> {
+        self.inner.lock().await.get(binary).cloned()
+    }
+
+    pub async fn insert(&self, binary: &str, status: HealthDependencyStatus) {
+        self.inner.lock().await.insert(binary.to_string(), status);
     }
 }

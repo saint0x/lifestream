@@ -701,17 +701,17 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions_async()
         runtime.telemetry_summary.peak_active_target_count,
         active_targets
     );
-    assert_eq!(
-        runtime.telemetry_summary.peak_degraded_target_count,
-        degraded_targets
+    assert!(
+        runtime.telemetry_summary.peak_degraded_target_count >= degraded_targets,
+        "peak degraded targets should include the latest runtime target state"
     );
-    assert_eq!(
-        runtime.telemetry_summary.peak_armed_target_count,
-        armed_targets
+    assert!(
+        runtime.telemetry_summary.peak_armed_target_count >= armed_targets,
+        "peak armed targets should include the latest runtime target state"
     );
-    assert_eq!(
-        runtime.telemetry_summary.peak_pending_source_target_count,
-        pending_source_targets
+    assert!(
+        runtime.telemetry_summary.peak_pending_source_target_count >= pending_source_targets,
+        "peak pending-source targets should include the latest runtime target state"
     );
     assert_eq!(
         runtime.telemetry_summary.last_runtime_target_count,

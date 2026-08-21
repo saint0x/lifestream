@@ -56,7 +56,7 @@ pub(super) fn build_topology_programs(
     });
 
     for participant in &session.participants {
-        if participant.role == "host" || participant.publish_to_host {
+        if participant.role == "host" {
             continue;
         }
         let output_ids = planned_output_ids_for_participant(
@@ -64,11 +64,22 @@ pub(super) fn build_topology_programs(
             participant,
             outputs,
             host_output_participant_ids,
-        );
+        )
+        .into_iter()
+        .filter(|output_id| {
+            output_id == &format!("col-out-mirror-{}", participant.id)
+                || output_id == &format!("col-out-archive-{}", participant.id)
+        })
+        .collect::<Vec<_>>();
         if output_ids.is_empty() {
             continue;
         }
-        let source_participant_ids = guest_program_sources(participant, live_participant_ids);
+        let source_participant_ids = guest_program_sources(
+            participant,
+            outputs,
+            &output_ids,
+            live_participant_ids,
+        );
         programs.push(CollaborationProgramRoute {
             id: format!("col-program-{}", participant.id),
             program_kind: "guest_program".to_string(),
@@ -100,13 +111,24 @@ pub(super) fn build_topology_programs(
 
 fn guest_program_sources(
     participant: &CollaborationParticipant,
+    outputs: &[CollaborationOutputRoute],
+    output_ids: &[String],
     live_participant_ids: &[String],
 ) -> Vec<String> {
-    if live_participant_ids.contains(&participant.id) {
-        vec![participant.id.clone()]
-    } else {
-        Vec::new()
+    let mut sources = outputs
+        .iter()
+        .filter(|output| output_ids.contains(&output.id))
+        .flat_map(|output| output.source_participant_ids.iter().cloned())
+        .fold(Vec::new(), |mut ids, participant_id| {
+            push_unique(&mut ids, participant_id);
+            ids
+        });
+
+    if sources.is_empty() && live_participant_ids.contains(&participant.id) {
+        sources.push(participant.id.clone());
     }
+
+    sources
 }
 
 fn program_route_state(outputs: &[CollaborationOutputRoute], output_ids: &[String]) -> String {

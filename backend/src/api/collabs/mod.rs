@@ -11,9 +11,9 @@ pub(crate) use host::{
     create_collaboration_invite, create_collaboration_session, end_collaboration_session,
     get_creator_collaboration_control, get_creator_collaboration_runtime,
     get_creator_collaboration_session, get_creator_collaboration_socket_session,
-    list_creator_collaboration_events, reconcile_creator_collaboration_socket_session,
-    remove_collaboration_participant, revoke_collaboration_invite,
-    update_collaboration_participant,
+    issue_collaboration_mirror_grant, list_creator_collaboration_events,
+    reconcile_creator_collaboration_socket_session, remove_collaboration_participant,
+    revoke_collaboration_invite, update_collaboration_participant,
 };
 #[cfg(test)]
 pub(crate) use member::{

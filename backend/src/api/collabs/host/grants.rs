@@ -34,8 +34,8 @@ pub(crate) async fn issue_collaboration_mirror_grant(
             "participant must have a creator profile to receive a mirror grant".to_string(),
         ));
     }
-    Ok(Json(
+    let grant =
         issue_mirror_grant_for_participant(&state, &session, &participant, &identity.user_id)
-            .await?,
-    ))
+            .await?;
+    Ok(Json(grant))
 }

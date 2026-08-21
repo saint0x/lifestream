@@ -40,8 +40,8 @@ pub(crate) async fn check_runtime_dependencies_with_binaries(
 ) -> RuntimeHealthStatus {
     let database = check_database(&state.pool).await.unwrap_or(false);
     let media_root = check_media_root_writable(&state.media_root).await;
-    let ffmpeg = check_binary_available(ffmpeg_binary).await;
-    let ffprobe = check_binary_available(ffprobe_binary).await;
+    let ffmpeg = check_cached_binary_available(state, ffmpeg_binary).await;
+    let ffprobe = check_cached_binary_available(state, ffprobe_binary).await;
     let background_worker = check_background_worker_ready(state).await;
     let dependencies = HealthDependencies {
         media_root,
@@ -59,6 +59,21 @@ pub(crate) async fn check_runtime_dependencies_with_binaries(
         database,
         dependencies,
     }
+}
+
+async fn check_cached_binary_available(
+    state: &AppState,
+    binary: &str,
+) -> HealthDependencyStatus {
+    if let Some(status) = state.binary_probe_cache.get(binary).await {
+        return status;
+    }
+    let status = check_binary_available(binary).await;
+    state
+        .binary_probe_cache
+        .insert(binary, status.clone())
+        .await;
+    status
 }
 
 async fn check_background_worker_ready(state: &AppState) -> HealthDependencyStatus {

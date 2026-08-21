@@ -1,7 +1,26 @@
 use super::*;
 
-#[tokio::test]
-async fn creator_live_authoritative_reads_reconcile_expired_collaboration_truth() -> AppResult<()> {
+#[test]
+fn creator_live_authoritative_reads_reconcile_expired_collaboration_truth() -> AppResult<()> {
+    std::thread::Builder::new()
+        .name("creator-live-authoritative-collab-truth".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime")
+                .block_on(
+                    creator_live_authoritative_reads_reconcile_expired_collaboration_truth_async(),
+                )
+        })
+        .expect("creator live authoritative collab truth thread")
+        .join()
+        .expect("creator live authoritative collab truth join")
+}
+
+async fn creator_live_authoritative_reads_reconcile_expired_collaboration_truth_async()
+-> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
     let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
     let host_headers = auth_headers(&host_token);
@@ -119,16 +138,34 @@ async fn creator_live_authoritative_reads_reconcile_expired_collaboration_truth(
         fetch_collaboration_invite_by_id(&state.pool, &pending_invite.id).await?;
     let refreshed_grant = fetch_collaboration_mirror_grant_by_id(&state.pool, &grant.id).await?;
     publish_creator_live_state(&state, &creator.id).await?;
-    let published = tokio::time::timeout(Duration::from_secs(1), subscription.recv())
-        .await
-        .map_err(|_| {
-            AppError::Internal("timed out waiting for creator live state publication".to_string())
-        })?
-        .map_err(|error| {
-            AppError::Internal(format!(
-                "failed receiving creator live state publication: {error}"
-            ))
-        })?;
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(1);
+    let mut published = None;
+    while tokio::time::Instant::now() < deadline && published.is_none() {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        let event = tokio::time::timeout(remaining, subscription.recv())
+            .await
+            .map_err(|_| {
+                AppError::Internal(
+                    "timed out waiting for creator live state publication".to_string(),
+                )
+            })?
+            .map_err(|error| {
+                AppError::Internal(format!(
+                    "failed receiving creator live state publication: {error}"
+                ))
+            })?;
+        if matches!(
+            &event,
+            WsEvent::CreatorLiveState { control, .. }
+                if control.collaboration.pending_invite_count == 0
+                    && control.collaboration.issued_grant_count == 0
+        ) {
+            published = Some(event);
+        }
+    }
+    let published = published.ok_or_else(|| {
+        AppError::Internal("did not observe reconciled creator live state publication".to_string())
+    })?;
 
     assert_eq!(refreshed_invite.state, "expired");
     assert_eq!(refreshed_grant.state, "expired");

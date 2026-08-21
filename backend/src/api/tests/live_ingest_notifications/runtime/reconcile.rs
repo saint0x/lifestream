@@ -1,7 +1,213 @@
 use super::*;
 
-#[tokio::test]
-async fn runtime_reconcile_detects_missing_collaboration_engine_artifact() -> AppResult<()> {
+#[test]
+fn collaboration_topology_changes_rebuild_runtime_artifacts_for_active_ingest() -> AppResult<()> {
+    std::thread::Builder::new()
+        .name("runtime-collab-topology-rebuild".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime")
+                .block_on(
+                    collaboration_topology_changes_rebuild_runtime_artifacts_for_active_ingest_async(),
+                )
+        })
+        .expect("runtime collab topology rebuild thread")
+        .join()
+        .expect("runtime collab topology rebuild join")
+}
+
+async fn collaboration_topology_changes_rebuild_runtime_artifacts_for_active_ingest_async()
+-> AppResult<()> {
+    let (state, creator) = setup_test_state().await?;
+    let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let host_headers = auth_headers(&host_token);
+    let guest_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
+    let guest_token = insert_creator_auth_session(&state.pool, &guest_creator).await?;
+    let guest_headers = auth_headers(&guest_token);
+    let broadcast = insert_ready_collaboration_broadcast(&state.pool, &creator).await?;
+    let connected = connect_live_ingest(
+        State(state.clone()),
+        Json(IngestConnectRequest {
+            stream_key: creator.stream_key.clone(),
+            protocol: "rtmp".to_string(),
+            ingest_server: "test-ingest-collab-topology-rebuild".to_string(),
+            broadcast_id: Some(broadcast.id.clone()),
+        }),
+    )
+    .await?
+    .0;
+
+    let mut ingest_headers = HeaderMap::new();
+    ingest_headers.insert(
+        "x-ingest-token",
+        HeaderValue::from_str(&connected.ingest_token).unwrap(),
+    );
+    let manifest_relative_path = runtime_manifest_path(&connected.session);
+    write_test_media_file(
+        &state,
+        &manifest_relative_path,
+        "#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:2\n",
+    )
+    .await?;
+
+    let runtime_output = report_live_runtime(
+        State(state.clone()),
+        Path(connected.session.id.clone()),
+        ingest_headers,
+        Json(UpdateLiveRuntimeStateRequest {
+            runtime_state: "healthy".to_string(),
+            packaging_status: "ready".to_string(),
+            archive_status: "not_started".to_string(),
+            manifest_relative_path: Some(manifest_relative_path.clone()),
+            archive_relative_path: None,
+            last_error: None,
+        }),
+    )
+    .await?
+    .0;
+    assert_eq!(runtime_output.runtime_state, "healthy");
+    assert_eq!(runtime_output.packaging_status, "ready");
+
+    let engine_relative_path = format!(
+        "runtime/{}/{}/{}/collaboration/engine.json",
+        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
+    );
+    assert!(!tokio::fs::try_exists(media_path_for_relative(&state, &engine_relative_path)).await?);
+
+    let session = create_collaboration_session(
+        State(state.clone()),
+        host_headers.clone(),
+        Json(CreateCollaborationSessionRequest {
+            broadcast_id: Some(broadcast.id.clone()),
+            title: Some("runtime topology rebuild".to_string()),
+            chat_mode: Some("shared".to_string()),
+            recording_policy: Some("host_archive".to_string()),
+        }),
+    )
+    .await?
+    .0;
+
+    let invite = create_collaboration_invite(
+        State(state.clone()),
+        host_headers.clone(),
+        Path(session.id.clone()),
+        Json(CreateCollaborationInviteRequest {
+            invitee_user_id: guest_creator.user_id.clone(),
+            role: "guest".to_string(),
+            mirror_to_guest_channel: true,
+            message: Some("join the active runtime".to_string()),
+            expires_in_minutes: Some(30),
+        }),
+    )
+    .await?
+    .0;
+    let participant =
+        accept_collaboration_invite(State(state.clone()), guest_headers, Path(invite.id.clone()))
+            .await?
+            .0;
+    let participant = update_collaboration_participant(
+        State(state.clone()),
+        host_headers.clone(),
+        Path((session.id.clone(), participant.id.clone())),
+        Json(UpdateCollaborationParticipantRequest {
+            state: Some("live".to_string()),
+            publish_to_host: Some(true),
+            mirror_to_guest_channel: Some(true),
+            can_speak_in_chat: Some(true),
+            media_transport: None,
+            contribution_endpoint_url: None,
+            return_endpoint_url: None,
+        }),
+    )
+    .await?
+    .0;
+    let _grant = crate::api::collabs::issue_collaboration_mirror_grant(
+        State(state.clone()),
+        host_headers,
+        Path((session.id.clone(), participant.id.clone())),
+    )
+    .await?
+    .0;
+
+    let host_program_relative_path = format!(
+        "runtime/{}/{}/{}/collaboration/programs/col-program-host-{}.json",
+        connected.session.creator_id,
+        connected.session.broadcast_id,
+        connected.session.id,
+        session.id
+    );
+    let guest_audio_relative_path = format!(
+        "runtime/{}/{}/{}/collaboration/audio/{}.json",
+        connected.session.creator_id,
+        connected.session.broadcast_id,
+        connected.session.id,
+        participant.id
+    );
+    let bundle_relative_path = format!(
+        "runtime/{}/{}/{}/collaboration/runtime.json",
+        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
+    );
+    let media_relative_path = format!(
+        "runtime/{}/{}/{}/collaboration/media.json",
+        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
+    );
+    let launch_relative_path = format!(
+        "runtime/{}/{}/{}/collaboration/launch.json",
+        connected.session.creator_id, connected.session.broadcast_id, connected.session.id
+    );
+
+    for relative_path in [
+        &engine_relative_path,
+        &host_program_relative_path,
+        &guest_audio_relative_path,
+        &bundle_relative_path,
+        &media_relative_path,
+        &launch_relative_path,
+    ] {
+        assert!(
+            tokio::fs::metadata(media_path_for_relative(&state, relative_path))
+                .await
+                .map_err(AppError::Io)?
+                .len()
+                > 0,
+            "expected runtime artifact to be rebuilt at {relative_path}"
+        );
+    }
+
+    let refreshed_output = crate::api::control::fetch_live_runtime_output_for_session(
+        &state.pool,
+        &connected.session.id,
+    )
+    .await?;
+    let refreshed_output = refreshed_output.expect("live runtime output");
+    assert_eq!(refreshed_output.runtime_state, "healthy");
+    assert_eq!(refreshed_output.packaging_status, "ready");
+    assert!(refreshed_output.last_error.is_none());
+
+    Ok(())
+}
+
+#[test]
+fn runtime_reconcile_detects_missing_collaboration_engine_artifact() -> AppResult<()> {
+    std::thread::Builder::new()
+        .name("runtime-reconcile-collab-artifact".to_string())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .expect("runtime")
+                .block_on(runtime_reconcile_detects_missing_collaboration_engine_artifact_async())
+        })
+        .expect("runtime reconcile collab artifact thread")
+        .join()
+        .expect("runtime reconcile collab artifact join")
+}
+
+async fn runtime_reconcile_detects_missing_collaboration_engine_artifact_async() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
     let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
     let connected = connect_live_ingest(

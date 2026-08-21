@@ -131,24 +131,56 @@ pub(crate) async fn connect_live_ingest(
     )
     .await?;
 
-    transition_broadcast_to_live(
+    if let Err(error) = transition_broadcast_to_live(
         &state.pool,
         &creator,
         &broadcast,
         !is_reconnect,
         !is_reconnect,
     )
-    .await?;
+    .await
+    {
+        tracing::error!(
+            creator_id = %creator.id,
+            broadcast_id = %broadcast.id,
+            session_id = %session.id,
+            stage = "transition_broadcast_to_live",
+            error = ?error,
+            "live ingest connect failed"
+        );
+        return Err(error);
+    }
     if let Some(collaboration_session) =
         fetch_active_collaboration_session_for_broadcast(&state.pool, &current_broadcast_id).await?
     {
-        let _ = sync_active_collaboration_mirror_pickups_for_session_and_publish(
+        let result = sync_active_collaboration_mirror_pickups_for_session_and_publish(
             &state,
             &collaboration_session.id,
         )
         .await;
+        if let Err(error) = result {
+            tracing::error!(
+                creator_id = %creator.id,
+                broadcast_id = %broadcast.id,
+                session_id = %session.id,
+                collaboration_session_id = %collaboration_session.id,
+                stage = "sync_active_collaboration_mirror_pickups_for_session_and_publish",
+                error = ?error,
+                "live ingest connect failed"
+            );
+        }
     }
-    publish_current_creator_live_state(&state, &creator.id).await?;
+    if let Err(error) = publish_current_creator_live_state(&state, &creator.id).await {
+        tracing::error!(
+            creator_id = %creator.id,
+            broadcast_id = %broadcast.id,
+            session_id = %session.id,
+            stage = "publish_current_creator_live_state",
+            error = ?error,
+            "live ingest connect failed"
+        );
+        return Err(error);
+    }
     Ok(Json(IngestConnectResponse {
         session,
         ingest_token,
