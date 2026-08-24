@@ -25,6 +25,14 @@
   gap: 20px;
 }
 
+.ls-studio__title-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .ls-studio__title {
   font-size: clamp(40px, 5vw, 56px);
   font-weight: 500;
@@ -527,6 +535,21 @@
   border: 1px solid var(--c-border);
   color: var(--c-text);
   background: var(--c-surface);
+  text-align: left;
+  transition:
+    background 160ms var(--ease-out),
+    border-color 160ms var(--ease-out),
+    color 160ms var(--ease-out);
+}
+
+button.ls-studio__asset-row {
+  cursor: pointer;
+}
+
+button.ls-studio__asset-row:hover,
+button.ls-studio__asset-row.is-active {
+  background: var(--c-surface-hi);
+  border-color: var(--c-border-hi);
 }
 
 .ls-studio__job-title {
@@ -585,6 +608,62 @@
   font-size: 13px;
 }
 
+.ls-studio__modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: clamp(14px, 4vw, 28px);
+  background: rgba(0, 0, 0, 0.76);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+}
+
+.ls-studio__modal {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(760px, calc(100vh - 32px));
+  overflow-y: auto;
+  padding: 22px;
+  border: 1px solid var(--c-border-hi);
+  border-radius: var(--r-md);
+  background: var(--c-bg-elevated);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.72);
+  animation: fade-up 200ms var(--ease-out) both;
+}
+
+.ls-studio__modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  color: var(--c-text-dim);
+  background: var(--c-surface);
+  transition:
+    background 160ms var(--ease-out),
+    border-color 160ms var(--ease-out),
+    color 160ms var(--ease-out);
+}
+
+.ls-studio__modal-close:hover {
+  color: var(--c-text);
+  border-color: var(--c-border-hi);
+  background: var(--c-surface-hi);
+}
+
+.ls-studio__modal-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 980px) {
   .ls-studio__metrics,
   .ls-studio__layout,
@@ -605,8 +684,14 @@
   }
 
   .ls-studio__title-row,
+  .ls-studio__title-actions,
   .ls-studio__panel-head {
     flex-direction: column;
+  }
+
+  .ls-studio__title-actions {
+    align-items: stretch;
+    width: 100%;
   }
 
   .ls-studio__tool {
