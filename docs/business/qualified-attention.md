@@ -106,11 +106,11 @@ Current implemented sources:
 - connected time
 - last seen time
 - disconnected time
-
-`user_watch_history` remains the signed-in library/resume-state persistence layer. It is not counted as a primary CAV input unless a measured playback or dwell event exists, because history rows are mutable user state while CAV must be rebuilt from raw attention signals.
 - attribution source / medium / campaign
 - UTM fields
 - landing URL and referrer
+
+`user_watch_history` remains the signed-in library/resume-state persistence layer. It is not counted as a primary CAV input unless a measured playback or dwell event exists, because history rows are mutable user state while CAV must be rebuilt from raw attention signals.
 
 The frontend creates a durable anonymous visitor id in `localStorage` under:
 
@@ -216,7 +216,7 @@ These values are seed coefficients. They should eventually be calibrated from ad
 Data confidence represents measurement quality.
 
 ```text
-D = identity_confidence * attribution_confidence
+D = identity_confidence * attribution_confidence * behavior_confidence * invalid_traffic_penalty
 ```
 
 Current v2:
@@ -225,6 +225,8 @@ Current v2:
 - attributed qualified viewers increase attribution confidence
 - anonymous but stable `visitor_id` traffic is still valid, but discounted versus authenticated first-party identity
 - traffic without attribution is discounted
+- repeat sessions, multi-content viewing, watchlist action, and sustained playback progress increase behavior confidence
+- abnormal event volume or implausibly long same-day watch time lowers confidence
 
 Bot and invalid-traffic filtering belongs in this multiplier, but v2 does not pretend to have a full fraud model yet.
 
