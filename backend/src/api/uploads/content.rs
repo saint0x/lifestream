@@ -15,7 +15,7 @@ pub(crate) async fn update_upload(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    let current = fetch_upload_by_id(state.db.sqlite_adapter(), creator_id, &id).await?;
+    let current = fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?;
     if current.status == "taken_down"
         && (input.visibility.is_some()
             || input.release_at.is_some()
@@ -41,10 +41,10 @@ pub(crate) async fn update_upload(
         input.rental_window_hours.or(current.rental_window_hours),
     )?;
     if monetized_access_policy(&access_terms.access_policy) {
-        ensure_creator_can_publish_paid_content(state.db.sqlite_adapter(), creator_id).await?;
+        ensure_creator_can_publish_paid_content(state.db.try_sqlite_adapter()?, creator_id).await?;
     }
     validate_creator_access_tier(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         creator_id,
         &access_terms.access_policy,
         access_terms.access_tier_id.as_deref(),
@@ -81,7 +81,7 @@ pub(crate) async fn update_upload(
     .bind(&now)
     .bind(&next_status)
     .bind(&id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     sqlx::query(
         "UPDATE media_assets SET visibility = ?, status = ?, updated_at = ? WHERE upload_id = ? AND creator_id = ?",
@@ -91,10 +91,10 @@ pub(crate) async fn update_upload(
     .bind(&now)
     .bind(&id)
     .bind(creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
-    expire_playback_sessions_for_upload(state.db.sqlite_adapter(), &id).await?;
+    expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, &id).await?;
     Ok(Json(
-        fetch_upload_by_id(state.db.sqlite_adapter(), creator_id, &id).await?,
+        fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?,
     ))
 }

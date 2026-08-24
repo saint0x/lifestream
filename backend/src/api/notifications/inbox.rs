@@ -17,7 +17,7 @@ pub(crate) async fn list_my_notifications(
         ));
     }
     Ok(Json(
-        fetch_user_notifications(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_user_notifications(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }
 

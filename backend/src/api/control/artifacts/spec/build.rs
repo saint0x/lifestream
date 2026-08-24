@@ -28,13 +28,14 @@ pub(super) async fn build_live_runtime_spec(
             AppError::Internal("live runtime manifest path missing parent".to_string())
         })?;
     let session_ordinal = count_live_ingest_sessions_for_broadcast(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.creator_id,
         &session.broadcast_id,
     )
     .await?;
     let (current_cpu_percent, current_free_disk_gb) =
-        fetch_current_operational_telemetry(state.db.sqlite_adapter(), &session.creator_id).await?;
+        fetch_current_operational_telemetry(state.db.try_sqlite_adapter()?, &session.creator_id)
+            .await?;
     let health = build_live_runtime_health_spec(session, current_cpu_percent, current_free_disk_gb);
     let variants = build_live_runtime_variant_specs(session, output)?;
     let collaboration = build_live_runtime_collaboration_spec(state, session).await?;

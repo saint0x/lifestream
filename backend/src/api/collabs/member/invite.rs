@@ -6,7 +6,8 @@ pub(crate) async fn accept_collaboration_invite(
     Path(invite_id): Path<String>,
 ) -> AppResult<Json<CollaborationParticipant>> {
     let identity = require_identity(&state.db, &headers).await?;
-    let invite = fetch_collaboration_invite_by_id(state.db.sqlite_adapter(), &invite_id).await?;
+    let invite =
+        fetch_collaboration_invite_by_id(state.db.try_sqlite_adapter()?, &invite_id).await?;
     if invite.invitee_user_id != identity.user_id {
         return Err(AppError::Forbidden);
     }
@@ -17,12 +18,12 @@ pub(crate) async fn accept_collaboration_invite(
     )
     .bind(&now)
     .bind(&invite_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     let creator_id =
-        fetch_creator_id_for_user(state.db.sqlite_adapter(), &identity.user_id).await?;
+        fetch_creator_id_for_user(state.db.try_sqlite_adapter()?, &identity.user_id).await?;
     let participant = match fetch_collaboration_participant_for_user(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &invite.session_id,
         &identity.user_id,
     )
@@ -47,10 +48,10 @@ pub(crate) async fn accept_collaboration_invite(
             .bind(&now)
             .bind(&existing.id)
             .bind(&invite.session_id)
-            .execute(state.db.sqlite_adapter())
+            .execute(state.db.try_sqlite_adapter()?)
             .await?;
             let rejoined =
-                fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), &existing.id)
+                fetch_collaboration_participant_by_id(state.db.try_sqlite_adapter()?, &existing.id)
                     .await?;
             publish_collaboration_event(
                 &state,
@@ -89,7 +90,7 @@ pub(crate) async fn accept_collaboration_invite(
             .bind(&now)
             .bind(&now)
             .bind(&now)
-            .execute(state.db.sqlite_adapter())
+            .execute(state.db.try_sqlite_adapter()?)
             .await?;
             publish_collaboration_event(
                 &state,
@@ -105,7 +106,7 @@ pub(crate) async fn accept_collaboration_invite(
                 }),
             )
             .await?;
-            fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), &participant_id)
+            fetch_collaboration_participant_by_id(state.db.try_sqlite_adapter()?, &participant_id)
                 .await?
         }
         Err(error) => return Err(error),
@@ -119,7 +120,8 @@ pub(crate) async fn decline_collaboration_invite(
     Path(invite_id): Path<String>,
 ) -> AppResult<Json<CollaborationInvite>> {
     let identity = require_identity(&state.db, &headers).await?;
-    let invite = fetch_collaboration_invite_by_id(state.db.sqlite_adapter(), &invite_id).await?;
+    let invite =
+        fetch_collaboration_invite_by_id(state.db.try_sqlite_adapter()?, &invite_id).await?;
     if invite.invitee_user_id != identity.user_id {
         return Err(AppError::Forbidden);
     }
@@ -130,7 +132,7 @@ pub(crate) async fn decline_collaboration_invite(
     )
     .bind(&now)
     .bind(&invite_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     publish_collaboration_event(
         &state,
@@ -145,6 +147,6 @@ pub(crate) async fn decline_collaboration_invite(
     )
     .await?;
     Ok(Json(
-        fetch_collaboration_invite_by_id(state.db.sqlite_adapter(), &invite_id).await?,
+        fetch_collaboration_invite_by_id(state.db.try_sqlite_adapter()?, &invite_id).await?,
     ))
 }

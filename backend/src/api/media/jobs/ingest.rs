@@ -178,7 +178,7 @@ pub(crate) async fn get_creator_upload_job(
     creator_id: &str,
     job_id: &str,
 ) -> AppResult<UploadJob> {
-    fetch_upload_job_by_id(database.sqlite_adapter(), creator_id, job_id).await
+    fetch_upload_job_by_id(database.try_sqlite_adapter()?, creator_id, job_id).await
 }
 
 pub(crate) async fn get_creator_upload_ingest_session(
@@ -186,7 +186,7 @@ pub(crate) async fn get_creator_upload_ingest_session(
     creator_id: &str,
     job_id: &str,
 ) -> AppResult<UploadIngestSession> {
-    fetch_upload_ingest_session(database.sqlite_adapter(), creator_id, job_id).await
+    fetch_upload_ingest_session(database.try_sqlite_adapter()?, creator_id, job_id).await
 }
 
 pub(crate) async fn validate_creator_upload_ingest_token(
@@ -195,7 +195,13 @@ pub(crate) async fn validate_creator_upload_ingest_token(
     job_id: &str,
     upload_token: &str,
 ) -> AppResult<()> {
-    validate_upload_ingest_token(database.sqlite_adapter(), creator_id, job_id, upload_token).await
+    validate_upload_ingest_token(
+        database.try_sqlite_adapter()?,
+        creator_id,
+        job_id,
+        upload_token,
+    )
+    .await
 }
 
 async fn rotate_creator_upload_ingest_token(
@@ -212,7 +218,7 @@ async fn rotate_creator_upload_ingest_token(
     .bind(updated_at)
     .bind(job_id)
     .bind(creator_id)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
     Ok(())
 }
@@ -244,7 +250,7 @@ async fn create_creator_upload_ingest_session(
     .bind(now)
     .bind(now)
     .bind(Option::<String>::None)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
     Ok(())
 }
@@ -263,7 +269,7 @@ async fn update_creator_upload_ingest_progress(
     .bind(updated_at)
     .bind(job_id)
     .bind(creator_id)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
     sqlx::query(
         "UPDATE upload_jobs SET bytes_received = ?, updated_at = ? WHERE id = ? AND creator_id = ?",
@@ -272,7 +278,7 @@ async fn update_creator_upload_ingest_progress(
     .bind(updated_at)
     .bind(job_id)
     .bind(creator_id)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
     Ok(())
 }
@@ -291,7 +297,7 @@ async fn complete_creator_upload_ingest(
     .bind(completed_at)
     .bind(job_id)
     .bind(creator_id)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
     sqlx::query(
         "UPDATE upload_jobs SET status = 'uploaded', checksum_sha256 = ?, completed_at = ?, updated_at = ?, processing_attempt_count = 0, last_processing_error = NULL, last_failed_at = NULL WHERE id = ? AND creator_id = ?",
@@ -301,7 +307,7 @@ async fn complete_creator_upload_ingest(
     .bind(completed_at)
     .bind(job_id)
     .bind(creator_id)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
     Ok(())
 }
@@ -313,7 +319,7 @@ async fn ensure_media_asset_shell_for_ingest(
     source_relative_path: &str,
 ) -> AppResult<()> {
     ensure_media_asset_shell(
-        database.sqlite_adapter(),
+        database.try_sqlite_adapter()?,
         creator_id,
         job,
         source_relative_path,

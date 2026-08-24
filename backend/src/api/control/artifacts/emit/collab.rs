@@ -17,7 +17,7 @@ pub(super) async fn emit_collaboration_route_artifacts(
     output: &LiveRuntimeOutput,
 ) -> AppResult<()> {
     let Some(collaboration_session) = fetch_active_collaboration_session_for_broadcast(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.broadcast_id,
     )
     .await?
@@ -25,7 +25,7 @@ pub(super) async fn emit_collaboration_route_artifacts(
         return Ok(());
     };
     let runtime = build_collaboration_runtime_response_for_host(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         collaboration_session,
     )
     .await?;

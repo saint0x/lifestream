@@ -11,7 +11,7 @@ pub(crate) async fn get_creator_live_ingest_session(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_active_live_ingest_session(state.db.sqlite_adapter(), creator_id).await?,
+        fetch_active_live_ingest_session(state.db.try_sqlite_adapter()?, creator_id).await?,
     ))
 }
 
@@ -23,10 +23,11 @@ pub(crate) async fn get_creator_live_ingest_session_by_id(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     let session =
-        fetch_live_ingest_session_by_id(state.db.sqlite_adapter(), creator_id, &session_id).await?;
+        fetch_live_ingest_session_by_id(state.db.try_sqlite_adapter()?, creator_id, &session_id)
+            .await?;
     let _ = reconcile_live_runtime_output_artifacts(&state, &session).await?;
     let mut record = fetch_creator_live_ingest_session_record(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         creator_id,
         &session_id,
     )
@@ -45,9 +46,11 @@ pub(crate) async fn list_creator_live_ingest_events(
 ) -> AppResult<Json<Vec<LiveIngestEvent>>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    fetch_live_ingest_session_by_id(state.db.sqlite_adapter(), creator_id, &session_id).await?;
+    fetch_live_ingest_session_by_id(state.db.try_sqlite_adapter()?, creator_id, &session_id)
+        .await?;
     Ok(Json(
-        fetch_live_ingest_events_for_session(state.db.sqlite_adapter(), &session_id, 50).await?,
+        fetch_live_ingest_events_for_session(state.db.try_sqlite_adapter()?, &session_id, 50)
+            .await?,
     ))
 }
 
@@ -59,7 +62,7 @@ pub(crate) async fn reconcile_creator_live_ingest_session(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     fetch_live_ingest_session_by_id_unreconciled(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         creator_id,
         &session_id,
     )
@@ -85,7 +88,8 @@ pub(crate) async fn terminate_creator_live_ingest(
     .await?;
     let creator_id = identity.require_creator_scope()?;
     let session =
-        fetch_live_ingest_session_by_id(state.db.sqlite_adapter(), creator_id, &session_id).await?;
+        fetch_live_ingest_session_by_id(state.db.try_sqlite_adapter()?, creator_id, &session_id)
+            .await?;
     if session.status != "connected" {
         return Err(AppError::BadRequest(
             "only connected live ingest sessions can be terminated".to_string(),
@@ -106,7 +110,8 @@ pub(crate) async fn terminate_creator_live_ingest(
 
     publish_current_creator_live_state(&state, creator_id).await?;
     Ok(Json(
-        fetch_live_ingest_session_by_id(state.db.sqlite_adapter(), creator_id, &session_id).await?,
+        fetch_live_ingest_session_by_id(state.db.try_sqlite_adapter()?, creator_id, &session_id)
+            .await?,
     ))
 }
 
@@ -126,7 +131,8 @@ pub(crate) async fn repair_creator_live_runtime_output(
     .await?;
     let creator_id = identity.require_creator_scope()?;
     let session =
-        fetch_live_ingest_session_by_id(state.db.sqlite_adapter(), creator_id, &session_id).await?;
+        fetch_live_ingest_session_by_id(state.db.try_sqlite_adapter()?, creator_id, &session_id)
+            .await?;
     Ok(Json(
         super::super::repair::repair_runtime_output_authoritatively(
             state,

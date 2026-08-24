@@ -9,7 +9,7 @@ pub(crate) async fn list_live_streams(
         ));
     }
     Ok(Json(
-        fetch_live_streams(state.db.sqlite_adapter(), None).await?,
+        fetch_live_streams(state.db.try_sqlite_adapter()?, None).await?,
     ))
 }
 
@@ -25,7 +25,7 @@ pub(crate) async fn get_live_stream(
         ));
     }
     Ok(Json(
-        fetch_live_stream_by_slug(state.db.sqlite_adapter(), &slug).await?,
+        fetch_live_stream_by_slug(state.db.try_sqlite_adapter()?, &slug).await?,
     ))
 }
 
@@ -83,7 +83,7 @@ pub(crate) async fn get_live_discovery(
             active_sort,
         }));
     }
-    let categories = fetch_categories(state.db.sqlite_adapter()).await?;
+    let categories = fetch_categories(state.db.try_sqlite_adapter()?).await?;
     let active_category = match query.category.as_deref() {
         Some("all") | None => None,
         Some(category_name) => {
@@ -106,7 +106,7 @@ pub(crate) async fn get_live_discovery(
     };
 
     let limit = query.limit.unwrap_or(200).clamp(1, 500) as usize;
-    let mut streams = fetch_live_streams(state.db.sqlite_adapter(), None).await?;
+    let mut streams = fetch_live_streams(state.db.try_sqlite_adapter()?, None).await?;
     let total_viewers = streams.iter().map(|stream| stream.viewers).sum();
     let total_channels = streams.len() as i64;
     if let Some(category_name) = active_category.as_deref() {

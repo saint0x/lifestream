@@ -132,7 +132,7 @@ pub(super) async fn publish_collaboration_event_raw(
     )
     .bind(&created_at)
     .bind(session_id)
-    .fetch_one(state.db.sqlite_adapter())
+    .fetch_one(state.db.try_sqlite_adapter()?)
     .await?;
     let sequence: i64 = row.get("last_event_seq");
     let event = CollaborationEvent {
@@ -160,7 +160,7 @@ pub(super) async fn publish_collaboration_event_raw(
     .bind(&event.event_type)
     .bind(to_json(&event.payload)?)
     .bind(&event.created_at)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     state
         .realtime
@@ -192,7 +192,8 @@ pub(super) async fn publish_collaboration_event(
         payload,
     )
     .await?;
-    let session = fetch_collaboration_session_by_id(state.db.sqlite_adapter(), session_id).await?;
+    let session =
+        fetch_collaboration_session_by_id(state.db.try_sqlite_adapter()?, session_id).await?;
     publish_current_creator_live_state(state, &session.host_creator_id).await?;
     Ok(event)
 }
@@ -214,7 +215,8 @@ pub(super) async fn publish_collaboration_reconciliation_event(
         payload,
     )
     .await?;
-    let session = fetch_collaboration_session_by_id(state.db.sqlite_adapter(), session_id).await?;
+    let session =
+        fetch_collaboration_session_by_id(state.db.try_sqlite_adapter()?, session_id).await?;
     publish_current_creator_live_state(state, &session.host_creator_id).await?;
     Ok(event)
 }

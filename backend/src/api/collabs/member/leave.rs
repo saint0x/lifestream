@@ -7,7 +7,7 @@ pub(crate) async fn leave_my_collaboration_session(
 ) -> AppResult<Json<CollaborationParticipant>> {
     let identity = require_identity(&state.db, &headers).await?;
     let participant = fetch_collaboration_participant_for_user(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session_id,
         &identity.user_id,
     )
@@ -21,7 +21,8 @@ pub(crate) async fn leave_my_collaboration_session(
         return Ok(Json(participant));
     }
 
-    let session = fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &session_id).await?;
+    let session =
+        fetch_collaboration_session_by_id(state.db.try_sqlite_adapter()?, &session_id).await?;
     if session.status == "ended" {
         return Ok(Json(participant));
     }
@@ -39,7 +40,7 @@ pub(crate) async fn leave_my_collaboration_session(
     .bind(&now)
     .bind(&participant.id)
     .bind(&session_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     revoke_collaboration_mirror_grants_for_participant(
         &state,
@@ -64,6 +65,7 @@ pub(crate) async fn leave_my_collaboration_session(
     .await?;
 
     Ok(Json(
-        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), &participant.id).await?,
+        fetch_collaboration_participant_by_id(state.db.try_sqlite_adapter()?, &participant.id)
+            .await?,
     ))
 }

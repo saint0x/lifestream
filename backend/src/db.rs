@@ -2175,8 +2175,8 @@ impl Database {
     pub fn try_sqlite_adapter(&self) -> AppResult<&SqlitePool> {
         match &self.provider {
             DatabaseProvider::Sqlite(pool) => Ok(pool),
-            DatabaseProvider::Postgres(_) => Err(AppError::Internal(
-                "sqlite repository adapter requested while postgres provider is active".to_string(),
+            DatabaseProvider::Postgres(_) => Err(AppError::BadRequest(
+                "this endpoint is not available on the active database provider".to_string(),
             )),
         }
     }

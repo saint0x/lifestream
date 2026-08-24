@@ -12,17 +12,21 @@ pub(crate) async fn reconcile_stale_presence_sessions(state: SharedState) -> App
     .bind(&now)
     .bind(&cutoff)
     .bind(&cutoff)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
-    reconcile_stale_creator_live_socket_sessions_for_read(state.db.sqlite_adapter(), None, None)
-        .await?;
+    reconcile_stale_creator_live_socket_sessions_for_read(
+        state.db.try_sqlite_adapter()?,
+        None,
+        None,
+    )
+    .await?;
 
     let session_rows = sqlx::query(
         "SELECT DISTINCT collaboration_session_id FROM collaboration_socket_sessions WHERE disconnected_at IS NULL AND last_seen_at < ?",
     )
     .bind(&cutoff)
-    .fetch_all(state.db.sqlite_adapter())
+    .fetch_all(state.db.try_sqlite_adapter()?)
     .await?;
 
     for row in session_rows {
@@ -57,7 +61,7 @@ pub(crate) async fn reconcile_stale_creator_live_socket_sessions_for_read_coales
         return Ok(());
     }
     reconcile_stale_creator_live_socket_sessions_for_read(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         creator_filter,
         user_filter,
     )
@@ -119,7 +123,7 @@ pub(crate) async fn reconcile_single_creator_live_socket_session(
     socket_id: &str,
 ) -> AppResult<CreatorLiveSocketPresenceReconciliationReport> {
     let before = fetch_creator_live_socket_presence_by_id_raw(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         creator_id,
         socket_id,
     )
@@ -136,7 +140,7 @@ pub(crate) async fn reconcile_single_creator_live_socket_session(
         .bind(&cutoff)
         .bind(creator_id)
         .bind(socket_id)
-        .execute(state.db.sqlite_adapter())
+        .execute(state.db.try_sqlite_adapter()?)
         .await?;
         if updated.rows_affected() > 0 {
             actions.push(CreatorLiveSocketPresenceReconciliationAction {
@@ -151,7 +155,7 @@ pub(crate) async fn reconcile_single_creator_live_socket_session(
     }
 
     let socket_session = fetch_creator_live_socket_presence_by_id_raw(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         creator_id,
         socket_id,
     )

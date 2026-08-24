@@ -5,16 +5,16 @@ pub(crate) async fn mark_live_ingest_session_stale(
     state: &SharedState,
     session: &LiveIngestSession,
 ) -> AppResult<()> {
-    mark_live_ingest_session_stale_in_db(state.db.sqlite_adapter(), session).await?;
+    mark_live_ingest_session_stale_in_db(state.db.try_sqlite_adapter()?, session).await?;
     let refreshed_session = fetch_live_ingest_session_by_id(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.creator_id,
         &session.id,
     )
     .await?;
     persist_live_runtime_spec(state, &refreshed_session).await?;
     if let Some(collaboration_session) = fetch_active_collaboration_session_for_broadcast(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.broadcast_id,
     )
     .await?
@@ -124,7 +124,7 @@ pub(crate) async fn reconcile_stale_live_ingest_sessions(state: SharedState) -> 
         "#,
     )
     .bind(&cutoff)
-    .fetch_all(state.db.sqlite_adapter())
+    .fetch_all(state.db.try_sqlite_adapter()?)
     .await?;
 
     for row in rows {
@@ -203,9 +203,11 @@ pub(crate) async fn reconcile_single_live_ingest_session(
 ) -> AppResult<LiveIngestReconciliationReport> {
     let now = Utc::now().to_rfc3339();
     let mut actions = Vec::new();
-    let session =
-        fetch_live_ingest_session_by_id_global_unreconciled(state.db.sqlite_adapter(), session_id)
-            .await?;
+    let session = fetch_live_ingest_session_by_id_global_unreconciled(
+        state.db.try_sqlite_adapter()?,
+        session_id,
+    )
+    .await?;
 
     if session.status == "connected" && is_live_ingest_session_stale(&session) {
         mark_live_ingest_session_stale(&state, &session).await?;
@@ -220,7 +222,7 @@ pub(crate) async fn reconcile_single_live_ingest_session(
     }
 
     let record =
-        fetch_admin_live_ingest_session_record(state.db.sqlite_adapter(), session_id).await?;
+        fetch_admin_live_ingest_session_record(state.db.try_sqlite_adapter()?, session_id).await?;
     Ok(LiveIngestReconciliationReport {
         session_id: session_id.to_string(),
         reconciled_at: now,

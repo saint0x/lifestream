@@ -62,12 +62,12 @@ async fn fetch_or_initialize_live_runtime_output(
     session: &LiveIngestSession,
 ) -> AppResult<LiveRuntimeOutput> {
     if let Some(output) =
-        fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session.id).await?
+        fetch_live_runtime_output_for_session(state.db.try_sqlite_adapter()?, &session.id).await?
     {
         return Ok(output);
     }
-    initialize_live_runtime_output(state.db.sqlite_adapter(), session).await?;
-    fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session.id)
+    initialize_live_runtime_output(state.db.try_sqlite_adapter()?, session).await?;
+    fetch_live_runtime_output_for_session(state.db.try_sqlite_adapter()?, &session.id)
         .await?
         .ok_or_else(|| {
             AppError::Internal(
@@ -81,13 +81,13 @@ pub(crate) async fn persist_live_runtime_spec(
     session: &LiveIngestSession,
 ) -> AppResult<String> {
     let session = fetch_live_ingest_session_by_id_unreconciled(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.creator_id,
         &session.id,
     )
     .await?;
     let spec_relative_path = provision_live_runtime_workspace(state, &session).await?;
-    let output = fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session.id)
+    let output = fetch_live_runtime_output_for_session(state.db.try_sqlite_adapter()?, &session.id)
         .await?
         .ok_or_else(|| {
             AppError::Internal("missing live runtime output while persisting spec".to_string())
@@ -96,14 +96,14 @@ pub(crate) async fn persist_live_runtime_spec(
 
     let spec = build_live_runtime_spec(state, &session, &output, &spec_relative_path).await?;
     let target_sync = sync_live_runtime_targets(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session,
         &build_live_runtime_targets(&session, &spec, &output),
     )
     .await?;
     if target_sync.created > 0 || target_sync.updated > 0 || target_sync.removed > 0 {
         write_live_ingest_event(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             &session.id,
             &session.creator_id,
             &session.broadcast_id,

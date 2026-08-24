@@ -47,19 +47,19 @@ pub(crate) async fn metrics(State(state): State<SharedState>) -> AppResult<Respo
     );
     if state.database_kind == crate::config::DatabaseKind::Sqlite {
         reconcile_stale_creator_live_socket_sessions_for_read(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             None,
             None,
         )
         .await?;
         let active_viewer_presence =
-            count_all_active_live_viewer_sessions(state.db.sqlite_adapter()).await?;
+            count_all_active_live_viewer_sessions(state.db.try_sqlite_adapter()?).await?;
         let active_collaboration_presence =
-            count_all_active_collaboration_socket_sessions(state.db.sqlite_adapter()).await?;
+            count_all_active_collaboration_socket_sessions(state.db.try_sqlite_adapter()?).await?;
         let active_creator_live_presence =
-            count_all_active_creator_live_socket_sessions(state.db.sqlite_adapter()).await?;
+            count_all_active_creator_live_socket_sessions(state.db.try_sqlite_adapter()?).await?;
         let live_ingest_overview =
-            fetch_admin_live_ingest_overview(state.db.sqlite_adapter(), None).await?;
+            fetch_admin_live_ingest_overview(state.db.try_sqlite_adapter()?, None).await?;
 
         write_gauge(
             &mut body,
@@ -79,12 +79,12 @@ pub(crate) async fn metrics(State(state): State<SharedState>) -> AppResult<Respo
         write_gauge(
             &mut body,
             "vanta_db_pool_connections",
-            state.db.sqlite_adapter().size(),
+            state.db.try_sqlite_adapter()?.size(),
         );
         write_gauge(
             &mut body,
             "vanta_db_pool_idle_connections",
-            state.db.sqlite_adapter().num_idle(),
+            state.db.try_sqlite_adapter()?.num_idle(),
         );
         write_live_ingest_metrics(&mut body, &live_ingest_overview);
     } else {

@@ -137,7 +137,8 @@ pub(crate) async fn create_live_playback_session(
     {
         return Ok(Json(cached));
     }
-    let target = fetch_live_stream_playback_target(state.db.sqlite_adapter(), &stream_id).await?;
+    let target =
+        fetch_live_stream_playback_target(state.db.try_sqlite_adapter()?, &stream_id).await?;
     ensure_live_runtime_output_ready_for_playback(
         &state,
         &target.runtime_output,
@@ -260,10 +261,13 @@ async fn create_playback_session_for_content_id(
     content_id: String,
 ) -> AppResult<Json<PlaybackGrant>> {
     let maybe_identity = optional_identity(&state.db, &headers).await?;
-    let target = fetch_upload_playback_target(state.db.sqlite_adapter(), &content_id).await?;
-    let access =
-        resolve_upload_playback_access(state.db.sqlite_adapter(), maybe_identity.as_ref(), &target)
-            .await?;
+    let target = fetch_upload_playback_target(state.db.try_sqlite_adapter()?, &content_id).await?;
+    let access = resolve_upload_playback_access(
+        state.db.try_sqlite_adapter()?,
+        maybe_identity.as_ref(),
+        &target,
+    )
+    .await?;
     let access_scope = access.access_scope.clone();
     let now = Utc::now();
     let session_id = format!("pbs-{}", Uuid::new_v4().simple());

@@ -53,7 +53,7 @@ pub(crate) async fn get_my_state(
     }
     let response = fetch_viewer_app_state(
         &state.db,
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &identity.user_id,
         &identity.session_id,
     )
@@ -83,7 +83,7 @@ pub(crate) async fn get_my_library(
         ));
     }
     Ok(Json(
-        fetch_user_library(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_user_library(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }
 
@@ -100,7 +100,7 @@ pub(crate) async fn get_my_watchlist(
         ));
     }
     Ok(Json(
-        fetch_watchlist_response(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_watchlist_response(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }
 
@@ -116,7 +116,7 @@ pub(crate) async fn get_my_entitlements(
         }));
     }
     Ok(Json(
-        fetch_user_entitlements(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_user_entitlements(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }
 

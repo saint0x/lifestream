@@ -25,5 +25,6 @@ pub(super) async fn require_host_session(
 ) -> AppResult<CollaborationSession> {
     require_host_role(session)?;
     let creator_id = require_creator_identity(identity)?;
-    fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, session_id).await
+    fetch_collaboration_session_for_host(state.db.try_sqlite_adapter()?, creator_id, session_id)
+        .await
 }

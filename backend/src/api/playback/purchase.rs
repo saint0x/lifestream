@@ -29,7 +29,7 @@ async fn purchase_content_access_for_id(
         Duration::from_secs(60),
     )
     .await?;
-    let target = fetch_upload_playback_target(state.db.sqlite_adapter(), &content_id).await?;
+    let target = fetch_upload_playback_target(state.db.try_sqlite_adapter()?, &content_id).await?;
     let terms = resolve_upload_access_terms(
         Some(target.upload.access_policy.clone()),
         target.upload.access_tier_id.clone(),
@@ -42,10 +42,10 @@ async fn purchase_content_access_for_id(
             "content is not configured for direct purchase".to_string(),
         ));
     }
-    ensure_creator_can_accept_paid_transactions(state.db.sqlite_adapter(), &target.creator_id)
+    ensure_creator_can_accept_paid_transactions(state.db.try_sqlite_adapter()?, &target.creator_id)
         .await?;
     if let Some(existing_purchase) = fetch_current_content_purchase(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &identity.user_id,
         &target.upload.id,
     )
@@ -77,11 +77,11 @@ async fn purchase_content_access_for_id(
     .bind(terms.currency.clone().unwrap_or_else(|| "USD".to_string()))
     .bind(&purchased_at)
     .bind(expires_at)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
-    let buyer = fetch_user(state.db.sqlite_adapter(), &identity.user_id).await?;
+    let buyer = fetch_user(state.db.try_sqlite_adapter()?, &identity.user_id).await?;
     enqueue_notification_event(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         "content_purchase",
         &format!("{} purchased {}.", buyer.display_name, target.upload.title),
         Some(&identity.user_id),
@@ -100,6 +100,6 @@ async fn purchase_content_access_for_id(
     .await?;
 
     Ok(Json(
-        fetch_content_purchase_by_id(state.db.sqlite_adapter(), &purchase_id).await?,
+        fetch_content_purchase_by_id(state.db.try_sqlite_adapter()?, &purchase_id).await?,
     ))
 }

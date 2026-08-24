@@ -174,7 +174,7 @@ async fn ensure_creator_can_publish_paid_content_for_upload(
     database: &crate::db::Database,
     creator_id: &str,
 ) -> AppResult<()> {
-    ensure_creator_can_publish_paid_content(database.sqlite_adapter(), creator_id).await
+    ensure_creator_can_publish_paid_content(database.try_sqlite_adapter()?, creator_id).await
 }
 
 async fn validate_creator_access_tier_for_upload(
@@ -184,7 +184,7 @@ async fn validate_creator_access_tier_for_upload(
     access_tier_id: Option<&str>,
 ) -> AppResult<()> {
     validate_creator_access_tier(
-        database.sqlite_adapter(),
+        database.try_sqlite_adapter()?,
         creator_id,
         access_policy,
         access_tier_id,
@@ -197,7 +197,7 @@ async fn fetch_creator_series_title_for_upload(
     creator_id: &str,
     series_id: &str,
 ) -> AppResult<Option<String>> {
-    fetch_creator_series_title(database.sqlite_adapter(), creator_id, series_id).await
+    fetch_creator_series_title(database.try_sqlite_adapter()?, creator_id, series_id).await
 }
 
 async fn upsert_upload_record(
@@ -284,7 +284,7 @@ async fn upsert_upload_record(
     .bind(resolution)
     .bind(1.0_f64)
     .bind(job.series_id.clone())
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await
     .map_err(AppError::Database)?;
     Ok(())
@@ -299,7 +299,7 @@ async fn allocate_upload_slug(
     let existing_rows =
         sqlx::query("SELECT id, slug FROM uploads WHERE creator_id = ? AND slug IS NOT NULL")
             .bind(creator_id)
-            .fetch_all(database.sqlite_adapter())
+            .fetch_all(database.try_sqlite_adapter()?)
             .await?;
     let existing_slugs = existing_rows
         .into_iter()
@@ -339,7 +339,7 @@ async fn ensure_creator_series_season_for_upload(
     synopsis: String,
 ) -> AppResult<()> {
     ensure_creator_series_season(
-        database.sqlite_adapter(),
+        database.try_sqlite_adapter()?,
         creator_id,
         series_id,
         season_number,
@@ -378,7 +378,7 @@ async fn update_upload_publish_state(
     .bind(now)
     .bind(job_id)
     .bind(creator_id)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
 
     sqlx::query(
@@ -391,7 +391,7 @@ async fn update_upload_publish_state(
     .bind(now)
     .bind(job_id)
     .bind(creator_id)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
     Ok(())
 }
@@ -401,7 +401,7 @@ async fn fetch_published_upload(
     creator_id: &str,
     upload_id: &str,
 ) -> AppResult<Upload> {
-    fetch_upload_by_id(database.sqlite_adapter(), creator_id, upload_id).await
+    fetch_upload_by_id(database.try_sqlite_adapter()?, creator_id, upload_id).await
 }
 
 async fn enqueue_upload_release_notification(
@@ -416,9 +416,9 @@ async fn enqueue_upload_release_notification(
     visibility: &str,
     slug: &str,
 ) -> AppResult<()> {
-    let creator_profile = fetch_creator_profile(database.sqlite_adapter(), creator_id).await?;
+    let creator_profile = fetch_creator_profile(database.try_sqlite_adapter()?, creator_id).await?;
     enqueue_notification_event(
-        database.sqlite_adapter(),
+        database.try_sqlite_adapter()?,
         "content_release",
         &format!("{asset_title} is now {upload_status}."),
         Some(user_id),

@@ -14,7 +14,7 @@ pub(crate) async fn update_creator_live(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    let profile = fetch_creator_profile(state.db.sqlite_adapter(), creator_id).await?;
+    let profile = fetch_creator_profile(state.db.try_sqlite_adapter()?, creator_id).await?;
     let next_category = input
         .category
         .clone()
@@ -27,12 +27,12 @@ pub(crate) async fn update_creator_live(
     .bind(&next_category)
     .bind(to_json(&next_tags)?)
     .bind(creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     if let Some(current_id) = profile.current_broadcast_id {
         let current =
-            fetch_broadcast_by_id(state.db.sqlite_adapter(), creator_id, &current_id).await?;
+            fetch_broadcast_by_id(state.db.try_sqlite_adapter()?, creator_id, &current_id).await?;
         sqlx::query(
             "UPDATE broadcasts SET title = ?, category = ?, tags_json = ?, is_mature = ? WHERE id = ?",
         )
@@ -41,7 +41,7 @@ pub(crate) async fn update_creator_live(
         .bind(to_json(&next_tags)?)
         .bind(input.is_mature.unwrap_or(current.is_mature) as i64)
         .bind(current_id)
-        .execute(state.db.sqlite_adapter())
+        .execute(state.db.try_sqlite_adapter()?)
         .await?;
     }
 

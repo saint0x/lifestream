@@ -7,7 +7,7 @@ pub(super) async fn list_analytics(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_analytics(state.db.sqlite_adapter(), creator_id).await?,
+        fetch_analytics(state.db.try_sqlite_adapter()?, creator_id).await?,
     ))
 }
 
@@ -18,7 +18,7 @@ pub(super) async fn list_revenue(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_revenue_entries(state.db.sqlite_adapter(), creator_id).await?,
+        fetch_revenue_entries(state.db.try_sqlite_adapter()?, creator_id).await?,
     ))
 }
 
@@ -29,7 +29,7 @@ pub(super) async fn list_notifications(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_notifications_rows(state.db.sqlite_adapter(), creator_id).await?,
+        fetch_notifications_rows(state.db.try_sqlite_adapter()?, creator_id).await?,
     ))
 }
 
@@ -47,7 +47,7 @@ pub(super) async fn mark_creator_notification_read(
     .bind(&now)
     .bind(&notification_id)
     .bind(creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound);

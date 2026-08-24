@@ -13,9 +13,10 @@ pub(super) async fn subscribe_to_creator_tier(
         Duration::from_secs(60),
     )
     .await?;
-    ensure_creator_can_accept_paid_transactions(state.db.sqlite_adapter(), &creator_id).await?;
+    ensure_creator_can_accept_paid_transactions(state.db.try_sqlite_adapter()?, &creator_id)
+        .await?;
     let tier =
-        fetch_creator_subscriber_tier_by_id(state.db.sqlite_adapter(), &creator_id, &tier_id)
+        fetch_creator_subscriber_tier_by_id(state.db.try_sqlite_adapter()?, &creator_id, &tier_id)
             .await?;
     if tier.status != "active" {
         return Err(AppError::BadRequest(
@@ -45,11 +46,11 @@ pub(super) async fn subscribe_to_creator_tier(
     .bind(&tier.id)
     .bind(&started_at)
     .bind(&renews_at)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
-    let subscriber = fetch_user(state.db.sqlite_adapter(), &identity.user_id).await?;
+    let subscriber = fetch_user(state.db.try_sqlite_adapter()?, &identity.user_id).await?;
     enqueue_notification_event(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         "creator_subscription",
         &format!(
             "{} subscribed to {}.",
@@ -71,7 +72,12 @@ pub(super) async fn subscribe_to_creator_tier(
     .await?;
 
     Ok(Json(
-        fetch_creator_membership(state.db.sqlite_adapter(), &identity.user_id, &creator_id).await?,
+        fetch_creator_membership(
+            state.db.try_sqlite_adapter()?,
+            &identity.user_id,
+            &creator_id,
+        )
+        .await?,
     ))
 }
 
@@ -93,7 +99,7 @@ pub(super) async fn cancel_creator_subscription(
     .bind(&now)
     .bind(&identity.user_id)
     .bind(&creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     if result.rows_affected() == 0 {

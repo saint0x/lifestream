@@ -18,7 +18,7 @@ pub(super) async fn sync_runtime_target_dependents(
     session: &LiveIngestSession,
 ) -> AppResult<()> {
     let Some(collaboration_session) = fetch_active_collaboration_session_for_broadcast(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.broadcast_id,
     )
     .await?
@@ -38,7 +38,7 @@ pub(super) async fn build_live_runtime_collaboration_spec(
     session: &LiveIngestSession,
 ) -> AppResult<Option<LiveRuntimeCollaborationSpec>> {
     let Some(collaboration_session) = fetch_active_collaboration_session_for_broadcast(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.broadcast_id,
     )
     .await?
@@ -46,7 +46,7 @@ pub(super) async fn build_live_runtime_collaboration_spec(
         return Ok(None);
     };
     let runtime = build_collaboration_runtime_response_for_host(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         collaboration_session,
     )
     .await?;

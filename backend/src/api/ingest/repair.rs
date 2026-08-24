@@ -15,11 +15,11 @@ pub(super) async fn repair_runtime_output_authoritatively(
 ) -> AppResult<LiveRuntimeRepairReport> {
     let reason = input.reason.trim().to_string();
     let (output, actions) =
-        repair_live_runtime_output(state.db.sqlite_adapter(), &session, &input).await?;
+        repair_live_runtime_output(state.db.try_sqlite_adapter()?, &session, &input).await?;
     let repaired_at = Utc::now().to_rfc3339();
 
     record_live_runtime_telemetry(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session,
         "runtime_repair",
         &output.runtime_state,
@@ -36,7 +36,7 @@ pub(super) async fn repair_runtime_output_authoritatively(
     )
     .await?;
     write_live_ingest_event(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.id,
         &session.creator_id,
         &session.broadcast_id,
@@ -60,7 +60,7 @@ pub(super) async fn repair_runtime_output_authoritatively(
     publish_current_creator_live_state(&state, &session.creator_id).await?;
 
     let mut record =
-        fetch_admin_live_ingest_session_record(state.db.sqlite_adapter(), &session.id).await?;
+        fetch_admin_live_ingest_session_record(state.db.try_sqlite_adapter()?, &session.id).await?;
     if let Some(output) = record.runtime_output.as_ref() {
         record.artifact_health =
             Some(describe_live_runtime_artifact_health(&state, &record.session, output).await?);

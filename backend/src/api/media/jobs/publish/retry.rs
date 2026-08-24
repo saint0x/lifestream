@@ -51,7 +51,7 @@ async fn retry_creator_upload_job_processing_state(
     .bind(updated_at)
     .bind(job_id)
     .bind(creator_id)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'uploaded', updated_at = ? WHERE upload_job_id = ? AND creator_id = ?",
@@ -59,7 +59,7 @@ async fn retry_creator_upload_job_processing_state(
     .bind(updated_at)
     .bind(job_id)
     .bind(creator_id)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
     Ok(())
 }

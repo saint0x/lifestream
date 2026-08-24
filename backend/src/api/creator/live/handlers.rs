@@ -40,7 +40,7 @@ pub(crate) async fn get_creator_live(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        build_creator_live_snapshot(state.db.sqlite_adapter(), creator_id).await?,
+        build_creator_live_snapshot(state.db.try_sqlite_adapter()?, creator_id).await?,
     ))
 }
 
@@ -75,7 +75,7 @@ pub(crate) async fn get_creator_live_socket_session(
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
         fetch_creator_live_socket_presence_by_id_raw(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             creator_id,
             &socket_id,
         )
@@ -91,7 +91,7 @@ pub(crate) async fn reconcile_creator_live_socket_session(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     let socket_session = fetch_creator_live_socket_presence_by_id_raw(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         creator_id,
         &socket_id,
     )
@@ -111,7 +111,7 @@ async fn get_creator_live_settings(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_creator_live_settings(state.db.sqlite_adapter(), creator_id).await?,
+        fetch_creator_live_settings(state.db.try_sqlite_adapter()?, creator_id).await?,
     ))
 }
 
@@ -129,8 +129,8 @@ async fn update_creator_live_settings(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_live_settings_row(state.db.sqlite_adapter(), creator_id).await?;
-    let current = fetch_creator_live_settings(state.db.sqlite_adapter(), creator_id).await?;
+    ensure_creator_live_settings_row(state.db.try_sqlite_adapter()?, creator_id).await?;
+    let current = fetch_creator_live_settings(state.db.try_sqlite_adapter()?, creator_id).await?;
     if let Some(value) = input.slow_mode_seconds {
         validate_slow_mode_seconds(value)?;
     }
@@ -176,10 +176,10 @@ async fn update_creator_live_settings(
     .bind(&active_scene_id)
     .bind(to_json(&scenes)?)
     .bind(creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
-    let settings = fetch_creator_live_settings(state.db.sqlite_adapter(), creator_id).await?;
+    let settings = fetch_creator_live_settings(state.db.try_sqlite_adapter()?, creator_id).await?;
     publish_current_creator_live_state(&state, creator_id).await?;
     Ok(Json(settings))
 }
@@ -191,6 +191,6 @@ async fn get_creator_live_health(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_creator_live_health(state.db.sqlite_adapter(), creator_id).await?,
+        fetch_creator_live_health(state.db.try_sqlite_adapter()?, creator_id).await?,
     ))
 }

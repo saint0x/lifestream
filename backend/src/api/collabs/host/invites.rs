@@ -15,18 +15,21 @@ pub(crate) async fn create_collaboration_invite(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_collaboration_enabled(state.db.sqlite_adapter(), creator_id).await?;
-    let session =
-        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
-            .await?;
+    ensure_creator_collaboration_enabled(state.db.try_sqlite_adapter()?, creator_id).await?;
+    let session = fetch_collaboration_session_for_host(
+        state.db.try_sqlite_adapter()?,
+        creator_id,
+        &session_id,
+    )
+    .await?;
     if session.status == "ended" {
         return Err(AppError::BadRequest(
             "cannot invite participants into an ended collaboration session".to_string(),
         ));
     }
-    let invitee = fetch_user(state.db.sqlite_adapter(), &input.invitee_user_id).await?;
+    let invitee = fetch_user(state.db.try_sqlite_adapter()?, &input.invitee_user_id).await?;
     let invitee_creator_id =
-        fetch_creator_id_for_user(state.db.sqlite_adapter(), &invitee.id).await?;
+        fetch_creator_id_for_user(state.db.try_sqlite_adapter()?, &invitee.id).await?;
     if input.mirror_to_guest_channel && invitee_creator_id.is_none() {
         return Err(AppError::BadRequest(
             "mirror-to-channel collaboration requires the invited user to have a creator profile"
@@ -34,7 +37,7 @@ pub(crate) async fn create_collaboration_invite(
         ));
     }
     if let Ok(existing_participant) = fetch_collaboration_participant_for_user(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session_id,
         &invitee.id,
     )
@@ -47,7 +50,7 @@ pub(crate) async fn create_collaboration_invite(
         }
     }
     if has_pending_collaboration_invite_for_user(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session_id,
         &invitee.id,
     )
@@ -82,7 +85,7 @@ pub(crate) async fn create_collaboration_invite(
     .bind(input.message)
     .bind(now.to_rfc3339())
     .bind(&expires_at)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     publish_collaboration_event(
         &state,
@@ -101,7 +104,7 @@ pub(crate) async fn create_collaboration_invite(
     )
     .await?;
     enqueue_notification_event(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         "collaboration_invite",
         &format!(
             "{} invited you to join a collaboration session.",
@@ -124,7 +127,7 @@ pub(crate) async fn create_collaboration_invite(
     .await?;
 
     Ok(Json(
-        fetch_collaboration_invite_by_id(state.db.sqlite_adapter(), &invite_id).await?,
+        fetch_collaboration_invite_by_id(state.db.try_sqlite_adapter()?, &invite_id).await?,
     ))
 }
 
@@ -135,9 +138,12 @@ pub(crate) async fn revoke_collaboration_invite(
 ) -> AppResult<Json<CollaborationInvite>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let session =
-        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
-            .await?;
+    let session = fetch_collaboration_session_for_host(
+        state.db.try_sqlite_adapter()?,
+        creator_id,
+        &session_id,
+    )
+    .await?;
     Ok(Json(
         revoke_collaboration_invite_internal(
             &state,
@@ -162,7 +168,8 @@ pub(crate) async fn revoke_collaboration_invite_internal(
             "cannot revoke invites from an ended collaboration session".to_string(),
         ));
     }
-    let invite = fetch_collaboration_invite_by_id(state.db.sqlite_adapter(), invite_id).await?;
+    let invite =
+        fetch_collaboration_invite_by_id(state.db.try_sqlite_adapter()?, invite_id).await?;
     if invite.session_id != session.id || invite.host_creator_id != session.host_creator_id {
         return Err(AppError::NotFound);
     }
@@ -176,7 +183,7 @@ pub(crate) async fn revoke_collaboration_invite_internal(
     )
     .bind(&now)
     .bind(invite_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     publish_collaboration_invite_revoked_events(
         state,
@@ -187,5 +194,5 @@ pub(crate) async fn revoke_collaboration_invite_internal(
         reason,
     )
     .await?;
-    fetch_collaboration_invite_by_id(state.db.sqlite_adapter(), invite_id).await
+    fetch_collaboration_invite_by_id(state.db.try_sqlite_adapter()?, invite_id).await
 }

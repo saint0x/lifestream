@@ -13,17 +13,18 @@ pub(crate) async fn reconcile_notification_deliveries(state: SharedState) -> App
         "#,
     )
     .bind(&now)
-    .fetch_all(state.db.sqlite_adapter())
+    .fetch_all(state.db.try_sqlite_adapter()?)
     .await?;
 
     for row in rows {
         let delivery_id: String = row.get("id");
-        let _ = dispatch_notification_delivery(state.db.sqlite_adapter(), &delivery_id).await?;
+        let _ =
+            dispatch_notification_delivery(state.db.try_sqlite_adapter()?, &delivery_id).await?;
     }
 
     Ok(())
 }
 
 pub(crate) async fn reconcile_scheduled_upload_releases(state: SharedState) -> AppResult<()> {
-    publish_due_scheduled_upload_releases(state.db.sqlite_adapter(), None, None).await
+    publish_due_scheduled_upload_releases(state.db.try_sqlite_adapter()?, None, None).await
 }

@@ -7,9 +7,9 @@ pub(super) async fn get_admin_creator_enforcement_state(
 ) -> AppResult<Json<CreatorEnforcementState>> {
     let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
-    let profile = fetch_creator_profile(state.db.sqlite_adapter(), &creator_id).await?;
+    let profile = fetch_creator_profile(state.db.try_sqlite_adapter()?, &creator_id).await?;
     Ok(Json(
-        fetch_creator_enforcement_state(state.db.sqlite_adapter(), &profile).await?,
+        fetch_creator_enforcement_state(state.db.try_sqlite_adapter()?, &profile).await?,
     ))
 }
 
@@ -21,7 +21,7 @@ pub(super) async fn create_admin_creator_enforcement_action(
 ) -> AppResult<Json<CreatorEnforcementAction>> {
     let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
-    let profile = fetch_creator_profile(state.db.sqlite_adapter(), &creator_id).await?;
+    let profile = fetch_creator_profile(state.db.try_sqlite_adapter()?, &creator_id).await?;
     validate_creator_enforcement_scope(&input.scope)?;
     if input.reason.trim().is_empty() {
         return Err(AppError::BadRequest("reason is required".to_string()));
@@ -46,11 +46,11 @@ pub(super) async fn create_admin_creator_enforcement_action(
     .bind(&identity.user_id)
     .bind(&now)
     .bind(expires_at.as_deref())
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     write_moderation_audit_entry(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &creator_id,
         None,
         &identity.user_id,
@@ -65,7 +65,7 @@ pub(super) async fn create_admin_creator_enforcement_action(
     )
     .await?;
     enqueue_notification_event(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         "creator_enforcement_applied",
         &format!(
             "A creator enforcement action was applied to {}.",
@@ -88,7 +88,7 @@ pub(super) async fn create_admin_creator_enforcement_action(
     .await?;
 
     Ok(Json(
-        fetch_creator_enforcement_action_by_id(state.db.sqlite_adapter(), &action_id).await?,
+        fetch_creator_enforcement_action_by_id(state.db.try_sqlite_adapter()?, &action_id).await?,
     ))
 }
 
@@ -100,7 +100,8 @@ pub(crate) async fn get_admin_creator_enforcement_action(
     let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
     let action =
-        fetch_creator_enforcement_action_by_id_raw(state.db.sqlite_adapter(), &action_id).await?;
+        fetch_creator_enforcement_action_by_id_raw(state.db.try_sqlite_adapter()?, &action_id)
+            .await?;
     if action.creator_id != creator_id {
         return Err(AppError::NotFound);
     }
@@ -115,7 +116,8 @@ pub(crate) async fn reconcile_admin_creator_enforcement_action(
     let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
     let action =
-        fetch_creator_enforcement_action_by_id_raw(state.db.sqlite_adapter(), &action_id).await?;
+        fetch_creator_enforcement_action_by_id_raw(state.db.try_sqlite_adapter()?, &action_id)
+            .await?;
     if action.creator_id != creator_id {
         return Err(AppError::NotFound);
     }
@@ -132,9 +134,9 @@ pub(super) async fn release_admin_creator_enforcement_action(
 ) -> AppResult<Json<CreatorEnforcementAction>> {
     let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
-    let profile = fetch_creator_profile(state.db.sqlite_adapter(), &creator_id).await?;
+    let profile = fetch_creator_profile(state.db.try_sqlite_adapter()?, &creator_id).await?;
     let action =
-        fetch_creator_enforcement_action_by_id(state.db.sqlite_adapter(), &action_id).await?;
+        fetch_creator_enforcement_action_by_id(state.db.try_sqlite_adapter()?, &action_id).await?;
     if action.creator_id != creator_id {
         return Err(AppError::NotFound);
     }
@@ -155,11 +157,11 @@ pub(super) async fn release_admin_creator_enforcement_action(
     .bind(&now)
     .bind(&action_id)
     .bind(&creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     write_moderation_audit_entry(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &creator_id,
         None,
         &identity.user_id,
@@ -174,7 +176,7 @@ pub(super) async fn release_admin_creator_enforcement_action(
     )
     .await?;
     enqueue_notification_event(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         "creator_enforcement_released",
         &format!(
             "A creator enforcement action was released for {}.",
@@ -197,6 +199,6 @@ pub(super) async fn release_admin_creator_enforcement_action(
     .await?;
 
     Ok(Json(
-        fetch_creator_enforcement_action_by_id(state.db.sqlite_adapter(), &action_id).await?,
+        fetch_creator_enforcement_action_by_id(state.db.try_sqlite_adapter()?, &action_id).await?,
     ))
 }

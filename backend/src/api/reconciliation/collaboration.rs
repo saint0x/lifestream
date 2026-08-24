@@ -10,7 +10,7 @@ pub(crate) async fn reconcile_expired_collaboration_invites(state: SharedState) 
         "#,
     )
     .bind(&now)
-    .fetch_all(state.db.sqlite_adapter())
+    .fetch_all(state.db.try_sqlite_adapter()?)
     .await?;
 
     for row in rows {
@@ -33,7 +33,7 @@ pub(crate) async fn reconcile_expired_collaboration_mirror_grants(
         "#,
     )
     .bind(&now)
-    .fetch_all(state.db.sqlite_adapter())
+    .fetch_all(state.db.try_sqlite_adapter()?)
     .await?;
 
     for row in rows {

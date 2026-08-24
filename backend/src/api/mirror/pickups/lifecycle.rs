@@ -14,7 +14,7 @@ pub(crate) async fn activate_collaboration_mirror_pickup(
         )
     })?;
     let guest_broadcast = ensure_guest_broadcast_available_for_mirror_pickup(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         session,
         participant,
         &guest_creator_id,
@@ -39,16 +39,19 @@ pub(crate) async fn activate_collaboration_mirror_pickup(
     .bind(&guest_broadcast.id)
     .bind(activated_at)
     .bind(activated_at)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
-    let pickup =
-        fetch_active_collaboration_mirror_pickup_for_grant(state.db.sqlite_adapter(), &grant.id)
-            .await?
-            .ok_or_else(|| {
-                AppError::Internal("activated collaboration mirror pickup is missing".to_string())
-            })?;
-    sync_collaboration_mirror_pickup_broadcast_state(state.db.sqlite_adapter(), &pickup).await?;
+    let pickup = fetch_active_collaboration_mirror_pickup_for_grant(
+        state.db.try_sqlite_adapter()?,
+        &grant.id,
+    )
+    .await?
+    .ok_or_else(|| {
+        AppError::Internal("activated collaboration mirror pickup is missing".to_string())
+    })?;
+    sync_collaboration_mirror_pickup_broadcast_state(state.db.try_sqlite_adapter()?, &pickup)
+        .await?;
     publish_authoritative_creator_live_state(state, &pickup.guest_creator_id).await?;
     Ok(pickup)
 }
@@ -59,9 +62,11 @@ pub(crate) async fn deactivate_collaboration_mirror_pickups_for_grants(
     terminal_state: &str,
     ended_at: &str,
 ) -> AppResult<()> {
-    let pickups =
-        fetch_active_collaboration_mirror_pickups_for_grants(state.db.sqlite_adapter(), grants)
-            .await?;
+    let pickups = fetch_active_collaboration_mirror_pickups_for_grants(
+        state.db.try_sqlite_adapter()?,
+        grants,
+    )
+    .await?;
     let mut guest_creator_ids = Vec::new();
     for pickup in pickups {
         guest_creator_ids.push(pickup.guest_creator_id.clone());
@@ -72,13 +77,13 @@ pub(crate) async fn deactivate_collaboration_mirror_pickups_for_grants(
         .bind(ended_at)
         .bind(ended_at)
         .bind(&pickup.id)
-        .execute(state.db.sqlite_adapter())
+        .execute(state.db.try_sqlite_adapter()?)
         .await?;
 
         let guest_creator =
-            fetch_creator_profile(state.db.sqlite_adapter(), &pickup.guest_creator_id).await?;
+            fetch_creator_profile(state.db.try_sqlite_adapter()?, &pickup.guest_creator_id).await?;
         let guest_broadcast = fetch_broadcast_by_id(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             &pickup.guest_creator_id,
             &pickup.guest_broadcast_id,
         )
@@ -106,23 +111,26 @@ pub(crate) async fn deactivate_collaboration_mirror_pickups_for_grants(
         .bind(duration_sec)
         .bind(&pickup.guest_broadcast_id)
         .bind(&pickup.guest_creator_id)
-        .execute(state.db.sqlite_adapter())
+        .execute(state.db.try_sqlite_adapter()?)
         .await?;
 
         sqlx::query("DELETE FROM live_streams WHERE id = ?")
             .bind(format!("lv-{}-live", guest_creator.handle))
-            .execute(state.db.sqlite_adapter())
+            .execute(state.db.try_sqlite_adapter()?)
             .await?;
         sqlx::query("UPDATE streamers SET is_live = 0 WHERE handle = ?")
             .bind(&guest_creator.handle)
-            .execute(state.db.sqlite_adapter())
+            .execute(state.db.try_sqlite_adapter()?)
             .await?;
-        reset_creator_live_operational_metrics(state.db.sqlite_adapter(), &pickup.guest_creator_id)
-            .await?;
+        reset_creator_live_operational_metrics(
+            state.db.try_sqlite_adapter()?,
+            &pickup.guest_creator_id,
+        )
+        .await?;
         let guest_broadcasts =
-            fetch_broadcasts(state.db.sqlite_adapter(), &pickup.guest_creator_id).await?;
+            fetch_broadcasts(state.db.try_sqlite_adapter()?, &pickup.guest_creator_id).await?;
         let _ = normalize_creator_live_profile(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             &pickup.guest_creator_id,
             guest_broadcasts,
         )

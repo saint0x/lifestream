@@ -156,7 +156,7 @@ pub(crate) async fn list_series_page(
         return Ok(Json(catalog_page_response(items, total, &query)));
     }
     let (items, total) = fetch_series_page(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         query.genre.as_deref(),
         query.originals_only,
         &query.sort,
@@ -207,7 +207,7 @@ pub(crate) async fn list_films_page(
         return Ok(Json(catalog_page_response(items, total, &query)));
     }
     let (items, total) = fetch_films_page(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         query.genre.as_deref(),
         query.originals_only,
         &query.sort,

@@ -17,7 +17,7 @@ pub(crate) async fn get_my_profile(
         ));
     }
     Ok(Json(
-        fetch_user_profile_details(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_user_profile_details(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }
 
@@ -45,7 +45,7 @@ pub(crate) async fn update_my_profile(
     }
 
     Ok(Json(
-        fetch_user_profile_details(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_user_profile_details(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }
 
@@ -66,7 +66,7 @@ pub(crate) async fn get_my_settings(
         ));
     }
     Ok(Json(
-        fetch_user_settings_bundle(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_user_settings_bundle(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }
 
@@ -93,6 +93,6 @@ pub(crate) async fn update_my_settings(
         ));
     }
     Ok(Json(
-        fetch_user_settings_bundle(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_user_settings_bundle(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }

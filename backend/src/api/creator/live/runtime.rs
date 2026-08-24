@@ -256,7 +256,7 @@ pub(crate) async fn fetch_authoritative_creator_live_control_response(
         .await?;
     reconcile_collaboration_expiry_for_host_read(state, creator_id).await?;
     let response =
-        fetch_creator_live_control_response(state.db.sqlite_adapter(), creator_id).await?;
+        fetch_creator_live_control_response(state.db.try_sqlite_adapter()?, creator_id).await?;
     state
         .live_response_cache
         .put_control(creator_id, response.clone())
@@ -290,7 +290,7 @@ pub(crate) async fn fetch_authoritative_creator_live_runtime_response(
         .await?;
     reconcile_collaboration_expiry_for_host_read(state, creator_id).await?;
     let response =
-        fetch_creator_live_runtime_response(state.db.sqlite_adapter(), creator_id).await?;
+        fetch_creator_live_runtime_response(state.db.try_sqlite_adapter()?, creator_id).await?;
     state
         .live_response_cache
         .put_runtime(creator_id, response.clone())

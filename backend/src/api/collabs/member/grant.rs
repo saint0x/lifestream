@@ -8,7 +8,7 @@ pub(crate) async fn list_my_collaboration_mirror_grants(
     let identity = require_identity(&state.db, &headers).await?;
     reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
     let participant = fetch_collaboration_participant_for_user(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session_id,
         &identity.user_id,
     )
@@ -16,7 +16,7 @@ pub(crate) async fn list_my_collaboration_mirror_grants(
     validate_collaboration_participant_access(&participant)?;
     Ok(Json(
         fetch_collaboration_mirror_grants_for_participant(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             &participant.id,
         )
         .await?,

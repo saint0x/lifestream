@@ -61,7 +61,8 @@ pub(super) async fn execute_remove_participant(
         ));
     }
     let participant =
-        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), participant_id).await?;
+        fetch_collaboration_participant_by_id(state.db.try_sqlite_adapter()?, participant_id)
+            .await?;
     if participant.session_id != *session_id {
         return Err(AppError::NotFound);
     }
@@ -83,7 +84,7 @@ pub(super) async fn execute_remove_participant(
         .bind(&now)
         .bind(participant_id)
         .bind(session_id)
-        .execute(state.db.sqlite_adapter())
+        .execute(state.db.try_sqlite_adapter()?)
         .await?;
         revoke_collaboration_mirror_grants_for_participant(
             state,
@@ -109,7 +110,8 @@ pub(super) async fn execute_remove_participant(
         .await?;
     }
     let updated =
-        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), participant_id).await?;
+        fetch_collaboration_participant_by_id(state.db.try_sqlite_adapter()?, participant_id)
+            .await?;
     Ok(CollaborationSocketCommandOutcome {
         command_type: "removeParticipant",
         participant_id: Some(updated.id),

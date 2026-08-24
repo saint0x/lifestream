@@ -53,14 +53,14 @@ pub(crate) async fn list_creator_upload_jobs(
     database: &crate::db::Database,
     creator_id: &str,
 ) -> AppResult<Vec<UploadJob>> {
-    fetch_upload_jobs(database.sqlite_adapter(), creator_id).await
+    fetch_upload_jobs(database.try_sqlite_adapter()?, creator_id).await
 }
 
 pub(crate) async fn ensure_creator_upload_ingest_enabled_for_jobs(
     database: &crate::db::Database,
     creator_id: &str,
 ) -> AppResult<()> {
-    ensure_creator_upload_ingest_enabled(database.sqlite_adapter(), creator_id).await
+    ensure_creator_upload_ingest_enabled(database.try_sqlite_adapter()?, creator_id).await
 }
 
 pub(crate) async fn create_creator_upload_job(
@@ -120,10 +120,10 @@ pub(crate) async fn create_creator_upload_job(
     .bind(0_i64)
     .bind(Option::<String>::None)
     .bind(Option::<String>::None)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
 
-    fetch_upload_job_by_id(database.sqlite_adapter(), creator_id, &id).await
+    fetch_upload_job_by_id(database.try_sqlite_adapter()?, creator_id, &id).await
 }
 
 pub(crate) async fn update_creator_upload_job(
@@ -132,7 +132,7 @@ pub(crate) async fn update_creator_upload_job(
     id: &str,
     input: UpdateUploadJobRequest,
 ) -> AppResult<UploadJob> {
-    let current = fetch_upload_job_by_id(database.sqlite_adapter(), creator_id, id).await?;
+    let current = fetch_upload_job_by_id(database.try_sqlite_adapter()?, creator_id, id).await?;
     if current.status == "processing" {
         return Err(AppError::BadRequest(
             "processing upload jobs cannot be edited".to_string(),
@@ -172,7 +172,7 @@ pub(crate) async fn update_creator_upload_job(
 
     let series_id = match input.series_id {
         Some(series_id) => {
-            if fetch_creator_series_title(database.sqlite_adapter(), creator_id, &series_id)
+            if fetch_creator_series_title(database.try_sqlite_adapter()?, creator_id, &series_id)
                 .await?
                 .is_none()
             {
@@ -199,8 +199,8 @@ pub(crate) async fn update_creator_upload_job(
     .bind(Utc::now().to_rfc3339())
     .bind(id)
     .bind(creator_id)
-    .execute(database.sqlite_adapter())
+    .execute(database.try_sqlite_adapter()?)
     .await?;
 
-    fetch_upload_job_by_id(database.sqlite_adapter(), creator_id, id).await
+    fetch_upload_job_by_id(database.try_sqlite_adapter()?, creator_id, id).await
 }

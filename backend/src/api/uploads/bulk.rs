@@ -22,7 +22,8 @@ pub(super) async fn bulk_uploads(
     let now = Utc::now().to_rfc3339();
 
     for upload_id in &input.upload_ids {
-        let current = fetch_upload_by_id(state.db.sqlite_adapter(), creator_id, upload_id).await?;
+        let current =
+            fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, upload_id).await?;
         match input.action.as_str() {
             "archive" => {
                 validate_bulk_upload_action(&current, "archive")?;
@@ -31,7 +32,7 @@ pub(super) async fn bulk_uploads(
                 )
                 .bind(upload_id)
                 .bind(creator_id)
-                .execute(state.db.sqlite_adapter())
+                .execute(state.db.try_sqlite_adapter()?)
                 .await?;
                 sqlx::query(
                     "UPDATE media_assets SET status = 'archived', updated_at = ? WHERE upload_id = ? AND creator_id = ?",
@@ -39,9 +40,10 @@ pub(super) async fn bulk_uploads(
                 .bind(&now)
                 .bind(upload_id)
                 .bind(creator_id)
-                .execute(state.db.sqlite_adapter())
+                .execute(state.db.try_sqlite_adapter()?)
                 .await?;
-                expire_playback_sessions_for_upload(state.db.sqlite_adapter(), upload_id).await?;
+                expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, upload_id)
+                    .await?;
             }
             "make_public" => {
                 validate_bulk_upload_action(&current, "make_public")?;
@@ -59,7 +61,7 @@ pub(super) async fn bulk_uploads(
                 .bind(&now)
                 .bind(upload_id)
                 .bind(creator_id)
-                .execute(state.db.sqlite_adapter())
+                .execute(state.db.try_sqlite_adapter()?)
                 .await?;
                 sqlx::query(
                     "UPDATE media_assets SET visibility = 'public', status = ?, updated_at = ? WHERE upload_id = ? AND creator_id = ?",
@@ -68,9 +70,10 @@ pub(super) async fn bulk_uploads(
                 .bind(&now)
                 .bind(upload_id)
                 .bind(creator_id)
-                .execute(state.db.sqlite_adapter())
+                .execute(state.db.try_sqlite_adapter()?)
                 .await?;
-                expire_playback_sessions_for_upload(state.db.sqlite_adapter(), upload_id).await?;
+                expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, upload_id)
+                    .await?;
             }
             "make_unlisted" => {
                 validate_bulk_upload_action(&current, "make_unlisted")?;
@@ -88,7 +91,7 @@ pub(super) async fn bulk_uploads(
                 .bind(&now)
                 .bind(upload_id)
                 .bind(creator_id)
-                .execute(state.db.sqlite_adapter())
+                .execute(state.db.try_sqlite_adapter()?)
                 .await?;
                 sqlx::query(
                     "UPDATE media_assets SET visibility = 'unlisted', status = ?, updated_at = ? WHERE upload_id = ? AND creator_id = ?",
@@ -97,9 +100,10 @@ pub(super) async fn bulk_uploads(
                 .bind(&now)
                 .bind(upload_id)
                 .bind(creator_id)
-                .execute(state.db.sqlite_adapter())
+                .execute(state.db.try_sqlite_adapter()?)
                 .await?;
-                expire_playback_sessions_for_upload(state.db.sqlite_adapter(), upload_id).await?;
+                expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, upload_id)
+                    .await?;
             }
             "delete" => {
                 validate_bulk_upload_action(&current, "delete")?;
@@ -107,7 +111,7 @@ pub(super) async fn bulk_uploads(
                     "SELECT 1 FROM content_purchases WHERE upload_id = ? AND status = 'active' LIMIT 1",
                 )
                 .bind(upload_id)
-                .fetch_optional(state.db.sqlite_adapter())
+                .fetch_optional(state.db.try_sqlite_adapter()?)
                 .await?
                 .is_some();
                 if active_purchase_exists {
@@ -115,21 +119,22 @@ pub(super) async fn bulk_uploads(
                         "cannot delete uploads with active purchases".to_string(),
                     ));
                 }
-                expire_playback_sessions_for_upload(state.db.sqlite_adapter(), upload_id).await?;
+                expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, upload_id)
+                    .await?;
                 sqlx::query("DELETE FROM media_assets WHERE upload_id = ? AND creator_id = ?")
                     .bind(upload_id)
                     .bind(creator_id)
-                    .execute(state.db.sqlite_adapter())
+                    .execute(state.db.try_sqlite_adapter()?)
                     .await?;
                 sqlx::query("DELETE FROM upload_jobs WHERE upload_id = ? AND creator_id = ?")
                     .bind(upload_id)
                     .bind(creator_id)
-                    .execute(state.db.sqlite_adapter())
+                    .execute(state.db.try_sqlite_adapter()?)
                     .await?;
                 sqlx::query("DELETE FROM uploads WHERE id = ? AND creator_id = ?")
                     .bind(upload_id)
                     .bind(creator_id)
-                    .execute(state.db.sqlite_adapter())
+                    .execute(state.db.try_sqlite_adapter()?)
                     .await?;
             }
             other => {
@@ -141,6 +146,6 @@ pub(super) async fn bulk_uploads(
     }
 
     Ok(Json(
-        fetch_uploads(state.db.sqlite_adapter(), creator_id).await?,
+        fetch_uploads(state.db.try_sqlite_adapter()?, creator_id).await?,
     ))
 }

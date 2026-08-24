@@ -8,11 +8,11 @@ pub(crate) async fn get_playback_manifest(
     let playback_token = query.playback_token.ok_or(AppError::Unauthorized)?;
     let session = validate_playback_session(&state.db, &session_id, &playback_token).await?;
     let manifest_relative_path = if session.content_kind == "live" {
-        fetch_live_stream_playback_target(state.db.sqlite_adapter(), &session.content_id)
+        fetch_live_stream_playback_target(state.db.try_sqlite_adapter()?, &session.content_id)
             .await?
             .playback_relative_path
     } else {
-        fetch_upload_playback_target(state.db.sqlite_adapter(), &session.content_id)
+        fetch_upload_playback_target(state.db.try_sqlite_adapter()?, &session.content_id)
             .await?
             .asset
             .playback_path

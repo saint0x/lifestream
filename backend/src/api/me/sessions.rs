@@ -17,7 +17,7 @@ pub(crate) async fn get_my_plan(
         ));
     }
     Ok(Json(
-        fetch_billing_plan(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_billing_plan(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }
 

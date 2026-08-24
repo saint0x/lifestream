@@ -126,14 +126,18 @@ pub(crate) async fn reconcile_single_playback_session(
 ) -> AppResult<PlaybackReconciliationReport> {
     let now = Utc::now().to_rfc3339();
     let session =
-        fetch_playback_session_record_by_id(state.db.sqlite_adapter(), session_id).await?;
+        fetch_playback_session_record_by_id(state.db.try_sqlite_adapter()?, session_id).await?;
     let mut actions = Vec::new();
 
     if session.expires_at > now
-        && !validate_existing_playback_session_access(state.db.sqlite_adapter(), &session, None)
-            .await?
+        && !validate_existing_playback_session_access(
+            state.db.try_sqlite_adapter()?,
+            &session,
+            None,
+        )
+        .await?
     {
-        expire_playback_session_by_id(state.db.sqlite_adapter(), &session.id).await?;
+        expire_playback_session_by_id(state.db.try_sqlite_adapter()?, &session.id).await?;
         actions.push(PlaybackReconciliationAction {
             action_type: "session_invalidated".to_string(),
             target_id: session.id.clone(),
@@ -154,5 +158,5 @@ pub(crate) async fn reconcile_single_playback_session(
 }
 
 pub(crate) async fn reconcile_invalid_playback_sessions(state: SharedState) -> AppResult<()> {
-    reconcile_playback_sessions_for_read(state.db.sqlite_adapter(), None, None, None).await
+    reconcile_playback_sessions_for_read(state.db.try_sqlite_adapter()?, None, None, None).await
 }

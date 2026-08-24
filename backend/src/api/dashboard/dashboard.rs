@@ -505,7 +505,7 @@ pub(crate) async fn fetch_creator_app_state(
     content_query: &CreatorContentQuery,
 ) -> AppResult<CreatorAppState> {
     let creator_id = identity.require_creator_scope()?;
-    let pool = state.db.sqlite_adapter();
+    let pool = state.db.try_sqlite_adapter()?;
     let (
         profile,
         broadcasts,

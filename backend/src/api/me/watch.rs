@@ -17,7 +17,7 @@ pub(crate) async fn get_my_following_feed(
         ));
     }
     Ok(Json(
-        fetch_following_feed_response(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_following_feed_response(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }
 
@@ -123,6 +123,6 @@ pub(crate) async fn remove_history_entry(
         ));
     }
     Ok(Json(
-        fetch_user_library(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_user_library(state.db.try_sqlite_adapter()?, &identity.user_id).await?,
     ))
 }

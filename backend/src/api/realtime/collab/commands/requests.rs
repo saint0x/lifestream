@@ -12,12 +12,14 @@ pub(super) async fn execute_request_state_change(
             "host participants cannot request collaboration state changes".to_string(),
         ));
     }
-    let current_participant =
-        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), &session.participant.id)
-            .await?;
+    let current_participant = fetch_collaboration_participant_by_id(
+        state.db.try_sqlite_adapter()?,
+        &session.participant.id,
+    )
+    .await?;
     validate_collaboration_participant_access(&current_participant)?;
     let current_session =
-        fetch_collaboration_session_by_id(state.db.sqlite_adapter(), session_id).await?;
+        fetch_collaboration_session_by_id(state.db.try_sqlite_adapter()?, session_id).await?;
     if current_session.status == "ended" {
         return Err(AppError::BadRequest(
             "cannot request collaboration state changes for an ended session".to_string(),

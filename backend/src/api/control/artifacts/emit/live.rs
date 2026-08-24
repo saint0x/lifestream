@@ -109,9 +109,10 @@ async fn sync_live_playback_persistence(
         return Ok(());
     };
 
-    let creator = fetch_creator_profile(state.db.sqlite_adapter(), &session.creator_id).await?;
+    let creator =
+        fetch_creator_profile(state.db.try_sqlite_adapter()?, &session.creator_id).await?;
     let broadcast = fetch_broadcast_by_id(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.creator_id,
         &session.broadcast_id,
     )
@@ -153,7 +154,7 @@ async fn sync_live_playback_persistence(
     .bind(&now)
     .bind(&now)
     .bind(Some(live_stream_id.clone()))
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     sqlx::query(
@@ -207,7 +208,7 @@ async fn sync_live_playback_persistence(
     .bind(&now)
     .bind(Some(&now))
     .bind(Some(live_stream_id.clone()))
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     sqlx::query(
@@ -223,7 +224,7 @@ async fn sync_live_playback_persistence(
     .bind(broadcast.thumbnail)
     .bind(manifest_relative_path)
     .bind(live_stream_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     Ok(())

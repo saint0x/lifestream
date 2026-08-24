@@ -30,9 +30,10 @@ pub(crate) async fn validate_playback_session_record(
     let session = database
         .fetch_active_playback_session_record(session_id, playback_token, &now)
         .await?;
-    if !validate_existing_playback_session_access(database.sqlite_adapter(), &session, None).await?
+    if !validate_existing_playback_session_access(database.try_sqlite_adapter()?, &session, None)
+        .await?
     {
-        expire_playback_session_by_id(database.sqlite_adapter(), &session.id).await?;
+        expire_playback_session_by_id(database.try_sqlite_adapter()?, &session.id).await?;
         return Err(AppError::Unauthorized);
     }
 
@@ -52,13 +53,13 @@ pub(crate) async fn validate_playback_session_record_for_path(
         .fetch_latest_active_playback_session_record_by_token(playback_token, &now)
         .await?;
     if !validate_existing_playback_session_access(
-        database.sqlite_adapter(),
+        database.try_sqlite_adapter()?,
         &session,
         Some(relative_path),
     )
     .await?
     {
-        expire_playback_session_by_id(database.sqlite_adapter(), &session.id).await?;
+        expire_playback_session_by_id(database.try_sqlite_adapter()?, &session.id).await?;
         return Err(AppError::Unauthorized);
     }
 

@@ -8,7 +8,7 @@ pub(super) async fn update_upload_lifecycle(
 ) -> AppResult<Json<Upload>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let current = fetch_upload_by_id(state.db.sqlite_adapter(), creator_id, &id).await?;
+    let current = fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?;
     if current.status == "taken_down" {
         return Err(AppError::BadRequest(
             "taken-down uploads cannot be updated through lifecycle patch".to_string(),
@@ -33,7 +33,7 @@ pub(super) async fn update_upload_lifecycle(
     .bind(&next_status)
     .bind(&now)
     .bind(&id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     sqlx::query(
         "UPDATE media_assets SET visibility = ?, status = ?, updated_at = ? WHERE upload_id = ? AND creator_id = ?",
@@ -43,11 +43,11 @@ pub(super) async fn update_upload_lifecycle(
     .bind(&now)
     .bind(&id)
     .bind(creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
-    expire_playback_sessions_for_upload(state.db.sqlite_adapter(), &id).await?;
+    expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, &id).await?;
     Ok(Json(
-        fetch_upload_by_id(state.db.sqlite_adapter(), creator_id, &id).await?,
+        fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?,
     ))
 }
 
@@ -58,7 +58,7 @@ pub(crate) async fn unpublish_upload(
 ) -> AppResult<Json<Upload>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let current = fetch_upload_by_id(state.db.sqlite_adapter(), creator_id, &id).await?;
+    let current = fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?;
     if current.status == "taken_down" {
         return Err(AppError::BadRequest(
             "taken-down uploads cannot be unpublished".to_string(),
@@ -69,7 +69,7 @@ pub(crate) async fn unpublish_upload(
         "UPDATE uploads SET visibility = 'private', status = 'draft', release_at = NULL WHERE id = ?",
     )
     .bind(&id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     sqlx::query(
         "UPDATE media_assets SET visibility = 'private', status = 'draft', updated_at = ? WHERE upload_id = ? AND creator_id = ?",
@@ -77,11 +77,11 @@ pub(crate) async fn unpublish_upload(
     .bind(&now)
     .bind(&id)
     .bind(creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
-    expire_playback_sessions_for_upload(state.db.sqlite_adapter(), &id).await?;
+    expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, &id).await?;
     enqueue_notification_event(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         "content_unpublished",
         &format!("{} was unpublished.", current.title),
         Some(&identity.user_id),
@@ -98,7 +98,7 @@ pub(crate) async fn unpublish_upload(
     )
     .await?;
     Ok(Json(
-        fetch_upload_by_id(state.db.sqlite_adapter(), creator_id, &id).await?,
+        fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?,
     ))
 }
 
@@ -109,13 +109,13 @@ pub(crate) async fn takedown_upload(
 ) -> AppResult<Json<Upload>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let current = fetch_upload_by_id(state.db.sqlite_adapter(), creator_id, &id).await?;
+    let current = fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?;
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         "UPDATE uploads SET visibility = 'private', status = 'taken_down', release_at = NULL WHERE id = ?",
     )
     .bind(&id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     sqlx::query(
         "UPDATE media_assets SET visibility = 'private', status = 'taken_down', updated_at = ? WHERE upload_id = ? AND creator_id = ?",
@@ -123,11 +123,11 @@ pub(crate) async fn takedown_upload(
     .bind(&now)
     .bind(&id)
     .bind(creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
-    expire_playback_sessions_for_upload(state.db.sqlite_adapter(), &id).await?;
+    expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, &id).await?;
     enqueue_notification_event(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         "content_takedown",
         &format!("{} was taken down.", current.title),
         Some(&identity.user_id),
@@ -144,6 +144,6 @@ pub(crate) async fn takedown_upload(
     )
     .await?;
     Ok(Json(
-        fetch_upload_by_id(state.db.sqlite_adapter(), creator_id, &id).await?,
+        fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?,
     ))
 }

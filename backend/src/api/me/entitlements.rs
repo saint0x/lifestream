@@ -23,7 +23,12 @@ pub(crate) async fn get_my_membership_entitlement(
         ));
     }
     Ok(Json(
-        fetch_creator_membership(state.db.sqlite_adapter(), &identity.user_id, &creator_id).await?,
+        fetch_creator_membership(
+            state.db.try_sqlite_adapter()?,
+            &identity.user_id,
+            &creator_id,
+        )
+        .await?,
     ))
 }
 
@@ -36,8 +41,12 @@ pub(crate) async fn reconcile_my_membership_entitlement(
     if state.database_kind == crate::config::DatabaseKind::Postgres {
         return Err(AppError::NotFound);
     }
-    let membership =
-        fetch_creator_membership(state.db.sqlite_adapter(), &identity.user_id, &creator_id).await?;
+    let membership = fetch_creator_membership(
+        state.db.try_sqlite_adapter()?,
+        &identity.user_id,
+        &creator_id,
+    )
+    .await?;
     if membership.creator_id != creator_id {
         return Err(AppError::NotFound);
     }
@@ -68,8 +77,15 @@ pub(crate) async fn get_my_purchase_entitlement(
                 .ok_or(AppError::NotFound)?,
         ));
     }
-    let purchase = fetch_content_purchase_by_id(state.db.sqlite_adapter(), &purchase_id).await?;
-    if purchase_belongs_to_user(state.db.sqlite_adapter(), &identity.user_id, &purchase.id).await? {
+    let purchase =
+        fetch_content_purchase_by_id(state.db.try_sqlite_adapter()?, &purchase_id).await?;
+    if purchase_belongs_to_user(
+        state.db.try_sqlite_adapter()?,
+        &identity.user_id,
+        &purchase.id,
+    )
+    .await?
+    {
         return Ok(Json(purchase));
     }
     Err(AppError::NotFound)
@@ -84,7 +100,12 @@ pub(crate) async fn reconcile_my_purchase_entitlement(
     if state.database_kind == crate::config::DatabaseKind::Postgres {
         return Err(AppError::NotFound);
     }
-    if !purchase_belongs_to_user(state.db.sqlite_adapter(), &identity.user_id, &purchase_id).await?
+    if !purchase_belongs_to_user(
+        state.db.try_sqlite_adapter()?,
+        &identity.user_id,
+        &purchase_id,
+    )
+    .await?
     {
         return Err(AppError::NotFound);
     }

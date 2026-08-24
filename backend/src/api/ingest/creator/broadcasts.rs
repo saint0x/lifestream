@@ -14,8 +14,8 @@ pub(crate) async fn start_broadcast(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_live_streaming_enabled(state.db.sqlite_adapter(), creator_id).await?;
-    let snapshot = build_creator_live_snapshot(state.db.sqlite_adapter(), creator_id).await?;
+    ensure_creator_live_streaming_enabled(state.db.try_sqlite_adapter()?, creator_id).await?;
+    let snapshot = build_creator_live_snapshot(state.db.try_sqlite_adapter()?, creator_id).await?;
     if let Some(broadcast) = snapshot.current_broadcast.or(snapshot.pending_broadcast) {
         return Ok(Json(broadcast));
     }
@@ -68,7 +68,7 @@ pub(crate) async fn start_broadcast(
     .bind(broadcast.revenue)
     .bind(&broadcast.thumbnail)
     .bind(broadcast.is_mature as i64)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     sqlx::query(
@@ -78,7 +78,7 @@ pub(crate) async fn start_broadcast(
     .bind(&broadcast.category)
     .bind(to_json(&broadcast.tags)?)
     .bind(creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     publish_current_creator_live_state(&state, creator_id).await?;
@@ -99,15 +99,15 @@ pub(crate) async fn end_broadcast(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    let creator_profile = fetch_creator_profile(state.db.sqlite_adapter(), creator_id).await?;
-    let broadcast = fetch_broadcast_by_id(state.db.sqlite_adapter(), creator_id, &id).await?;
+    let creator_profile = fetch_creator_profile(state.db.try_sqlite_adapter()?, creator_id).await?;
+    let broadcast = fetch_broadcast_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?;
     if creator_profile.current_broadcast_id.as_deref() != Some(id.as_str()) {
         return Err(AppError::BadRequest(
             "broadcast is not the creator's active or pending broadcast".to_string(),
         ));
     }
     if let Some(session) =
-        fetch_active_live_ingest_session(state.db.sqlite_adapter(), creator_id).await?
+        fetch_active_live_ingest_session(state.db.try_sqlite_adapter()?, creator_id).await?
     {
         if session.broadcast_id == id {
             close_live_ingest_session(
@@ -121,7 +121,7 @@ pub(crate) async fn end_broadcast(
             )
             .await?;
             return Ok(Json(
-                fetch_broadcast_by_id(state.db.sqlite_adapter(), creator_id, &id).await?,
+                fetch_broadcast_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?,
             ));
         }
     }
@@ -137,29 +137,29 @@ pub(crate) async fn end_broadcast(
     .bind(ended_at.to_rfc3339())
     .bind(duration_sec)
     .bind(&id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     sqlx::query(
         "UPDATE creator_profiles SET live_status = 'offline', current_broadcast_id = NULL WHERE id = ?",
     )
     .bind(creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
-    reset_creator_live_operational_metrics(state.db.sqlite_adapter(), creator_id).await?;
+    reset_creator_live_operational_metrics(state.db.try_sqlite_adapter()?, creator_id).await?;
 
     sqlx::query("UPDATE streamers SET is_live = 0 WHERE handle = ?")
         .bind(&creator_profile.handle)
-        .execute(state.db.sqlite_adapter())
+        .execute(state.db.try_sqlite_adapter()?)
         .await?;
 
     sqlx::query("DELETE FROM live_streams WHERE id = ?")
         .bind(format!("lv-{}-live", creator_profile.handle))
-        .execute(state.db.sqlite_adapter())
+        .execute(state.db.try_sqlite_adapter()?)
         .await?;
 
     let terminated_ingest_sessions = fetch_terminalizable_live_ingest_sessions_for_broadcast(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         creator_id,
         &id,
     )
@@ -171,11 +171,11 @@ pub(crate) async fn end_broadcast(
     .bind(ended_at.to_rfc3339())
     .bind(creator_id)
     .bind(&id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     for session in terminated_ingest_sessions {
         write_live_ingest_event(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             &session.id,
             &session.creator_id,
             &session.broadcast_id,
@@ -193,7 +193,7 @@ pub(crate) async fn end_broadcast(
         .await?;
     }
     enqueue_creator_broadcast_ended_notification(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &creator_profile,
         &broadcast,
         "ended",
@@ -202,7 +202,8 @@ pub(crate) async fn end_broadcast(
     .await?;
 
     if let Some(session) =
-        fetch_active_collaboration_session_for_broadcast(state.db.sqlite_adapter(), &id).await?
+        fetch_active_collaboration_session_for_broadcast(state.db.try_sqlite_adapter()?, &id)
+            .await?
     {
         let _ = end_collaboration_session_internal(
             &state,
@@ -218,7 +219,7 @@ pub(crate) async fn end_broadcast(
 
     publish_current_creator_live_state(&state, creator_id).await?;
     Ok(Json(
-        fetch_broadcast_by_id(state.db.sqlite_adapter(), creator_id, &id).await?,
+        fetch_broadcast_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?,
     ))
 }
 
@@ -241,12 +242,12 @@ pub(crate) async fn rotate_stream_key(
         &Uuid::new_v4().simple().to_string()[..8]
     );
     let active_session =
-        fetch_active_live_ingest_session(state.db.sqlite_adapter(), creator_id).await?;
+        fetch_active_live_ingest_session(state.db.try_sqlite_adapter()?, creator_id).await?;
 
     sqlx::query("UPDATE creator_profiles SET stream_key = ? WHERE id = ?")
         .bind(&new_key)
         .bind(creator_id)
-        .execute(state.db.sqlite_adapter())
+        .execute(state.db.try_sqlite_adapter()?)
         .await?;
 
     if let Some(session) = active_session {
@@ -265,6 +266,6 @@ pub(crate) async fn rotate_stream_key(
 
     publish_current_creator_live_state(&state, creator_id).await?;
     Ok(Json(contract_creator_profile(
-        fetch_creator_profile(state.db.sqlite_adapter(), creator_id).await?,
+        fetch_creator_profile(state.db.try_sqlite_adapter()?, creator_id).await?,
     )))
 }

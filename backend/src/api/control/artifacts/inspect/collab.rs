@@ -18,7 +18,7 @@ pub(super) async fn inspect_live_runtime_collaboration_artifacts(
     session: &LiveIngestSession,
 ) -> AppResult<CollaborationArtifactInspection> {
     let Some(collaboration_session) = fetch_active_collaboration_session_for_broadcast(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.broadcast_id,
     )
     .await?
@@ -26,7 +26,7 @@ pub(super) async fn inspect_live_runtime_collaboration_artifacts(
         return Ok(CollaborationArtifactInspection::default());
     };
     let runtime = build_collaboration_runtime_response_for_host(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         collaboration_session,
     )
     .await?;
@@ -35,7 +35,7 @@ pub(super) async fn inspect_live_runtime_collaboration_artifacts(
     let media_relative_path = collaboration_media_relative_path(session);
     let launch_relative_path = collaboration_launch_relative_path(session);
     let runtime_output =
-        fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session.id).await?;
+        fetch_live_runtime_output_for_session(state.db.try_sqlite_adapter()?, &session.id).await?;
     let artifacts_expected = runtime_output.as_ref().is_some_and(|output| {
         matches!(
             output.packaging_status.as_str(),

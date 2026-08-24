@@ -13,7 +13,8 @@ pub(crate) async fn heartbeat_live_ingest(
 ) -> AppResult<Json<LiveIngestSession>> {
     let ingest_token = require_ingest_token(&headers)?;
     let session =
-        validate_live_ingest_session(state.db.sqlite_adapter(), &session_id, &ingest_token).await?;
+        validate_live_ingest_session(state.db.try_sqlite_adapter()?, &session_id, &ingest_token)
+            .await?;
     if input.bitrate_kbps < 0 || input.viewers < 0 || input.dropped_frames < 0 {
         return Err(AppError::BadRequest(
             "heartbeat counters must be non-negative".to_string(),
@@ -27,9 +28,10 @@ pub(crate) async fn heartbeat_live_ingest(
         }
     }
 
-    let creator = fetch_creator_profile(state.db.sqlite_adapter(), &session.creator_id).await?;
+    let creator =
+        fetch_creator_profile(state.db.try_sqlite_adapter()?, &session.creator_id).await?;
     let broadcast = fetch_broadcast_by_id(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.creator_id,
         &session.broadcast_id,
     )
@@ -120,11 +122,11 @@ pub(crate) async fn heartbeat_live_ingest(
     )
     .bind(&now)
     .bind(&session_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     crate::api::creator::ensure_creator_live_settings_row(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session.creator_id,
     )
     .await?;
@@ -140,7 +142,7 @@ pub(crate) async fn heartbeat_live_ingest(
     .bind(input.dropped_frames)
     .bind(input.free_disk_gb.unwrap_or(0.0))
     .bind(&session.creator_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     sqlx::query(
@@ -158,10 +160,10 @@ pub(crate) async fn heartbeat_live_ingest(
     .bind(input.cpu_percent.unwrap_or(0))
     .bind(input.dropped_frames)
     .bind(input.free_disk_gb.unwrap_or(0.0))
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     write_live_ingest_event(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &session_id,
         &session.creator_id,
         &session.broadcast_id,
@@ -186,11 +188,11 @@ pub(crate) async fn heartbeat_live_ingest(
     .bind(input.viewers)
     .bind(input.viewers)
     .bind(&session.broadcast_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     ensure_live_stream_row(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &creator,
         &broadcast,
         input.viewers,
@@ -218,9 +220,9 @@ pub(crate) async fn heartbeat_live_ingest(
     };
     persist_live_runtime_spec(&state, &updated_session).await?;
     let runtime_output =
-        fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session_id).await?;
+        fetch_live_runtime_output_for_session(state.db.try_sqlite_adapter()?, &session_id).await?;
     record_live_runtime_telemetry(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &updated_session,
         "heartbeat",
         runtime_output
@@ -249,7 +251,7 @@ pub(crate) async fn heartbeat_live_ingest(
     publish_current_creator_live_state(&state, &session.creator_id).await?;
     Ok(Json(
         fetch_live_ingest_session_by_id(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             &session.creator_id,
             &session_id,
         )

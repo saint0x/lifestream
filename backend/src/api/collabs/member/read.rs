@@ -7,7 +7,8 @@ pub(crate) async fn list_my_collaboration_invites(
     let identity = require_identity(&state.db, &headers).await?;
     reconcile_collaboration_expiry_for_participant_read(&state, &identity.user_id).await?;
     Ok(Json(
-        fetch_collaboration_invites_for_user(state.db.sqlite_adapter(), &identity.user_id).await?,
+        fetch_collaboration_invites_for_user(state.db.try_sqlite_adapter()?, &identity.user_id)
+            .await?,
     ))
 }
 
@@ -18,8 +19,11 @@ pub(crate) async fn list_my_collaboration_sessions(
     let identity = require_identity(&state.db, &headers).await?;
     reconcile_collaboration_expiry_for_participant_read(&state, &identity.user_id).await?;
     Ok(Json(
-        fetch_collaboration_sessions_for_participant(state.db.sqlite_adapter(), &identity.user_id)
-            .await?,
+        fetch_collaboration_sessions_for_participant(
+            state.db.try_sqlite_adapter()?,
+            &identity.user_id,
+        )
+        .await?,
     ))
 }
 
@@ -32,7 +36,7 @@ pub(crate) async fn list_my_collaboration_events(
     let identity = require_identity(&state.db, &headers).await?;
     reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
     let session = fetch_collaboration_session_for_participant(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &identity.user_id,
         &session_id,
     )
@@ -40,7 +44,7 @@ pub(crate) async fn list_my_collaboration_events(
     Ok(Json(filter_visible_collaboration_events_for_session(
         &session,
         fetch_collaboration_events(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             &session_id,
             query.after_seq.unwrap_or(0),
             query.limit.unwrap_or(100),
@@ -58,7 +62,7 @@ pub(crate) async fn get_my_collaboration_session(
     reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
     Ok(Json(
         fetch_collaboration_session_for_participant(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             &identity.user_id,
             &session_id,
         )
@@ -74,13 +78,16 @@ pub(crate) async fn get_my_collaboration_runtime(
     let identity = require_identity(&state.db, &headers).await?;
     reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
     let session = fetch_collaboration_session_for_participant(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         &identity.user_id,
         &session_id,
     )
     .await?;
     Ok(Json(
-        build_collaboration_runtime_response_for_participant(state.db.sqlite_adapter(), session)
-            .await?,
+        build_collaboration_runtime_response_for_participant(
+            state.db.try_sqlite_adapter()?,
+            session,
+        )
+        .await?,
     ))
 }

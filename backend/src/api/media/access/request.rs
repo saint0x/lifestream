@@ -416,7 +416,8 @@ async fn load_hls_manifest_with_optional_blocking_reload(
     }
 
     let target =
-        fetch_live_stream_playback_target(state.db.sqlite_adapter(), &session.content_id).await?;
+        fetch_live_stream_playback_target(state.db.try_sqlite_adapter()?, &session.content_id)
+            .await?;
     if !target.runtime_output.blocking_reload_enabled {
         return Ok(body);
     }
@@ -506,8 +507,12 @@ pub(crate) async fn authorize_media_request(
 ) -> AppResult<()> {
     if let Some(identity) = optional_identity(&state.db, headers).await? {
         if let Some(creator_id) = identity.creator_id.as_deref() {
-            if creator_can_access_media_path(state.db.sqlite_adapter(), creator_id, relative_path)
-                .await?
+            if creator_can_access_media_path(
+                state.db.try_sqlite_adapter()?,
+                creator_id,
+                relative_path,
+            )
+            .await?
             {
                 return Ok(());
             }
@@ -525,7 +530,7 @@ pub(crate) async fn authorize_media_request(
     }
 
     let target =
-        fetch_upload_playback_target(state.db.sqlite_adapter(), &session.content_id).await?;
+        fetch_upload_playback_target(state.db.try_sqlite_adapter()?, &session.content_id).await?;
     if playback_path_allowed_for_asset(&target.asset, relative_path) {
         Ok(())
     } else {

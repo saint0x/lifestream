@@ -8,10 +8,13 @@ pub(crate) async fn update_collaboration_participant(
 ) -> AppResult<Json<CollaborationParticipant>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_collaboration_enabled(state.db.sqlite_adapter(), creator_id).await?;
-    let session =
-        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
-            .await?;
+    ensure_creator_collaboration_enabled(state.db.try_sqlite_adapter()?, creator_id).await?;
+    let session = fetch_collaboration_session_for_host(
+        state.db.try_sqlite_adapter()?,
+        creator_id,
+        &session_id,
+    )
+    .await?;
     Ok(Json(
         apply_collaboration_participant_update(
             &state,
@@ -38,7 +41,8 @@ pub(crate) async fn apply_collaboration_participant_update(
     }
 
     let participant =
-        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), participant_id).await?;
+        fetch_collaboration_participant_by_id(state.db.try_sqlite_adapter()?, participant_id)
+            .await?;
     if participant.session_id != session.id {
         return Err(AppError::NotFound);
     }
@@ -115,7 +119,7 @@ pub(crate) async fn apply_collaboration_participant_update(
     .bind(&now)
     .bind(participant_id)
     .bind(&session.id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     if !matches!(next_state.as_str(), "live") || !mirror_to_guest_channel {
@@ -151,7 +155,7 @@ pub(crate) async fn apply_collaboration_participant_update(
     )
     .await?;
 
-    fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), participant_id).await
+    fetch_collaboration_participant_by_id(state.db.try_sqlite_adapter()?, participant_id).await
 }
 
 fn validate_collaboration_media_transport(
@@ -206,16 +210,20 @@ pub(crate) async fn remove_collaboration_participant(
 ) -> AppResult<Json<CollaborationParticipant>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let session =
-        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
-            .await?;
+    let session = fetch_collaboration_session_for_host(
+        state.db.try_sqlite_adapter()?,
+        creator_id,
+        &session_id,
+    )
+    .await?;
     if session.status == "ended" {
         return Err(AppError::BadRequest(
             "cannot remove participants from an ended collaboration session".to_string(),
         ));
     }
     let participant =
-        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), &participant_id).await?;
+        fetch_collaboration_participant_by_id(state.db.try_sqlite_adapter()?, &participant_id)
+            .await?;
     if participant.session_id != session_id {
         return Err(AppError::NotFound);
     }
@@ -239,7 +247,7 @@ pub(crate) async fn remove_collaboration_participant(
     .bind(&now)
     .bind(&participant_id)
     .bind(&session_id)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
     revoke_collaboration_mirror_grants_for_participant(
         &state,
@@ -264,6 +272,7 @@ pub(crate) async fn remove_collaboration_participant(
     )
     .await?;
     Ok(Json(
-        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), &participant_id).await?,
+        fetch_collaboration_participant_by_id(state.db.try_sqlite_adapter()?, &participant_id)
+            .await?,
     ))
 }

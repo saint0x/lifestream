@@ -13,10 +13,10 @@ pub(crate) async fn list_chat_messages(
     Query(query): Query<LimitQuery>,
 ) -> AppResult<Json<Vec<ChatMessage>>> {
     let maybe_identity = optional_identity(&state.db, &headers).await?;
-    ensure_stream_exists(state.db.sqlite_adapter(), &stream_id).await?;
+    ensure_stream_exists(state.db.try_sqlite_adapter()?, &stream_id).await?;
     Ok(Json(
         fetch_chat_messages_for_viewer(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             &stream_id,
             maybe_identity
                 .as_ref()
@@ -34,7 +34,7 @@ pub(crate) async fn enable_live_notify(
     Path(stream_id): Path<String>,
 ) -> AppResult<Json<LiveNotifyPreference>> {
     let identity = require_identity(&state.db, &headers).await?;
-    let stream = fetch_live_stream_by_id(state.db.sqlite_adapter(), &stream_id).await?;
+    let stream = fetch_live_stream_by_id(state.db.try_sqlite_adapter()?, &stream_id).await?;
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         r#"
@@ -46,7 +46,7 @@ pub(crate) async fn enable_live_notify(
     .bind(&identity.user_id)
     .bind(&stream.streamer.id)
     .bind(&now)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
 
     Ok(Json(LiveNotifyPreference {
@@ -61,7 +61,7 @@ pub(crate) async fn create_clip_request(
     Path(stream_id): Path<String>,
 ) -> AppResult<StatusCode> {
     let identity = require_identity(&state.db, &headers).await?;
-    ensure_stream_exists(state.db.sqlite_adapter(), &stream_id).await?;
+    ensure_stream_exists(state.db.try_sqlite_adapter()?, &stream_id).await?;
     let now = Utc::now();
     let now_rfc3339 = now.to_rfc3339();
     let clip_dedupe_after = (now - chrono::Duration::seconds(30)).to_rfc3339();
@@ -79,7 +79,7 @@ pub(crate) async fn create_clip_request(
     .bind(&stream_id)
     .bind(&identity.user_id)
     .bind(&clip_dedupe_after)
-    .fetch_optional(state.db.sqlite_adapter())
+    .fetch_optional(state.db.try_sqlite_adapter()?)
     .await?;
     if existing.is_none() {
         sqlx::query(
@@ -89,7 +89,7 @@ pub(crate) async fn create_clip_request(
         .bind(&stream_id)
         .bind(&identity.user_id)
         .bind(&now_rfc3339)
-        .execute(state.db.sqlite_adapter())
+        .execute(state.db.try_sqlite_adapter()?)
         .await?;
     }
     Ok(StatusCode::ACCEPTED)
@@ -102,7 +102,7 @@ pub(crate) async fn report_live_stream(
     Json(input): Json<LiveReportRequest>,
 ) -> AppResult<StatusCode> {
     let identity = require_identity(&state.db, &headers).await?;
-    let stream = fetch_live_stream_by_id(state.db.sqlite_adapter(), &stream_id).await?;
+    let stream = fetch_live_stream_by_id(state.db.try_sqlite_adapter()?, &stream_id).await?;
     if input.reason.trim().is_empty() {
         return Err(AppError::BadRequest("reason is required".to_string()));
     }
@@ -117,13 +117,13 @@ pub(crate) async fn report_live_stream(
     .bind(input.reason.trim())
     .bind(input.details)
     .bind(&created_at)
-    .execute(state.db.sqlite_adapter())
+    .execute(state.db.try_sqlite_adapter()?)
     .await?;
-    let reporter = fetch_user(state.db.sqlite_adapter(), &identity.user_id).await?;
+    let reporter = fetch_user(state.db.try_sqlite_adapter()?, &identity.user_id).await?;
     let creator_id =
-        fetch_live_stream_owner_creator_id(state.db.sqlite_adapter(), &stream_id).await?;
+        fetch_live_stream_owner_creator_id(state.db.try_sqlite_adapter()?, &stream_id).await?;
     enqueue_notification_event(
-        state.db.sqlite_adapter(),
+        state.db.try_sqlite_adapter()?,
         "live_report_received",
         &format!("{} reported {}.", reporter.display_name, stream.title),
         Some(&identity.user_id),
@@ -146,10 +146,11 @@ pub(crate) async fn get_live_viewer_preview(
     State(state): State<SharedState>,
     Path(stream_id): Path<String>,
 ) -> AppResult<Json<ViewerPreview>> {
-    ensure_stream_exists(state.db.sqlite_adapter(), &stream_id).await?;
+    ensure_stream_exists(state.db.try_sqlite_adapter()?, &stream_id).await?;
     Ok(Json(ViewerPreview {
-        total_viewers: effective_live_viewer_count(state.db.sqlite_adapter(), &stream_id).await?,
-        sample_users: fetch_live_viewer_sample_users(state.db.sqlite_adapter(), &stream_id, 8)
+        total_viewers: effective_live_viewer_count(state.db.try_sqlite_adapter()?, &stream_id)
+            .await?,
+        sample_users: fetch_live_viewer_sample_users(state.db.try_sqlite_adapter()?, &stream_id, 8)
             .await?,
     }))
 }

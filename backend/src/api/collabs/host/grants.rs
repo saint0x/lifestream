@@ -7,17 +7,21 @@ pub(crate) async fn issue_collaboration_mirror_grant(
 ) -> AppResult<Json<CollaborationMirrorGrant>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_collaboration_enabled(state.db.sqlite_adapter(), creator_id).await?;
-    let session =
-        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
-            .await?;
+    ensure_creator_collaboration_enabled(state.db.try_sqlite_adapter()?, creator_id).await?;
+    let session = fetch_collaboration_session_for_host(
+        state.db.try_sqlite_adapter()?,
+        creator_id,
+        &session_id,
+    )
+    .await?;
     if session.status == "ended" {
         return Err(AppError::BadRequest(
             "cannot issue collaboration grants for an ended session".to_string(),
         ));
     }
     let participant =
-        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), &participant_id).await?;
+        fetch_collaboration_participant_by_id(state.db.try_sqlite_adapter()?, &participant_id)
+            .await?;
     if participant.session_id != session_id {
         return Err(AppError::NotFound);
     }

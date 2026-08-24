@@ -3,8 +3,12 @@ use super::*;
 pub(crate) async fn reconcile_expired_creator_enforcement_actions(
     state: SharedState,
 ) -> AppResult<()> {
-    reconcile_expired_creator_enforcement_actions_for_read(state.db.sqlite_adapter(), None, None)
-        .await
+    reconcile_expired_creator_enforcement_actions_for_read(
+        state.db.try_sqlite_adapter()?,
+        None,
+        None,
+    )
+    .await
 }
 
 pub(crate) async fn reconcile_expired_creator_enforcement_actions_for_read(
@@ -89,7 +93,8 @@ pub(crate) async fn reconcile_single_creator_enforcement_action(
     action_id: &str,
 ) -> AppResult<CreatorEnforcementReconciliationReport> {
     let before =
-        fetch_creator_enforcement_action_by_id_raw(state.db.sqlite_adapter(), action_id).await?;
+        fetch_creator_enforcement_action_by_id_raw(state.db.try_sqlite_adapter()?, action_id)
+            .await?;
     let now = Utc::now().to_rfc3339();
     let mut actions = Vec::new();
 
@@ -104,10 +109,10 @@ pub(crate) async fn reconcile_single_creator_enforcement_action(
         )
         .bind(&now)
         .bind(action_id)
-        .execute(state.db.sqlite_adapter())
+        .execute(state.db.try_sqlite_adapter()?)
         .await?;
         let _ = write_moderation_audit_entry(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             &before.creator_id,
             None,
             &before.created_by_user_id,
@@ -121,7 +126,7 @@ pub(crate) async fn reconcile_single_creator_enforcement_action(
         )
         .await?;
         let _ = enqueue_notification_event(
-            state.db.sqlite_adapter(),
+            state.db.try_sqlite_adapter()?,
             "creator_enforcement_expired",
             &format!(
                 "An enforcement restriction for scope '{}' has expired.",
@@ -152,7 +157,8 @@ pub(crate) async fn reconcile_single_creator_enforcement_action(
     }
 
     let action =
-        fetch_creator_enforcement_action_by_id_raw(state.db.sqlite_adapter(), action_id).await?;
+        fetch_creator_enforcement_action_by_id_raw(state.db.try_sqlite_adapter()?, action_id)
+            .await?;
     Ok(CreatorEnforcementReconciliationReport {
         action_id: action_id.to_string(),
         reconciled_at: now,
