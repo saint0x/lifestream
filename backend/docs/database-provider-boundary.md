@@ -43,10 +43,12 @@ handler code as an accidental dependency.
 
 ## Current SQLite Adapter Inventory
 
-The current codebase still contains legacy SQLite adapter usage while the migration proceeds:
+The current codebase still contains legacy SQLite adapter usage while the migration proceeds. The
+inventory excludes tests, `db.rs`, and `main.rs`; `main.rs` is the provider bootstrap entry point
+that selects and initializes the active database provider.
 
-- `state.db.sqlite_adapter()` call sites in backend source, excluding tests and `db.rs`: 689.
-- `SqlitePool`/`SqliteRow` references in backend source, excluding tests and `db.rs`: 373.
+- SQLite adapter call sites in backend source: 656.
+- `SqlitePool`/`SqliteRow` references in backend source: 395.
 
 Those counts are guarded by `provider_boundary_audit_stays_in_sync`. Lowering them is always allowed;
 raising them requires either migrating the new logic behind `Database` or intentionally updating this

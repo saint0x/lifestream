@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
-const MAX_SQLITE_ADAPTER_CALLS: usize = 689;
-const MAX_SQLITE_TYPE_REFERENCES: usize = 397;
+const MAX_SQLITE_ADAPTER_CALLS: usize = 656;
+const MAX_SQLITE_TYPE_REFERENCES: usize = 395;
 
 #[test]
 fn provider_boundary_audit_stays_in_sync() {
@@ -16,6 +16,7 @@ fn provider_boundary_audit_stays_in_sync() {
         }
         let source = fs::read_to_string(&file).expect("read backend source");
         sqlite_adapter_calls += source.matches(".sqlite_adapter()").count();
+        sqlite_adapter_calls += source.matches(".try_sqlite_adapter()").count();
         sqlite_type_references += source.matches("SqlitePool").count();
         sqlite_type_references += source.matches("SqliteRow").count();
     }
@@ -49,6 +50,9 @@ fn rust_files(root: &Path) -> Vec<std::path::PathBuf> {
 fn is_excluded(src_dir: &Path, file: &Path) -> bool {
     let relative = file.strip_prefix(src_dir).expect("source file under src");
     if relative == Path::new("db.rs") {
+        return true;
+    }
+    if relative == Path::new("main.rs") {
         return true;
     }
     relative.components().any(|component| {
