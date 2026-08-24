@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { EpisodeList } from "@/components/content/EpisodeList";
+import { SeriesCredits } from "@/components/content/SeriesCredits";
 import { ContentRow } from "@/components/content/ContentRow";
 import { PageMetadata } from "@/components/seo/PageMetadata";
 import { PageTrail } from "@/components/navigation/PageTrail";
@@ -191,29 +192,7 @@ export function SeriesPage() {
             {shareStatus ? <div className="ls-detail__status">{shareStatus}</div> : null}
           </div>
 
-          <aside className="ls-detail__credits">
-            <div className="ls-detail__credit-label mono">Credits</div>
-            {series.credits.map((c) => (
-              <div key={c.id} className="ls-detail__credit">
-                {c.avatar ? (
-                  <img className="ls-detail__credit-avatar" src={c.avatar} alt="" />
-                ) : null}
-                <div className="ls-detail__credit-copy">
-                  {c.personSlug ? (
-                    <Link className="ls-detail__credit-name" to={`/@${c.personSlug}`}>
-                      {c.name}
-                    </Link>
-                  ) : (
-                    <div className="ls-detail__credit-name">{c.name}</div>
-                  )}
-                  <div className="ls-detail__credit-role mono">
-                    {c.role}
-                    {c.character != null && ` · ${c.character}`}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </aside>
+          <SeriesCredits credits={series.credits} />
         </div>
 
         <EpisodeList series={series} />

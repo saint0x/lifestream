@@ -200,6 +200,87 @@ a.ls-detail__credit-name:hover {
   letter-spacing: 0.08em;
 }
 
+.ls-detail__credits--squares {
+  gap: 12px;
+  padding: 14px;
+  max-height: none;
+  overflow: visible;
+}
+
+.ls-detail__credit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ls-detail__credit-card {
+  aspect-ratio: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--r-sm);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.04)),
+    rgba(0, 0, 0, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 12px 30px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.ls-detail__credit-card-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ls-detail__credit-card-avatar--fallback {
+  display: grid;
+  place-items: center;
+  color: var(--c-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ls-detail__credit-card-copy {
+  min-width: 0;
+}
+
+.ls-detail__credit-card-name {
+  display: block;
+  max-width: 100%;
+  color: var(--c-text);
+  font-size: 13px;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.ls-detail__credit-card-name:hover {
+  color: var(--c-accent);
+}
+
+.ls-detail__credit-card-role {
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 9px;
+  line-height: 1.35;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 @media (max-width: 980px) {
   .ls-detail__header {
     grid-template-columns: 1fr;
@@ -209,5 +290,16 @@ a.ls-detail__credit-name:hover {
   .ls-detail__credits {
     margin-top: 0;
     max-width: 420px;
+  }
+}
+
+@media (max-width: 520px) {
+  .ls-detail__credit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ls-detail__credit-card {
+    aspect-ratio: auto;
+    min-height: 118px;
   }
 }
