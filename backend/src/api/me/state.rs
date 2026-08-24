@@ -265,6 +265,8 @@ async fn fetch_postgres_viewer_account_bundle(
     pool: &sqlx::PgPool,
     user_id: &str,
 ) -> AppResult<PostgresViewerAccountBundle> {
+    ensure_postgres_viewer_account_bundle_rows(pool, user_id).await?;
+
     let row = sqlx::query(
         r#"
         SELECT
@@ -412,6 +414,148 @@ async fn fetch_postgres_viewer_account_bundle(
             average_revenue_per_user: row.get("average_revenue_per_user"),
         },
     })
+}
+
+async fn ensure_postgres_viewer_account_bundle_rows(
+    pool: &sqlx::PgPool,
+    user_id: &str,
+) -> AppResult<()> {
+    let next_renewal_date = (Utc::now() + ChronoDuration::days(30))
+        .date_naive()
+        .to_string();
+    let features_json = serde_json::to_string(&vec![
+        "HD streaming",
+        "mobile downloads",
+        "community live chat",
+    ])?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO user_profiles (
+            user_id, email, email_verified, mature_content_allowed, default_audio,
+            subtitle_preset, autoplay_trailers, live_chat_filter, hours_watched
+        )
+        SELECT
+            u.id,
+            COALESCE(
+                (
+                    SELECT aec.email
+                    FROM auth_email_credentials aec
+                    WHERE aec.user_id = u.id
+                    ORDER BY aec.created_at ASC
+                    LIMIT 1
+                ),
+                lower(u.handle) || '@vanta.local'
+            ),
+            0, 0, 'English', 'English · Standard', 1, 'Standard', 0
+        FROM users u
+        WHERE u.id = $1
+        ON CONFLICT(user_id) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO user_playback_settings (
+            user_id, default_quality, audio_language, subtitle_language, subtitle_style,
+            autoplay_next_episode, autoplay_trailers, reduced_motion, prefer_dubbed,
+            playback_speed
+        ) VALUES ($1, 'Auto (up to 4K HDR)', 'English · 5.1 (Dolby Atmos)', 'English',
+                  'English · Standard', 1, 1, 0, 0, '1× (normal)')
+        ON CONFLICT(user_id) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO user_notification_settings (
+            user_id, series_push, series_email, live_push, live_email, originals_push,
+            originals_email, watchlist_push, watchlist_email, creator_push, creator_email,
+            security_push, security_email
+        ) VALUES ($1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1)
+        ON CONFLICT(user_id) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO user_privacy_settings (
+            user_id, show_friend_activity, improve_recommendations, personalized_ads,
+            ab_tests, data_export_size_mb, delete_cooldown_days
+        ) VALUES ($1, 1, 1, 0, 1, 0.0, 7)
+        ON CONFLICT(user_id) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO user_parental_controls (
+            user_id, max_rating, require_pin_for_mature, hide_live_chat_for_kids,
+            block_mature_live_streams, pin_set
+        ) VALUES ($1, 'TV-MA', 0, 0, 0, 0)
+        ON CONFLICT(user_id) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO user_download_settings (
+            user_id, video_quality, wifi_only, smart_downloads, storage_used_gb,
+            storage_limit_gb, device_limit, active_devices
+        ) VALUES ($1, 'High (1080p)', 1, 1, 0.0, 25.0, 2, 0)
+        ON CONFLICT(user_id) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO user_language_settings (
+            user_id, interface_language, subtitle_language, catalog_region,
+            date_format, clock_format
+        ) VALUES ($1, 'English (US)', 'English', 'United States', 'MMM D, YYYY', 'Auto')
+        ON CONFLICT(user_id) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO billing_profiles (
+            user_id, plan_name, monthly_price, next_renewal_date, payment_brand,
+            payment_last4, billing_city, billing_region, billing_country, invoices_count,
+            screens, features_json, average_revenue_per_user
+        ) VALUES ($1, 'VANTA Free', 0.0, $2, 'None', '0000', 'Unknown', 'Unknown',
+                  'Unknown', 0, 1, $3, 0.0)
+        ON CONFLICT(user_id) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .bind(next_renewal_date)
+    .bind(features_json)
+    .execute(pool)
+    .await?;
+
+    Ok(())
 }
 
 fn notification_channel_with_values(
