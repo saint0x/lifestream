@@ -2,6 +2,8 @@
 
 This is the launch baseline for the current production code path.
 
+Production choices should support the creator-benefit thesis: Vanta must feel reliable, fast, free to enter, easy to share, and credible as the production home creators ask their audiences to visit at `https://streamvanta.tv`.
+
 ## Platform
 
 - Production runs on Railway for the API/runtime container.

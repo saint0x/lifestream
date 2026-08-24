@@ -4,6 +4,8 @@
 
 This questionnaire is designed to extract the decision-making system of an elite executive director, filmmaker, editor, cinematographer, and creative producer into a structured archive that can later function as the taste layer for Vanta's automated media-production system.
 
+The creator-facing purpose is improvement. The protocol should help creators understand why work feels strong or weak, what to fix first, when imperfection is useful, and how to make a Vanta series feel more intentional without requiring wasteful production spend.
+
 The goal is not simply to document:
 
 - camera settings
@@ -80,4 +82,3 @@ For each conflict below, explain which side normally wins and under what circums
 16. What is the overall hierarchy used when several of these priorities conflict simultaneously?
 17. Which principles are absolute?
 18. Which principles are merely defaults?
-

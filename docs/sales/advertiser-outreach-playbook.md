@@ -1,5 +1,7 @@
 # Advertiser Outreach Playbook
 
+Outreach should frame Vanta as a cleaner way for brands to support creator media properties, not a cheaper way to extract creator trust. The strongest pitch is that advertisers get clarity while creators get better packaging, measurement, and economics.
+
 ## Outreach Principle
 
 Advertiser outreach should be high-volume, segmented, and specific.
@@ -12,6 +14,12 @@ Pitch the match between:
 - the creator's audience;
 - the exclusive series;
 - and Vanta's Qualified Attention measurement.
+
+Internally, the outreach question is:
+
+> Which advertisers are most likely to pay for the heat this creator can create?
+
+The heat comes from high-quality creator programming plus the creator's own hustle promoting that programming. Outreach should target buyers who already value that audience, category, and trust.
 
 The best first message should make the advertiser think:
 
@@ -37,6 +45,8 @@ High-signal sources include:
 The best early prospects are not random companies.
 
 They are companies already demonstrating willingness to pay for creator attention.
+
+Prioritize brands that can understand the thermal-energy model quickly: the creator creates demand, Vanta measures and packages it, and the brand buys access before competitors do.
 
 ## Brand Affinity Map
 
@@ -204,6 +214,8 @@ Vanta is launching exclusive premium programming with creators whose audiences a
 
 The difference from a normal creator post is that Vanta measures Qualified Attention: not just raw views, but viewers who actually watch, return, and engage around the exclusive series.
 
+The creator is making the heat through the series and their promotion. Vanta turns that heat into a measurable sponsorship package.
+
 We are opening a limited number of launch sponsorships for this property and thought [Brand] could be a strong fit.
 
 Worth a quick look?
@@ -215,6 +227,8 @@ Worth a quick look?
 Quick follow-up here.
 
 The simple version: Vanta lets brands sponsor exclusive creator programming and receive reporting on Qualified Attention rather than only impressions.
+
+Internally, this is Vanta converting creator-generated heat into sponsor-ready money.
 
 For [Brand], the likely fit is [creator/category/package] because [specific reason].
 

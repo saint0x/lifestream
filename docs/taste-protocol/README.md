@@ -4,6 +4,8 @@ This archive contains the Executive Director Questionnaire for building Vanta's 
 
 The goal of the protocol is to extract elite creative judgment into a structured taste layer for Vanta's automated media-production system. It is not just a list of camera settings, editing tricks, or production conventions. It is a system for understanding how an elite creative director decides what should happen, when it should happen, why it should happen, and when the normal rule should be broken.
 
+The creator benefit is central: this protocol should help creators make better work, develop sharper taste, recover weaker footage, tell clearer stories, and raise the quality of the media properties they bring to Vanta.
+
 ## Documents
 
 - [01 Foundation](./01-foundation.md): purpose, creative constitution, and taste hierarchy.
@@ -20,4 +22,3 @@ The goal of the protocol is to extract elite creative judgment into a structured
 The ultimate objective is that an intelligent production system should be able to consult this archive and reason:
 
 > Given what is happening in this footage, what would an elite Vanta executive director do next?
-

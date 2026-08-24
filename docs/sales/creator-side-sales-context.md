@@ -1,5 +1,7 @@
 # Creator-Side Sales Context
 
+Creator context exists so sellers do not treat creators as raw inventory. The model works when Vanta helps creators build better media properties, concentrate real audience attention, and earn from that attention in a cleaner structure than scattered one-off sponsorships.
+
 ## Why Advertiser Sellers Need Creator Context
 
 Advertiser sellers are not responsible for recruiting creators.
@@ -13,12 +15,19 @@ The seller is selling a system where:
 ```text
 Creator makes exclusive programming
 -> Creator aggressively promotes it
+-> Quality + hustle creates heat
 -> Audience follows the creator to Vanta
 -> Vanta measures that attention
 -> Advertiser buys access
 ```
 
 If the seller does not understand this system, they will mis-sell the inventory.
+
+The strict mental model is:
+
+> Vanta is an engine that converts thermal energy into money.
+
+Creators create that thermal energy by combining high-quality content with relentless distribution. A beautiful series with no promotion creates too little heat. Loud promotion for weak content creates low-quality heat that will not sustain return viewing. The valuable input is both together: strong work plus serious hustle.
 
 ## The Creator Is The Distribution Channel
 
@@ -77,6 +86,8 @@ Creator promotion is not a nice extra.
 
 It is one of the core reasons the advertiser buys the package.
 
+Promotion is one half of the heat source. The other half is content quality. Sales should never package creator inventory as if audience heat appears automatically.
+
 The creator must:
 
 - announce the Vanta release;
@@ -90,6 +101,8 @@ The creator must:
 Advertiser-facing translation:
 
 > The campaign includes the creator's ability to mobilize demand, not only the on-platform ad placement.
+
+In the thermal-energy model, these commitments are not vanity deliverables. They are the actions that help generate the heat Vanta can convert into money.
 
 ## Audience Devotion Beats Vanity Size
 

@@ -1,5 +1,7 @@
 # Story And Openings
 
+The creator benefit of better story judgment is immediate: stronger openings earn more trust, reduce drop-off, and make the creator's best material easier for audiences to feel.
+
 ## 3. Finding The Story
 
 Assume you receive 30 minutes of completely unedited footage.
@@ -34,4 +36,3 @@ Assume you receive 30 minutes of completely unedited footage.
 8. When is disorientation desirable?
 9. What information should never be revealed too early?
 10. What is the difference between intrigue and confusion?
-

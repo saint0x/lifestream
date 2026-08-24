@@ -2,7 +2,7 @@
 
 ## Seller Mission
 
-The seller's mission is to convert Vanta's exclusive creator programming into advertiser revenue.
+The seller's mission is to convert Vanta's exclusive creator programming into advertiser revenue in a way that also strengthens the creator's media property.
 
 Do not confuse this with selling generic media.
 
@@ -12,13 +12,29 @@ Do not confuse this with selling a speculative platform vision.
 
 The practical job is:
 
-> Put advertiser capital against verified creator-imported attention, then turn proof into renewals.
+> Put advertiser capital against verified creator-imported attention, help the creator earn from that attention, then turn proof into renewals.
+
+The thermal-energy model is the seller's simplest internal operating frame:
+
+```text
+High-quality creator content
++ creator hustle, advertising, and promotion
+= heat
+
+Heat concentrated into real audience attention
+= thermal energy
+
+Vanta conversion engine
+= money
+```
+
+Vanta gets paid because it converts that thermal energy into advertiser revenue. The creator gets paid because their quality and hustle become measurable, packageable, and sponsorable.
 
 ## The Core Sentence
 
 Every seller should be able to say this clearly:
 
-> Vanta helps brands sponsor exclusive creator programming watched by audiences the creators actively bring to the platform, then reports the quality of that attention instead of hiding behind raw impressions.
+> Vanta helps brands sponsor exclusive creator programming watched by audiences the creators actively bring to the platform, then reports the quality of that attention so creators and advertisers can both understand the value being created.
 
 This sentence contains the whole model:
 
@@ -91,6 +107,10 @@ The opening must be simple:
 
 > This is premium creator programming, with measurable attention, sold as structured sponsorship inventory.
 
+Or, internally:
+
+> The creator creates the heat. Vanta converts the heat into money.
+
 ## The Buyer Must Understand The Difference
 
 A normal influencer post is often:
@@ -107,6 +127,7 @@ Vanta is trying to build:
 ```text
 Brand sponsors creator property
 -> Creator drives audience to exclusive programming
+-> Creator quality + promotion creates thermal energy
 -> Audience watches in a measurable environment
 -> Vanta reports Qualified Attention
 -> Brand renews or expands

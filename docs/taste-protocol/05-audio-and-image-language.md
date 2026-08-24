@@ -1,5 +1,7 @@
 # Audio And Image Language
 
+Audio and image choices should make the creator's work easier to trust, easier to watch, and more distinctive without pushing it into generic polish.
+
 ## 20. Negative Sonic Space
 
 1. When is silence more powerful than music?

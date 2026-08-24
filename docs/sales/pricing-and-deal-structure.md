@@ -1,5 +1,7 @@
 # Pricing And Deal Structure
 
+Pricing should defend creator value. Vanta can be commercially aggressive, but the floor of the model is that serious creator attention should not be sold like leftover commodity impressions.
+
 ## Pricing Principle
 
 Vanta should not price purely on raw views.
@@ -21,6 +23,10 @@ Vanta should price on:
 The pricing argument is:
 
 > Verified attention should command more than undifferentiated impressions.
+
+The thermal-energy pricing argument is:
+
+> The creator creates heat through high-quality content and serious promotion. Vanta converts that heat into money through measurement, packaging, sales, and renewals. Pricing should reflect the amount, quality, concentration, and commercial usefulness of that heat.
 
 Qualified Attention is a pricing input, not a magic price override.
 
@@ -81,6 +87,8 @@ The creator should feel:
 
 > If I make great exclusive content and promote it hard, I can earn more.
 
+That is the thermal model in creator language: make the heat, let Vanta convert it into money, then share in the upside.
+
 The default structure should be:
 
 ```text
@@ -94,6 +102,8 @@ The exact split may vary by deal type, production support, sales burden, platfor
 But the principle should remain clear:
 
 > Vanta makes money when creators make money.
+
+Vanta is paid for the conversion engine, not for pretending it created the heat alone. Creator quality and creator hustle are the fuel.
 
 ## Deal Types
 
@@ -203,6 +213,7 @@ Bad reasons:
 - salesperson wants an easier close;
 - low-budget buyer wants high-touch service;
 - Vanta cannot explain its own value.
+- Vanta cannot explain the heat behind the inventory.
 
 If Vanta discounts, it should get something back:
 

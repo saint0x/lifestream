@@ -1,5 +1,7 @@
 # Shot And Camera Grammar
 
+Shot judgment should help creators make their work feel more intentional, legible, intimate, and premium without assuming they have a large production crew.
+
 ## 5. Judging Existing Shots
 
 For every shot, evaluate:

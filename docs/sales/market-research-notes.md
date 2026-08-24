@@ -6,6 +6,10 @@ It is not a pitch deck.
 
 It is the grounding layer that prevents Vanta from selling on assumptions alone.
 
+Use this research to sharpen the creator-benefit case, not just the buyer pitch. The strongest evidence should clarify why serious creator attention deserves better packaging, better measurement, and better economics.
+
+Read every source through the thermal-energy model: high-quality creator content plus creator hustle creates heat; Vanta converts that heat into money through advertiser demand, measurement, packaging, sales, reporting, and renewals.
+
 ## Research Sources
 
 ### IAB Creator Economy Ad Spend And Strategy

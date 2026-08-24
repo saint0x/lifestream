@@ -1,5 +1,7 @@
 # Editing And Performance
 
+Editing guidance should help creators protect attention and personality at the same time: cleaner rhythm, better choices, fewer dead moments, and more trust in the person on screen.
+
 ## 14. Cuts
 
 Define rules for hard cuts, match cuts, jump cuts, smash cuts, L-cuts, J-cuts, reaction cuts, motivated cuts, invisible cuts, rhythmic cuts, and visual match cuts.
@@ -88,4 +90,3 @@ Define rules for hard cuts, match cuts, jump cuts, smash cuts, L-cuts, J-cuts, r
 8. When should a reaction replace the speaker?
 9. What makes conversational editing feel overly manufactured?
 10. How should overlapping speech be handled?
-

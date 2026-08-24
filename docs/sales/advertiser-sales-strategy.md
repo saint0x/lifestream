@@ -1,5 +1,7 @@
 # Advertiser Sales Strategy
 
+The advertiser strategy should always protect the creator-benefit promise. Vanta sells access to creator trust, but the sale should make that trust more valuable for the creator, not cheaper, noisier, or harder to sustain.
+
 ## The Core Job
 
 Once Vanta succeeds at creator aggregation, the company's commercial risk changes.
@@ -13,6 +15,12 @@ The risk becomes:
 > Can Vanta convert creator-imported attention into advertiser demand without becoming a custom-services business for low-budget buyers?
 
 The sales function exists to solve that second problem.
+
+The operating metaphor:
+
+> Vanta is an engine that converts thermal energy into money.
+
+Creators create heat by making high-quality exclusive content and then hustling to advertise, distribute, and promote that content. Vanta concentrates and measures the resulting audience attention, packages it for advertisers, sells it, reports it, and renews it. That conversion layer is what Vanta gets paid for.
 
 ## What Vanta Sells
 
@@ -32,6 +40,8 @@ That sentence matters because it separates Vanta from four weaker categories:
 - and generic programmatic video inventory.
 
 The advertiser is buying access to an audience that a creator has actively mobilized into a premium viewing environment.
+
+In thermal terms, the advertiser is buying access to concentrated heat: creator trust, content quality, audience movement, watch depth, and return behavior that Vanta can prove.
 
 ## Market Reality
 
@@ -75,6 +85,8 @@ That creator-audience relationship is the distribution layer.
 The programming cannot be watched everywhere else.
 
 Exclusivity gives the creator a reason to push Vanta and gives the viewer a reason to leave the feed.
+
+Exclusivity concentrates heat. If the full property is everywhere, the creator's promotion disperses. If the full property is on Vanta, the heat moves into one measurable environment.
 
 ### 3. Long-Form Attention
 
@@ -241,6 +253,7 @@ Paid pilots should each define one primary learning objective:
 - Will the buyer pay for creator-imported attention?
 - Does this category command premium pricing?
 - Does this creator drive qualified viewers?
+- Did this creator's content quality and promotion create enough heat to monetize?
 - Does the advertiser care more about brand lift, qualified reach, traffic, or conversion?
 - Does the campaign generate a renewal conversation?
 

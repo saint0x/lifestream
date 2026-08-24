@@ -1,5 +1,7 @@
 # Reporting And Renewals
 
+Reporting should help the advertiser decide what to renew and help the creator understand what made their audience valuable. The creator should leave each campaign with more proof, sharper instincts, and a stronger Vanta property.
+
 ## Reporting Principle
 
 Post-campaign reporting is not administrative cleanup.
@@ -9,6 +11,10 @@ It is the proof engine for renewal, pricing power, creator acquisition, and adve
 Every campaign should answer:
 
 > Did this advertiser buy real, qualified, creator-imported attention?
+
+It should also answer the thermal-energy question:
+
+> How much heat did the creator create, how much of it became measurable Qualified Attention, and how much money can Vanta convert from that proof next time?
 
 ## Minimum Campaign Report
 
@@ -35,6 +41,17 @@ Every advertiser report should include:
 - recommendation for renewal.
 
 If available, include Creator Attention Value and value capture analysis.
+
+The report should make the conversion chain visible:
+
+```text
+Creator content quality
+-> creator promotion delivered
+-> audience heat
+-> Qualified Attention
+-> advertiser value
+-> renewal / expansion
+```
 
 ## Qualified Attention Explanation
 
@@ -101,6 +118,8 @@ If creator promotion was weak, the report should say so internally.
 
 If creator promotion was strong, Vanta should use it as proof that the model works.
 
+Creator promotion reporting explains the heat source. It shows whether the campaign succeeded because the creator actually moved people, or underperformed because there was not enough distribution energy behind the property.
+
 ## Internal Campaign Review
 
 After every campaign, run an internal review.
@@ -109,6 +128,7 @@ Questions:
 
 - Did the creator deliver the content?
 - Did the creator promote hard enough?
+- Did quality plus promotion create enough heat?
 - Did the audience migrate?
 - Did viewers become Qualified Viewers?
 - Did the advertiser get the audience they expected?
@@ -224,6 +244,8 @@ Recommended Next Package:
 ```
 
 Case studies become sales assets for both sides of the marketplace.
+
+The strongest case studies should show the full thermal conversion: the creator made strong work, promoted it hard, Vanta measured the resulting attention, the advertiser bought access, and the campaign produced proof worth renewing.
 
 For advertisers:
 

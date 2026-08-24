@@ -2,6 +2,8 @@
 
 Vanta's proprietary Qualified Viewer system is the trust and pricing layer for creator attention.
 
+For creators, the point is not to invent a vanity score. The point is to help serious audience behavior become visible: who actually watched, returned, engaged, and created commercial value around the creator's work. Better measurement should help better creators get paid more fairly for real attention.
+
 Not every impression has equal economic value. Vanta therefore should not simply tell advertisers:
 
 > This video received 500,000 views.

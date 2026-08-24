@@ -1,5 +1,7 @@
 # Inventory And Packaging
 
+Packaging should make creator attention easier to buy without making the creator feel commoditized. The best packages give advertisers clarity while giving creators better economics, cleaner expectations, and a stronger reason to keep building premium programming on Vanta.
+
 ## Packaging Principle
 
 Vanta should turn fragmented creator attention into structured media inventory.
@@ -7,6 +9,18 @@ Vanta should turn fragmented creator attention into structured media inventory.
 The buyer should not have to decipher every creator, episode, placement, metric, and price from scratch.
 
 Vanta should package inventory into clear offers that are easy to buy, easy to explain internally, and easy to report after the campaign.
+
+Packaging should make the thermal-energy model legible:
+
+```text
+Creator quality + creator hustle
+-> audience heat
+-> measurable attention
+-> sponsor-ready inventory
+-> money
+```
+
+If a package does not identify where the heat comes from, how it will be concentrated, and how Vanta will convert it, the package is not clear enough.
 
 ## What Can Be Sold
 
@@ -238,6 +252,8 @@ Creator promotion is part of the inventory.
 
 Advertisers are not only buying placement inside Vanta. They are buying the creator's ability to mobilize attention toward the Vanta property.
 
+They are buying the creator's heat: the combination of high-quality programming and active promotion.
+
 Each sold package should specify creator promotion commitments, such as:
 
 - number of external posts;
@@ -254,6 +270,8 @@ The creator's marketing effort is not separate from campaign performance.
 
 It is a core input.
 
+Without creator promotion, there may be content but not enough heat. Without content quality, there may be noise but not valuable thermal energy. Packages should require both.
+
 ## Inventory Quality Gate
 
 Do not sell inventory merely because it exists.
@@ -263,6 +281,7 @@ Inventory becomes advertiser-ready when Vanta can explain:
 - who the audience is;
 - why the creator matters;
 - why the content is exclusive;
+- how creator quality and promotion create heat;
 - what the advertiser receives;
 - what the creator will promote;
 - what Qualified Attention will be measured;

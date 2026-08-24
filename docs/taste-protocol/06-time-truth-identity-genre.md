@@ -1,5 +1,7 @@
 # Time, Truth, Identity, And Genre
 
+These questions protect the creator's most valuable asset: a recognizable point of view that can survive compression, genre shifts, edits, and platform pressure.
+
 ## 38. Condensed Time
 
 1. What makes a montage effective?
@@ -175,4 +177,3 @@ For each:
 
 1. When does it increase authenticity?
 2. When does it merely signal incompetence?
-

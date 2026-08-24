@@ -12,9 +12,11 @@ Function: Content, Creative Direction, Creator Acquisition, Studio, Culture & Pa
 
 Destin is responsible for building and directing Vanta's creative universe.
 
+The role should be creator-benefit focused. Vanta needs exceptional exclusive programming, but the healthiest path to that outcome is helping creators become better showrunners, directors, operators, and media-property owners than they could become alone.
+
 His primary mandate is simple:
 
-> Ensure Vanta continuously has exceptional original and exclusive programming that people cannot get anywhere else.
+> Ensure Vanta continuously has exceptional original and exclusive programming that people cannot get anywhere else, while making Vanta a genuinely valuable creative and economic home for the creators who build that programming.
 
 He owns both sides of that equation:
 

@@ -1,5 +1,7 @@
 # Advertising Marketplace
 
+The marketplace should be understood as creator-benefit infrastructure, not merely advertiser infrastructure. It exists to help creators who can earn real attention avoid the worst parts of sponsorship work: fragmented outreach, unclear pricing, weak measurement, inconsistent reporting, and one-off deals that do not compound.
+
 ## The Advertising Portal
 
 The business-facing product should eventually operate as a self-service advertising marketplace.

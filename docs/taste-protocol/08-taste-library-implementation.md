@@ -1,5 +1,7 @@
 # Taste Library Implementation
 
+Implementation should make taste usable for creators: clear enough to guide decisions, flexible enough to preserve voice, and practical enough to improve real productions.
+
 ## 56. Positive Reference Library
 
 For every major creative principle, provide examples from:

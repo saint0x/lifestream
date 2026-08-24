@@ -4,6 +4,8 @@
 
 Vanta is a free, creator-driven streaming platform combining the premium episodic presentation of HBO Max with the live-streaming capabilities of Twitch.
 
+The creator-facing promise is practical: help creators become more valuable media operators. Vanta gives them a premium home for ambitious work, a clearer way to concentrate returning audience behavior, and a monetization layer that can reward real attention instead of disposable reach.
+
 The platform allows creators to publish:
 
 - Episodic series
@@ -26,7 +28,7 @@ The platform therefore monetizes the economic activity surrounding content rathe
 
 At a high level:
 
-> Vanta gives internet creators their own HBO-quality distribution environment, gives advertisers direct access to highly qualified creator audiences, and monetizes the infrastructure connecting the two.
+> Vanta gives internet creators their own HBO-quality distribution environment, helps them turn audience trust into a premium media property, gives advertisers direct access to highly qualified creator audiences, and monetizes the infrastructure connecting the two.
 
 ---
 
@@ -225,9 +227,9 @@ For example, a creator with 500,000 Instagram followers could post:
 
 > Episode 3 is streaming now exclusively on Vanta.
 
-The creator's existing social graph becomes the customer-acquisition mechanism.
+The creator's existing social graph becomes the customer-acquisition mechanism, but the benefit to the creator is that promotion now points toward something they can build as a property: a full series, a profile, a library, and a measurable audience habit.
 
-Vanta therefore does not necessarily have to purchase those viewers through traditional paid advertising. The creator brings them.
+Vanta therefore does not necessarily have to purchase those viewers through traditional paid advertising. The creator brings them, and Vanta's job is to help make that effort more valuable than another isolated social post.
 
 ---
 
@@ -253,7 +255,7 @@ without necessarily acquiring those viewers individually through paid advertisin
 
 This creates one of the fundamental advantages of the model:
 
-> Vanta acquires audiences indirectly by acquiring creators.
+> Vanta acquires audiences indirectly by helping creators build stronger destinations for the audiences they already move.
 
 Every creator becomes both:
 
@@ -294,7 +296,7 @@ The creator provides:
 
 In other words:
 
-> Vanta provides the media company; the creator provides the media property.
+> Vanta provides the media-company infrastructure; the creator builds the media property.
 
 ---
 
@@ -316,7 +318,7 @@ A creator's custom Vanta URL can become the primary destination they advertise a
 For example:
 
 ```text
-vanta.com/creator
+https://streamvanta.tv/creator
 ```
 
 That page can contain:

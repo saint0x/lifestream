@@ -4,6 +4,8 @@
 
 Vanta intentionally avoids relying on subscriptions.
 
+That choice is creator-benefit focused as much as it is strategic. The platform should help creators earn from the audience value around their work without asking viewers to cross a paywall first or asking creators to pay SaaS fees before the model has created value for them.
+
 There are three primary revenue engines:
 
 1. Creator Advertising Marketplace
@@ -100,7 +102,7 @@ Advertiser pays campaign budget
 
 This creates revenue without requiring creators to pay upfront.
 
-Vanta makes money when creators make money. That alignment is strategically important.
+Vanta makes money when creators make money. That alignment is strategically important because the platform's self-interest should push it to help creators build better properties, attract better advertisers, and keep more of the value their audiences create.
 
 ---
 

@@ -1,5 +1,7 @@
 # Recovery, Attention, And Series Systems
 
+This section should help creators salvage imperfect material, manage audience attention, and turn individual releases into series habits that compound over time.
+
 ## 48. Recovery Protocol
 
 Suppose the raw footage is poor.
@@ -124,4 +126,3 @@ Questions:
 6. Which should be embraced when useful?
 7. What does "premium internet-native cinema" mean?
 8. How should Vanta differ aesthetically from YouTube, TikTok, Twitch, Netflix, HBO, and traditional television?
-

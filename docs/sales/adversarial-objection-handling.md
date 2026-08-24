@@ -4,6 +4,8 @@
 
 This document prepares Vanta sellers for skeptical buyers.
 
+The answers should be commercially sharp without losing the creator-benefit center. Vanta is not pretending to be charity; it is arguing that the best business model is the one where creators, advertisers, and the platform all benefit from real attention.
+
 Do not treat objections as interruptions.
 
 Objections reveal the buyer's real decision criteria.
@@ -26,6 +28,12 @@ The strongest answer is usually:
 
 > Here is exactly what we are selling, here is exactly what we can measure, and here is why that may be more valuable than what you are buying elsewhere.
 
+The seller should also hold the thermal-energy model in mind:
+
+> Creators create heat through high-quality content and aggressive promotion. Vanta converts that heat into money through measurement, packaging, sales, reporting, and renewals.
+
+Use this model to keep answers concrete. If a buyer asks where the value comes from, the answer is not vague platform magic. The value comes from creator-generated heat made commercially legible.
+
 ## Core Objections
 
 ### "How many users does Vanta have?"
@@ -42,6 +50,10 @@ Bridge:
 
 > The better question is: how many qualified viewers can this creator property deliver for your target category?
 
+Thermal model:
+
+> We are not selling the ambient temperature of the whole platform. We are selling the heat this creator can create and Vanta can measure.
+
 ### "Why should we sponsor this through Vanta instead of going directly to the creator?"
 
 Weak answer:
@@ -55,6 +67,10 @@ Strong answer:
 Bridge:
 
 > If you want a one-off post, go direct. If you want a measurable creator media property, Vanta is the stronger structure.
+
+Thermal model:
+
+> The creator still creates the heat. Vanta gives you the conversion engine: packaging, measurement, reporting, and renewal logic around that heat.
 
 ### "Isn't this just influencer marketing?"
 
@@ -97,6 +113,10 @@ Strong answer:
 Bridge:
 
 > We treat creator distribution as inventory, so it needs to be specified like inventory.
+
+Thermal model:
+
+> Promotion is one of the heat sources. If the creator does not promote, Vanta has less thermal energy to convert.
 
 ### "Can you guarantee conversions?"
 
@@ -210,6 +230,10 @@ Bridge:
 
 > We can right-size the first package, but we should not price verified creator attention like remnant inventory.
 
+Thermal model:
+
+> The price reflects concentrated creator heat plus Vanta's ability to convert that heat into measurable sponsor value.
+
 ### "What brand safety controls do we have?"
 
 Weak answer:
@@ -251,6 +275,10 @@ Strong answer:
 Bridge:
 
 > The power of the model is alignment: creator trust creates attention, Vanta measures and monetizes it, advertisers buy access to it.
+
+Thermal model:
+
+> The creator owns the relationship that creates the heat. Vanta operates the engine that converts that heat into money.
 
 ### "What happens if Vanta fails or the creator leaves?"
 
@@ -380,6 +408,7 @@ The practice buyer should ask:
 - "What proof will I have after the campaign?"
 - "What exactly am I buying?"
 - "What are you not able to measure yet?"
+- "Where does the heat come from, and how does Vanta convert it into money?"
 
 Do not allow vague answers.
 
