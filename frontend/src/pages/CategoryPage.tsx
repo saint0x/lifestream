@@ -3,6 +3,7 @@ import { useParams, Navigate } from "react-router-dom";
 import { repository } from "@/lib/repository";
 import { LiveCard } from "@/components/content/LiveCard";
 import { ContentCard } from "@/components/content/ContentCard";
+import { PageMetadata } from "@/components/seo/PageMetadata";
 import type { Category, Film, LiveStream, Series } from "@/types";
 import "./CategoryPage.css";
 
@@ -75,6 +76,41 @@ export function CategoryPage() {
 
   return (
     <div className="ls-category">
+      <PageMetadata
+        title={`${cat.name} on VANTA`}
+        description={`Browse ${cat.name} live streams, long-form episodic series, films, creators, and premium audience inventory on VANTA.`}
+        path={`/category/${cat.slug}`}
+        image={cat.coverImage}
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: `${cat.name} on VANTA`,
+          description:
+            `Browse ${cat.name} live streams, long-form episodic series, films, creators, and premium audience inventory on VANTA.`,
+          keywords: cat.tags,
+          image: cat.coverImage,
+          hasPart: [
+            ...liveInCat.slice(0, 12).map((stream) => ({
+              "@type": "BroadcastEvent",
+              name: stream.title,
+              startDate: stream.startedAt,
+              isLiveBroadcast: true,
+              image: stream.thumbnail,
+              performer: {
+                "@type": "Person",
+                name: stream.streamer.displayName,
+              },
+            })),
+            ...vodInCat.slice(0, 18).map((item) => ({
+              "@type": item.kind === "series" ? "TVSeries" : "Movie",
+              name: item.title,
+              description: item.synopsis,
+              genre: item.genres,
+              image: item.images.poster,
+            })),
+          ],
+        }}
+      />
       <header
         className="ls-category__hero"
         style={{ backgroundImage: `url(${cat.coverImage})` }}

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://streamvanta.tv/sitemap.xml
+Host: https://streamvanta.tv

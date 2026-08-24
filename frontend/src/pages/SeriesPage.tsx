@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { EpisodeList } from "@/components/content/EpisodeList";
 import { ContentRow } from "@/components/content/ContentRow";
+import { PageMetadata } from "@/components/seo/PageMetadata";
 import { shareCurrentPage } from "@/lib/share";
 import type { Film, Series } from "@/types";
 import "./DetailPage.css";
@@ -72,6 +73,43 @@ export function SeriesPage() {
 
   return (
     <div className="ls-detail" style={{ ["--hero-accent" as string]: series.heroColor }}>
+      <PageMetadata
+        title={`${series.title} - VANTA series`}
+        description={`${series.synopsis} Watch ${series.title}, a premium long-form episodic series on VANTA.`}
+        path={`/series/${series.slug}`}
+        image={series.images.backdrop}
+        type="video.tv_show"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "TVSeries",
+          name: series.title,
+          description: series.synopsis,
+          genre: series.genres,
+          contentRating: series.rating,
+          datePublished: String(series.year),
+          image: [series.images.poster, series.images.backdrop],
+          numberOfEpisodes: series.totalEpisodes,
+          numberOfSeasons: series.seasons.length,
+          actor: series.credits
+            .filter((credit) => /actor|cast|star/i.test(credit.role))
+            .map((credit) => ({ "@type": "Person", name: credit.name })),
+          creator: series.credits
+            .filter((credit) => /creator|writer|director/i.test(credit.role))
+            .map((credit) => ({ "@type": "Person", name: credit.name })),
+          episode: series.seasons.flatMap((season) =>
+            season.episodes.map((episode) => ({
+              "@type": "TVEpisode",
+              name: episode.title,
+              description: episode.synopsis,
+              seasonNumber: episode.seasonNumber,
+              episodeNumber: episode.episodeNumber,
+              datePublished: episode.airedAt,
+              duration: `PT${episode.durationSec}S`,
+              image: episode.thumbnail,
+            })),
+          ),
+        }}
+      />
       <div
         className="ls-detail__hero"
         style={{ backgroundImage: `url(${series.images.backdrop})` }}

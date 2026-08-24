@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PageMetadata } from "@/components/seo/PageMetadata";
 import { repository } from "@/lib/repository";
 import type { AdMarketplaceOffer, AdMarketplaceSummary, CreatorAdHubResponse } from "@/types";
 import "./AdHubPage.css";
@@ -174,6 +175,29 @@ export function AdHubPage() {
 
   return (
     <div className="ls-ad-hub">
+      <PageMetadata
+        title="VANTA Ad Hub - Creator advertising offers"
+        description="VANTA Ad Hub lets creators review sponsorship offers, manage ad deliverables, and submit campaign proof for premium long-form episodic content inventory."
+        path="/ad-hub"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "WebApplication",
+          name: "VANTA Ad Hub",
+          applicationCategory: "BusinessApplication",
+          operatingSystem: "Web",
+          description:
+            "Creator-side advertising marketplace hub for sponsorship offers, ad deliverables, campaign proof, and premium long-form episodic content inventory.",
+          provider: {
+            "@type": "Organization",
+            name: "VANTA",
+            url: "https://streamvanta.tv/",
+          },
+          audience: {
+            "@type": "Audience",
+            audienceType: "Creators and streamers",
+          },
+        }}
+      />
       <header className="ls-ad-hub__head">
         <div className="ls-ad-hub__kicker mono">/ creator / ad hub</div>
         <div className="ls-ad-hub__title-row">

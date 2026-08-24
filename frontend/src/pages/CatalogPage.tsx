@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ContentCard } from "@/components/content/ContentCard";
+import { PageMetadata } from "@/components/seo/PageMetadata";
 import { Button } from "@/components/ui/Button";
 import { repository } from "@/lib/repository";
 import type { Film, Genre, Series } from "@/types";
@@ -188,8 +189,42 @@ export function CatalogPage({ kind, originalsOnly = false }: CatalogPageProps) {
       .finally(() => setLoadingMore(false));
   };
 
+  const pageTitle = originalsOnly
+    ? "VANTA Originals"
+    : kind === "series"
+      ? "VANTA Series"
+      : kind === "film"
+        ? "VANTA Films"
+        : "Browse VANTA";
+  const pageDescription = originalsOnly
+    ? "Browse VANTA Originals, premium exclusive long-form episodic content and films from creator-led studios."
+    : kind === "series"
+      ? "Browse premium long-form episodic series on VANTA, built for viewers, creators, and advertiser-ready attention."
+      : kind === "film"
+        ? "Browse premium films on VANTA from creator-led studios and cinematic publishers."
+        : "Browse VANTA's premium exclusive catalog of series, films, originals, and creator-led content.";
+
   return (
     <div className="ls-catalog">
+      <PageMetadata
+        title={`${pageTitle} - Premium long-form streaming`}
+        description={pageDescription}
+        path={originalsOnly ? "/originals" : kind === "series" ? "/series" : kind === "film" ? "/films" : "/"}
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: pageTitle,
+          description: pageDescription,
+          hasPart: results.slice(0, 12).map((item) => ({
+            "@type": item.kind === "series" ? "TVSeries" : "Movie",
+            name: item.title,
+            description: item.synopsis,
+            genre: item.genres,
+            datePublished: String(item.year),
+            image: item.images.poster,
+          })),
+        }}
+      />
       <header className="ls-catalog__head">
         <div>
           <div className="ls-catalog__kicker mono">

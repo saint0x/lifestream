@@ -5,7 +5,85 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />
-    <meta name="description" content="VANTA — live broadcasting meets cinematic streaming" />
+    <meta
+      name="description"
+      content="VANTA is the home for premium exclusive long-form episodic content, creator streams, and high-intent ad inventory for advertisers."
+    />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="author" content="VANTA" />
+    <meta property="og:site_name" content="VANTA" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="VANTA - Premium long-form streaming and ad inventory"
+    />
+    <meta
+      property="og:description"
+      content="For advertisers, VANTA is the home to buy premium exclusive long-form episodic content ad inventory. For creators and streamers, VANTA is a home for exclusive episodes, live streams, and earning from consistent usership."
+    />
+    <meta property="og:url" content="https://streamvanta.tv/" />
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="VANTA - Premium long-form streaming and ad inventory"
+    />
+    <meta
+      name="twitter:description"
+      content="Premium exclusive long-form episodic content for viewers, ad inventory for advertisers, and creator monetization through qualified attention."
+    />
+    <link rel="canonical" href="https://streamvanta.tv/" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://streamvanta.tv/#organization",
+            "name": "VANTA",
+            "url": "https://streamvanta.tv/",
+            "logo": "https://streamvanta.tv/favicon.svg",
+            "description": "VANTA is the home for premium exclusive long-form episodic content, creator streams, and high-intent ad inventory for advertisers."
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://streamvanta.tv/#website",
+            "name": "VANTA",
+            "url": "https://streamvanta.tv/",
+            "publisher": { "@id": "https://streamvanta.tv/#organization" },
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": "https://streamvanta.tv/search?q={search_term_string}",
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@type": "Service",
+            "@id": "https://streamvanta.tv/#advertiser-service",
+            "name": "Premium episodic content ad inventory",
+            "provider": { "@id": "https://streamvanta.tv/#organization" },
+            "serviceType": "Advertising marketplace",
+            "audience": {
+              "@type": "BusinessAudience",
+              "audienceType": "Advertisers"
+            },
+            "description": "VANTA is the home to buy premium exclusive long-form episodic content ad inventory across creator-led series, streams, sponsorships, and audience attention packages."
+          },
+          {
+            "@type": "Service",
+            "@id": "https://streamvanta.tv/#creator-service",
+            "name": "Creator long-form streaming and episodic publishing",
+            "provider": { "@id": "https://streamvanta.tv/#organization" },
+            "serviceType": "Creator platform",
+            "audience": {
+              "@type": "Audience",
+              "audienceType": "Creators and streamers"
+            },
+            "description": "VANTA gives creators and streamers a home for exclusive long-form episodic content, premium streams, and earnings based on consistent usership and qualified attention."
+          }
+        ]
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,6 +94,32 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <main>
+        <h1>VANTA</h1>
+        <p>
+          VANTA is a streaming platform for premium exclusive long-form episodic
+          content and live creator streams.
+        </p>
+        <section aria-labelledby="advertisers">
+          <h2 id="advertisers">For Advertisers</h2>
+          <p>
+            VANTA is the home to buy premium exclusive long-form episodic
+            content ad inventory, including creator-led series, live streams,
+            sponsorships, and qualified attention packages.
+          </p>
+        </section>
+        <section aria-labelledby="creators">
+          <h2 id="creators">For Creators</h2>
+          <p>
+            VANTA is where creators and streamers publish exclusive long-form
+            episodic content, live streams, and premium audience experiences,
+            with monetization based on consistent usership and qualified
+            attention.
+          </p>
+        </section>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

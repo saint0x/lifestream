@@ -1,0 +1,30 @@
+# VANTA
+
+VANTA is a streaming platform for premium exclusive long-form episodic content and live creator streams.
+
+## For Advertisers
+
+VANTA is the home to buy premium exclusive long-form episodic content ad inventory. Advertisers can buy creator-led inventory across long-form episodes, live streams, sponsorship packages, campaign deliverables, and qualified attention packages.
+
+VANTA's advertising product is built around consistent usership and qualified attention from audiences watching creator-led premium content.
+
+## For Creators
+
+VANTA is a home for creators and streamers to publish exclusive long-form episodic content, exclusive live streams, and premium audience experiences.
+
+Creators can bring their audiences to VANTA, build recurring viewership, manage their content through Creator Studio, and receive advertiser opportunities through Ad Hub.
+
+## Important Pages
+
+- Home: https://streamvanta.tv/
+- Series catalog: https://streamvanta.tv/series
+- Films catalog: https://streamvanta.tv/films
+- VANTA Originals: https://streamvanta.tv/originals
+- Live streams: https://streamvanta.tv/live
+- Search: https://streamvanta.tv/search
+
+## Crawl Policy
+
+Public VANTA pages are intended to be machine-readable. Crawlers and browsing agents may index public marketing, catalog, creator profile, series, film, and episode metadata.
+
+Authenticated app areas, private user settings, private creator operations, and account-specific data require user authorization and should not be treated as public content.

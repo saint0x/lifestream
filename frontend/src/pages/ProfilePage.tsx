@@ -15,6 +15,7 @@ import type { IconType } from "react-icons";
 import { FaFacebookF, FaImdb, FaInstagram, FaLinkedinIn, FaXTwitter } from "react-icons/fa6";
 import { repository } from "@/lib/repository";
 import { AlertMeButton } from "@/components/alerts/AlertMeButton";
+import { PageMetadata } from "@/components/seo/PageMetadata";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAppStore } from "@/lib/store";
@@ -291,6 +292,35 @@ export function ProfilePage() {
 
   return (
     <div className="ls-profile">
+      <PageMetadata
+        title={`${profile.displayName} - VANTA creator profile`}
+        description={`${profile.headline || profile.about || `${profile.displayName} on VANTA`}. View ${profile.displayName}'s creator profile, public links, and long-form credits on VANTA.`}
+        path={profileUrlPath}
+        image={profile.heroImage || profile.avatar}
+        type="profile"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "Person",
+          name: profile.displayName,
+          alternateName: `@${profile.slug}`,
+          description: profile.about || profile.headline,
+          image: profile.avatar || profile.heroImage,
+          url: `https://streamvanta.tv${profileUrlPath}`,
+          sameAs: links.map((link) => link.href),
+          knowsAbout: profile.knownFor,
+          workExample: profile.credits.map((credit) => ({
+            "@type": credit.contentKind === "series" ? "TVSeries" : "Movie",
+            name: credit.title,
+            datePublished: String(credit.year),
+            url: `https://streamvanta.tv/${credit.contentKind === "series" ? "series" : "film"}/${credit.contentSlug}`,
+            contributor: {
+              "@type": "Person",
+              name: profile.displayName,
+              roleName: credit.role,
+            },
+          })),
+        }}
+      />
       <section
         className="ls-profile__hero"
         style={heroStyle}

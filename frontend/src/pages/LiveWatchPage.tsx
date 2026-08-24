@@ -4,6 +4,7 @@ import { Heart, Share2 } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
+import { PageMetadata } from "@/components/seo/PageMetadata";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -131,6 +132,33 @@ export function LiveWatchPage() {
 
   return (
     <div className="ls-live-watch">
+      <PageMetadata
+        title={`${stream.title} - Live on VANTA`}
+        description={`${stream.streamer.displayName} is live on VANTA: ${stream.title}. Watch premium creator streams and active audience programming.`}
+        path={`/live/${stream.slug}`}
+        image={stream.thumbnail}
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "BroadcastEvent",
+          name: stream.title,
+          description: stream.streamer.bio,
+          startDate: stream.startedAt,
+          isLiveBroadcast: true,
+          image: stream.thumbnail,
+          url: `https://streamvanta.tv/live/${stream.slug}`,
+          performer: {
+            "@type": "Person",
+            name: stream.streamer.displayName,
+            description: stream.streamer.bio,
+            image: stream.streamer.avatar,
+          },
+          about: [stream.category, ...stream.tags],
+          audience: {
+            "@type": "Audience",
+            audienceType: "Live streaming viewers",
+          },
+        }}
+      />
       <div className="ls-live-watch__main">
         <div className="ls-live-watch__player">
           {playbackLoading ? (

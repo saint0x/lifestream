@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { repository } from "@/lib/repository";
 import { LiveCard } from "@/components/content/LiveCard";
+import { PageMetadata } from "@/components/seo/PageMetadata";
 import type { Category, Genre, LiveStream } from "@/types";
 import "./BrowseLivePage.css";
 
@@ -57,6 +58,30 @@ export function BrowseLivePage() {
 
   return (
     <div className="ls-browse">
+      <PageMetadata
+        title="Live creator streams - VANTA"
+        description="Browse live creator streams on VANTA, including premium exclusive streams, active categories, and real-time audience inventory."
+        path="/live"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Live creator streams",
+          description:
+            "Live creator streams on VANTA for viewers, creators, and advertiser-ready active audience inventory.",
+          hasPart: streams.slice(0, 24).map((stream) => ({
+            "@type": "BroadcastEvent",
+            name: stream.title,
+            description: stream.streamer.bio,
+            startDate: stream.startedAt,
+            isLiveBroadcast: true,
+            image: stream.thumbnail,
+            performer: {
+              "@type": "Person",
+              name: stream.streamer.displayName,
+            },
+          })),
+        }}
+      />
       <header className="ls-browse__head">
         <div>
           <div className="ls-browse__kicker mono">/ live</div>

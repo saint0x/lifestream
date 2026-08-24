@@ -6,6 +6,7 @@ import { useAppStore } from "@/lib/store";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ContentRow } from "@/components/content/ContentRow";
+import { PageMetadata } from "@/components/seo/PageMetadata";
 import { formatRuntime } from "@/lib/format";
 import { shareCurrentPage } from "@/lib/share";
 import type { Film, Series } from "@/types";
@@ -69,6 +70,30 @@ export function FilmPage() {
 
   return (
     <div className="ls-detail" style={{ ["--hero-accent" as string]: film.heroColor }}>
+      <PageMetadata
+        title={`${film.title} - VANTA film`}
+        description={`${film.synopsis} Watch ${film.title}, a premium long-form film on VANTA.`}
+        path={`/film/${film.slug}`}
+        image={film.images.backdrop}
+        type="video.movie"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "Movie",
+          name: film.title,
+          description: film.synopsis,
+          genre: film.genres,
+          contentRating: film.rating,
+          datePublished: String(film.year),
+          duration: `PT${film.durationSec}S`,
+          image: [film.images.poster, film.images.backdrop],
+          actor: film.credits
+            .filter((credit) => /actor|cast|star/i.test(credit.role))
+            .map((credit) => ({ "@type": "Person", name: credit.name })),
+          creator: film.credits
+            .filter((credit) => /creator|writer|director/i.test(credit.role))
+            .map((credit) => ({ "@type": "Person", name: credit.name })),
+        }}
+      />
       <div
         className="ls-detail__hero"
         style={{ backgroundImage: `url(${film.images.backdrop})` }}

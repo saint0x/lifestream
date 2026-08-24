@@ -3,6 +3,7 @@ import { useParams, Link, Navigate } from "react-router-dom";
 import { ChevronLeft, Play } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { AlertMeButton } from "@/components/alerts/AlertMeButton";
+import { PageMetadata } from "@/components/seo/PageMetadata";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { useAppStore } from "@/lib/store";
 import { formatDuration } from "@/lib/format";
@@ -141,6 +142,29 @@ export function WatchPage({ kind }: WatchPageProps) {
 
     return (
       <div className="ls-watch">
+        <PageMetadata
+          title={`${episode.title} - ${series.title} on VANTA`}
+          description={`${episode.synopsis} Watch ${series.title} season ${episode.seasonNumber}, episode ${episode.episodeNumber} on VANTA.`}
+          path={`/watch/episode/${episode.id}`}
+          image={episode.thumbnail || series.images.backdrop}
+          type="video.episode"
+          structuredData={{
+            "@context": "https://schema.org",
+            "@type": "TVEpisode",
+            name: episode.title,
+            description: episode.synopsis,
+            partOfSeries: {
+              "@type": "TVSeries",
+              name: series.title,
+              url: `https://streamvanta.tv/series/${series.slug}`,
+            },
+            seasonNumber: episode.seasonNumber,
+            episodeNumber: episode.episodeNumber,
+            datePublished: episode.airedAt,
+            duration: `PT${episode.durationSec}S`,
+            image: episode.thumbnail || series.images.backdrop,
+          }}
+        />
         <header className="ls-watch__bar">
           <Link to={`/series/${series.slug}`} className="ls-watch__back">
             <ChevronLeft size={14} /> Back to {series.title}
@@ -232,6 +256,24 @@ export function WatchPage({ kind }: WatchPageProps) {
 
   return (
     <div className="ls-watch">
+      <PageMetadata
+        title={`${film.title} - Watch on VANTA`}
+        description={`${film.synopsis} Watch ${film.title}, a premium long-form film on VANTA.`}
+        path={`/watch/film/${film.id}`}
+        image={film.images.backdrop}
+        type="video.movie"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "Movie",
+          name: film.title,
+          description: film.synopsis,
+          genre: film.genres,
+          contentRating: film.rating,
+          datePublished: String(film.year),
+          duration: `PT${film.durationSec}S`,
+          image: [film.images.poster, film.images.backdrop],
+        }}
+      />
       <header className="ls-watch__bar">
         <Link to={`/film/${film.slug}`} className="ls-watch__back">
           <ChevronLeft size={14} /> Back to {film.title}

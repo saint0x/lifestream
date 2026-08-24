@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { RouterProvider } from "react-router-dom";
+import { JsonLd, buildPlatformStructuredData } from "@/components/seo/PageMetadata";
 import { useAppStore } from "./lib/store";
 import { router } from "./router";
 
@@ -18,6 +19,7 @@ export function App() {
     const isLoading = hydrationStatus === "idle" || hydrationStatus === "loading";
     return (
       <div className="grain">
+        <JsonLd id="vanta-platform-structured-data" data={buildPlatformStructuredData()} />
         <main className="ls-boot">
           <div className="ls-boot__kicker mono">vanta / session</div>
           <h1 className="ls-boot__title">{isLoading ? "Opening VANTA" : "Unable to open"}</h1>
@@ -38,6 +40,7 @@ export function App() {
 
   return (
     <div className="grain">
+      <JsonLd id="vanta-platform-structured-data" data={buildPlatformStructuredData()} />
       <RouterProvider router={router} />
     </div>
   );

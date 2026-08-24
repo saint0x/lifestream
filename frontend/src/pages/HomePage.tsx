@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { HeroCarousel } from "@/components/content/HeroCarousel";
 import { ContentRow } from "@/components/content/ContentRow";
+import { PageMetadata } from "@/components/seo/PageMetadata";
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
 import type { Film, LiveStream, Series } from "@/types";
@@ -104,6 +105,25 @@ export function HomePage() {
 
   return (
     <div className="ls-home">
+      <PageMetadata
+        title="VANTA - Premium exclusive episodes, streams, and ad inventory"
+        description="VANTA is the home for premium exclusive long-form episodic content and live creator streams, with high-intent ad inventory for advertisers and monetization for creators."
+        path="/"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: "VANTA",
+          url: "https://streamvanta.tv/",
+          description:
+            "Premium exclusive long-form episodic content for viewers, ad inventory for advertisers, and creator monetization through qualified attention.",
+          significantLink: [
+            "https://streamvanta.tv/series",
+            "https://streamvanta.tv/live",
+            "https://streamvanta.tv/originals",
+            "https://streamvanta.tv/ad-hub",
+          ],
+        }}
+      />
       {loading ? <div className="ls-home__state">Loading home…</div> : null}
       {error ? <div className="ls-home__state">{error}</div> : null}
       <HeroCarousel items={heroItems} />
