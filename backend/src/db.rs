@@ -1112,10 +1112,10 @@ impl Database {
                     "#,
                 )
                 .bind(input.email.as_deref())
-                .bind(input.mature_content_allowed.map(bool_to_sqlite_int))
+                .bind(input.mature_content_allowed.map(bool_to_postgres_int))
                 .bind(input.default_audio.as_deref())
                 .bind(input.subtitle_preset.as_deref())
-                .bind(input.autoplay_trailers.map(bool_to_sqlite_int))
+                .bind(input.autoplay_trailers.map(bool_to_postgres_int))
                 .bind(input.live_chat_filter.as_deref())
                 .bind(user_id)
                 .execute(pool)
@@ -1310,10 +1310,10 @@ impl Database {
                     .bind(&playback.audio_language)
                     .bind(&playback.subtitle_language)
                     .bind(&playback.subtitle_style)
-                    .bind(playback.autoplay_next_episode)
-                    .bind(playback.autoplay_trailers)
-                    .bind(playback.reduced_motion)
-                    .bind(playback.prefer_dubbed)
+                    .bind(bool_to_postgres_int(playback.autoplay_next_episode))
+                    .bind(bool_to_postgres_int(playback.autoplay_trailers))
+                    .bind(bool_to_postgres_int(playback.reduced_motion))
+                    .bind(bool_to_postgres_int(playback.prefer_dubbed))
                     .bind(&playback.playback_speed)
                     .bind(user_id)
                     .execute(pool)
@@ -1331,18 +1331,18 @@ impl Database {
                         WHERE user_id = $13
                         "#,
                     )
-                    .bind(notifications.series_releases.push)
-                    .bind(notifications.series_releases.email)
-                    .bind(notifications.live_streams.push)
-                    .bind(notifications.live_streams.email)
-                    .bind(notifications.originals.push)
-                    .bind(notifications.originals.email)
-                    .bind(notifications.watchlist_updates.push)
-                    .bind(notifications.watchlist_updates.email)
-                    .bind(notifications.creator_updates.push)
-                    .bind(notifications.creator_updates.email)
-                    .bind(notifications.security_alerts.push)
-                    .bind(notifications.security_alerts.email)
+                    .bind(bool_to_postgres_int(notifications.series_releases.push))
+                    .bind(bool_to_postgres_int(notifications.series_releases.email))
+                    .bind(bool_to_postgres_int(notifications.live_streams.push))
+                    .bind(bool_to_postgres_int(notifications.live_streams.email))
+                    .bind(bool_to_postgres_int(notifications.originals.push))
+                    .bind(bool_to_postgres_int(notifications.originals.email))
+                    .bind(bool_to_postgres_int(notifications.watchlist_updates.push))
+                    .bind(bool_to_postgres_int(notifications.watchlist_updates.email))
+                    .bind(bool_to_postgres_int(notifications.creator_updates.push))
+                    .bind(bool_to_postgres_int(notifications.creator_updates.email))
+                    .bind(bool_to_postgres_int(notifications.security_alerts.push))
+                    .bind(bool_to_postgres_int(notifications.security_alerts.email))
                     .bind(user_id)
                     .execute(pool)
                     .await?;
@@ -1358,10 +1358,10 @@ impl Database {
                         WHERE user_id = $7
                         "#,
                     )
-                    .bind(privacy.show_friend_activity)
-                    .bind(privacy.improve_recommendations)
-                    .bind(privacy.personalized_ads)
-                    .bind(privacy.ab_tests)
+                    .bind(bool_to_postgres_int(privacy.show_friend_activity))
+                    .bind(bool_to_postgres_int(privacy.improve_recommendations))
+                    .bind(bool_to_postgres_int(privacy.personalized_ads))
+                    .bind(bool_to_postgres_int(privacy.ab_tests))
                     .bind(privacy.data_export_size_mb)
                     .bind(privacy.delete_cooldown_days)
                     .bind(user_id)
@@ -1380,10 +1380,10 @@ impl Database {
                         "#,
                     )
                     .bind(&parental.max_rating)
-                    .bind(parental.require_pin_for_mature)
-                    .bind(parental.hide_live_chat_for_kids)
-                    .bind(parental.block_mature_live_streams)
-                    .bind(parental.pin_set)
+                    .bind(bool_to_postgres_int(parental.require_pin_for_mature))
+                    .bind(bool_to_postgres_int(parental.hide_live_chat_for_kids))
+                    .bind(bool_to_postgres_int(parental.block_mature_live_streams))
+                    .bind(bool_to_postgres_int(parental.pin_set))
                     .bind(user_id)
                     .execute(pool)
                     .await?;
@@ -1400,8 +1400,8 @@ impl Database {
                         "#,
                     )
                     .bind(&downloads.video_quality)
-                    .bind(downloads.wifi_only)
-                    .bind(downloads.smart_downloads)
+                    .bind(bool_to_postgres_int(downloads.wifi_only))
+                    .bind(bool_to_postgres_int(downloads.smart_downloads))
                     .bind(downloads.storage_used_gb)
                     .bind(downloads.storage_limit_gb)
                     .bind(downloads.device_limit)
@@ -2449,6 +2449,10 @@ impl Database {
 
 fn bool_to_sqlite_int(value: bool) -> i64 {
     value as i64
+}
+
+fn bool_to_postgres_int(value: bool) -> i32 {
+    value as i32
 }
 
 async fn sqlite_exists(pool: &SqlitePool, query: &str, value: &str) -> AppResult<bool> {

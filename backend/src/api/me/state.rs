@@ -311,69 +311,69 @@ async fn fetch_postgres_viewer_account_bundle(
             audio_language: row.get("audio_language"),
             subtitle_language: row.get("subtitle_language"),
             subtitle_style: row.get("subtitle_style"),
-            autoplay_next_episode: row.get("autoplay_next_episode"),
-            autoplay_trailers: row.get("playback_autoplay_trailers"),
-            reduced_motion: row.get("reduced_motion"),
-            prefer_dubbed: row.get("prefer_dubbed"),
+            autoplay_next_episode: postgres_int_flag(&row, "autoplay_next_episode"),
+            autoplay_trailers: postgres_int_flag(&row, "playback_autoplay_trailers"),
+            reduced_motion: postgres_int_flag(&row, "reduced_motion"),
+            prefer_dubbed: postgres_int_flag(&row, "prefer_dubbed"),
             playback_speed: row.get("playback_speed"),
         },
         notifications: NotificationSettings {
             series_releases: notification_channel_with_values(
                 "New episodes of series I watch",
-                row.get("series_push"),
-                row.get("series_email"),
+                postgres_int_flag(&row, "series_push"),
+                postgres_int_flag(&row, "series_email"),
                 false,
             ),
             live_streams: notification_channel_with_values(
                 "Followed streamers go live",
-                row.get("live_push"),
-                row.get("live_email"),
+                postgres_int_flag(&row, "live_push"),
+                postgres_int_flag(&row, "live_email"),
                 false,
             ),
             originals: notification_channel_with_values(
                 "VANTA Originals premieres",
-                row.get("originals_push"),
-                row.get("originals_email"),
+                postgres_int_flag(&row, "originals_push"),
+                postgres_int_flag(&row, "originals_email"),
                 false,
             ),
             watchlist_updates: notification_channel_with_values(
                 "Watchlist price drops",
-                row.get("watchlist_push"),
-                row.get("watchlist_email"),
+                postgres_int_flag(&row, "watchlist_push"),
+                postgres_int_flag(&row, "watchlist_email"),
                 false,
             ),
             creator_updates: notification_channel_with_values(
                 "Creator tools & product updates",
-                row.get("creator_push"),
-                row.get("creator_email"),
+                postgres_int_flag(&row, "creator_push"),
+                postgres_int_flag(&row, "creator_email"),
                 false,
             ),
             security_alerts: notification_channel_with_values(
                 "Security alerts",
-                row.get("security_push"),
-                row.get("security_email"),
+                postgres_int_flag(&row, "security_push"),
+                postgres_int_flag(&row, "security_email"),
                 true,
             ),
         },
         privacy: PrivacySettings {
-            show_friend_activity: row.get("show_friend_activity"),
-            improve_recommendations: row.get("improve_recommendations"),
-            personalized_ads: row.get("personalized_ads"),
-            ab_tests: row.get("ab_tests"),
+            show_friend_activity: postgres_int_flag(&row, "show_friend_activity"),
+            improve_recommendations: postgres_int_flag(&row, "improve_recommendations"),
+            personalized_ads: postgres_int_flag(&row, "personalized_ads"),
+            ab_tests: postgres_int_flag(&row, "ab_tests"),
             data_export_size_mb: row.get("data_export_size_mb"),
             delete_cooldown_days: row.get("delete_cooldown_days"),
         },
         parental: ParentalControls {
             max_rating: row.get("max_rating"),
-            require_pin_for_mature: row.get("require_pin_for_mature"),
-            hide_live_chat_for_kids: row.get("hide_live_chat_for_kids"),
-            block_mature_live_streams: row.get("block_mature_live_streams"),
-            pin_set: row.get("pin_set"),
+            require_pin_for_mature: postgres_int_flag(&row, "require_pin_for_mature"),
+            hide_live_chat_for_kids: postgres_int_flag(&row, "hide_live_chat_for_kids"),
+            block_mature_live_streams: postgres_int_flag(&row, "block_mature_live_streams"),
+            pin_set: postgres_int_flag(&row, "pin_set"),
         },
         downloads: DownloadSettings {
             video_quality: row.get("video_quality"),
-            wifi_only: row.get("wifi_only"),
-            smart_downloads: row.get("smart_downloads"),
+            wifi_only: postgres_int_flag(&row, "wifi_only"),
+            smart_downloads: postgres_int_flag(&row, "smart_downloads"),
             storage_used_gb: row.get("storage_used_gb"),
             storage_limit_gb: row.get("storage_limit_gb"),
             device_limit: row.get("device_limit"),
@@ -390,11 +390,11 @@ async fn fetch_postgres_viewer_account_bundle(
     Ok(PostgresViewerAccountBundle {
         profile: PostgresUserProfileRow {
             email: row.get("email"),
-            email_verified: row.get("email_verified"),
-            mature_content_allowed: row.get("mature_content_allowed"),
+            email_verified: postgres_int_flag(&row, "email_verified"),
+            mature_content_allowed: postgres_int_flag(&row, "mature_content_allowed"),
             default_audio: row.get("default_audio"),
             subtitle_preset: row.get("subtitle_preset"),
-            autoplay_trailers: row.get("autoplay_trailers"),
+            autoplay_trailers: postgres_int_flag(&row, "autoplay_trailers"),
             live_chat_filter: row.get("live_chat_filter"),
             hours_watched: row.get("hours_watched"),
         },
@@ -556,6 +556,10 @@ async fn ensure_postgres_viewer_account_bundle_rows(
     .await?;
 
     Ok(())
+}
+
+fn postgres_int_flag(row: &sqlx::postgres::PgRow, column: &str) -> bool {
+    row.get::<i32, _>(column) != 0
 }
 
 fn notification_channel_with_values(
