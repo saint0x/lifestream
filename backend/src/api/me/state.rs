@@ -271,7 +271,8 @@ async fn fetch_postgres_viewer_account_bundle(
         r#"
         SELECT
             up.email, up.email_verified, up.mature_content_allowed, up.default_audio,
-            up.subtitle_preset, up.autoplay_trailers, up.live_chat_filter, up.hours_watched,
+            up.subtitle_preset, up.autoplay_trailers, up.live_chat_filter,
+            up.hours_watched::BIGINT AS hours_watched,
             ups.default_quality, ups.audio_language, ups.subtitle_language, ups.subtitle_style,
             ups.autoplay_next_episode, ups.autoplay_trailers AS playback_autoplay_trailers,
             ups.reduced_motion, ups.prefer_dubbed, ups.playback_speed,
@@ -279,16 +280,25 @@ async fn fetch_postgres_viewer_account_bundle(
             uns.originals_push, uns.originals_email, uns.watchlist_push, uns.watchlist_email,
             uns.creator_push, uns.creator_email, uns.security_push, uns.security_email,
             upr.show_friend_activity, upr.improve_recommendations, upr.personalized_ads,
-            upr.ab_tests, upr.data_export_size_mb, upr.delete_cooldown_days,
+            upr.ab_tests,
+            upr.data_export_size_mb::DOUBLE PRECISION AS data_export_size_mb,
+            upr.delete_cooldown_days::BIGINT AS delete_cooldown_days,
             upc.max_rating, upc.require_pin_for_mature, upc.hide_live_chat_for_kids,
             upc.block_mature_live_streams, upc.pin_set,
-            uds.video_quality, uds.wifi_only, uds.smart_downloads, uds.storage_used_gb,
-            uds.storage_limit_gb, uds.device_limit, uds.active_devices,
+            uds.video_quality, uds.wifi_only, uds.smart_downloads,
+            uds.storage_used_gb::DOUBLE PRECISION AS storage_used_gb,
+            uds.storage_limit_gb::DOUBLE PRECISION AS storage_limit_gb,
+            uds.device_limit::BIGINT AS device_limit,
+            uds.active_devices::BIGINT AS active_devices,
             uls.interface_language, uls.subtitle_language AS ui_subtitle_language,
             uls.catalog_region, uls.date_format, uls.clock_format,
-            bp.plan_name, bp.monthly_price, bp.next_renewal_date, bp.payment_brand, bp.payment_last4,
-            bp.billing_city, bp.billing_region, bp.billing_country, bp.invoices_count, bp.screens,
-            bp.features_json, bp.average_revenue_per_user
+            bp.plan_name, bp.monthly_price::DOUBLE PRECISION AS monthly_price,
+            bp.next_renewal_date, bp.payment_brand, bp.payment_last4,
+            bp.billing_city, bp.billing_region, bp.billing_country,
+            bp.invoices_count::BIGINT AS invoices_count,
+            bp.screens::BIGINT AS screens,
+            bp.features_json,
+            bp.average_revenue_per_user::DOUBLE PRECISION AS average_revenue_per_user
         FROM user_profiles up
         JOIN user_playback_settings ups ON ups.user_id = up.user_id
         JOIN user_notification_settings uns ON uns.user_id = up.user_id
