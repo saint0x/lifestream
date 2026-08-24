@@ -5,6 +5,7 @@ import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { EpisodeList } from "@/components/content/EpisodeList";
 import { ContentRow } from "@/components/content/ContentRow";
 import { shareCurrentPage } from "@/lib/share";
@@ -136,6 +137,13 @@ export function SeriesPage() {
               >
                 Share
               </Button>
+              <AlertMeButton
+                targetKind="series"
+                targetId={series.id}
+                targetSlug={series.slug}
+                targetTitle={series.title}
+                alertTypes={["new_episode", "series_drop"]}
+              />
             </div>
             {shareStatus ? <div className="ls-detail__status">{shareStatus}</div> : null}
           </div>

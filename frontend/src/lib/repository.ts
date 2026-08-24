@@ -10,6 +10,7 @@ import type {
   CreatorAdHubResponse,
   CreatorDashboardPayload,
   CreatorProfile,
+  CreatePublicAlertSubscriptionInput,
   Episode,
   Film,
   FollowingFeedResponse,
@@ -17,6 +18,7 @@ import type {
   LiveStream,
   MediaAsset,
   PersonProfile,
+  PublicAlertSubscriptionResponse,
   RevenueEntry,
   SearchResult,
   Series,
@@ -679,6 +681,16 @@ export const repository = {
       method: "PATCH",
       body: input,
       auth: true,
+    });
+  },
+
+  async createPublicAlertSubscription(
+    input: CreatePublicAlertSubscriptionInput,
+  ): Promise<PublicAlertSubscriptionResponse> {
+    return requestJson<PublicAlertSubscriptionResponse>("/api/v1/alerts/subscriptions", {
+      method: "POST",
+      body: input,
+      auth: getAccessToken() !== null,
     });
   },
 

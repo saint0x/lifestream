@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ChevronLeft, Play } from "lucide-react";
 import { repository } from "@/lib/repository";
+import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { useAppStore } from "@/lib/store";
 import { formatDuration } from "@/lib/format";
@@ -181,7 +182,16 @@ export function WatchPage({ kind }: WatchPageProps) {
             <div className="ls-watch__kicker mono">
               SEASON {episode.seasonNumber} · EPISODE {episode.episodeNumber}
             </div>
-            <h1 className="ls-watch__title">{episode.title}</h1>
+            <div className="ls-watch__title-row">
+              <h1 className="ls-watch__title">{episode.title}</h1>
+              <AlertMeButton
+                targetKind="episode"
+                targetId={episode.id}
+                targetSlug={`${series.slug}-s${episode.seasonNumber}-e${episode.episodeNumber}`}
+                targetTitle={`${series.title}: ${episode.title}`}
+                alertTypes={["release_reminder", "new_episode"]}
+              />
+            </div>
             <p className="ls-watch__synopsis">{episode.synopsis}</p>
           </div>
 

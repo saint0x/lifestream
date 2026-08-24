@@ -209,6 +209,34 @@ export interface PersonProfileLink {
   readonly position?: number;
 }
 
+export type PublicAlertTargetKind = "profile" | "series" | "episode";
+export type PublicAlertContactChannel = "email" | "sms" | "social_dm";
+
+export interface CreatePublicAlertSubscriptionInput {
+  readonly targetKind: PublicAlertTargetKind;
+  readonly targetId: ID;
+  readonly targetSlug?: string | null;
+  readonly targetTitle: string;
+  readonly visitorId?: string | null;
+  readonly contactChannel: PublicAlertContactChannel;
+  readonly contactValue: string;
+  readonly socialPlatform?: string | null;
+  readonly alertTypes: ReadonlyArray<string>;
+  readonly sourcePath?: string | null;
+}
+
+export interface PublicAlertSubscriptionResponse {
+  readonly id: ID;
+  readonly targetKind: PublicAlertTargetKind;
+  readonly targetId: ID;
+  readonly targetTitle: string;
+  readonly contactChannel: PublicAlertContactChannel;
+  readonly socialPlatform?: string | null;
+  readonly alertTypes: ReadonlyArray<string>;
+  readonly status: string;
+  readonly updatedAt: string;
+}
+
 export interface UpdatePersonProfileRequest {
   readonly slug?: string;
   readonly displayName?: string;

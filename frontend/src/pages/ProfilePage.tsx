@@ -14,8 +14,10 @@ import {
 import type { IconType } from "react-icons";
 import { FaFacebookF, FaImdb, FaInstagram, FaLinkedinIn, FaXTwitter } from "react-icons/fa6";
 import { repository } from "@/lib/repository";
+import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useAppStore } from "@/lib/store";
 import type { PersonProfile, UpdatePersonProfileRequest } from "@/types";
 import "./ProfilePage.css";
 
@@ -127,6 +129,7 @@ function payloadFromForm(form: PersonForm): UpdatePersonProfileRequest {
 
 export function ProfilePage() {
   const { profileHandle, slug } = useParams<{ profileHandle?: string; slug?: string }>();
+  const currentUser = useAppStore((state) => state.user);
   const publicSlug = slug ?? (profileHandle?.startsWith("@") ? profileHandle.slice(1) : undefined);
   const isOwnProfile = publicSlug === undefined && profileHandle === undefined;
   const [profile, setProfile] = useState<PersonProfile | null>(null);
@@ -281,6 +284,7 @@ export function ProfilePage() {
   ];
   const profileUrlPath = profile.profileUrlPath || `/@${profile.slug}`;
   const profileUrl = new URL(profileUrlPath, window.location.origin).href;
+  const viewingOwnPublicProfile = profile.userId !== null && profile.userId !== undefined && profile.userId === currentUser.id;
   const heroStyle = profile.heroImage || profile.avatar
     ? { backgroundImage: `url(${profile.heroImage || profile.avatar})` }
     : undefined;
@@ -314,8 +318,9 @@ export function ProfilePage() {
               ))}
             </div>
           </div>
+          <div className="ls-profile__actions">
           {isOwnProfile ? (
-            <div className="ls-profile__actions">
+            <>
               <Button
                 variant={editing ? "primary" : "outline"}
                 icon={editing ? <Save /> : <Pencil />}
@@ -339,8 +344,17 @@ export function ProfilePage() {
                   Cancel
                 </Button>
               ) : null}
-            </div>
+            </>
+          ) : !viewingOwnPublicProfile ? (
+            <AlertMeButton
+              targetKind="profile"
+              targetId={profile.id}
+              targetSlug={profile.slug}
+              targetTitle={profile.displayName}
+              alertTypes={["creator_update", "new_episode", "series_drop"]}
+            />
           ) : null}
+          </div>
         </div>
       </section>
 

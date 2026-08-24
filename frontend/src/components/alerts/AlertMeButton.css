@@ -1,0 +1,109 @@
+.ls-alert {
+  position: relative;
+  display: inline-flex;
+}
+
+.ls-alert__popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  width: min(340px, calc(100vw - 32px));
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--c-border-hi);
+  border-radius: var(--r-md);
+  background: rgba(12, 12, 14, 0.96);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(14px);
+}
+
+.ls-alert__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ls-alert__head strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ls-alert__kicker {
+  margin-bottom: 3px;
+  color: var(--c-text-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.ls-alert__close {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text-dim);
+  cursor: pointer;
+}
+
+.ls-alert__methods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ls-alert__methods button {
+  min-width: 0;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text-dim);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ls-alert__methods button.is-active {
+  border-color: var(--c-border-hi);
+  color: var(--c-text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ls-alert__select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.ls-alert__message {
+  color: var(--c-text-dim);
+  font-size: 12px;
+}
+
+.ls-alert__message.is-error {
+  color: #ffb49c;
+}
+
+@media (max-width: 640px) {
+  .ls-alert__popover {
+    right: auto;
+    left: 0;
+  }
+}

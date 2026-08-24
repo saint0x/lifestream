@@ -1,5 +1,6 @@
 use super::*;
 
+mod alerts;
 mod analytics;
 mod auth;
 mod catalog;
@@ -48,6 +49,10 @@ pub(super) fn routes() -> Router<SharedState> {
         .route(
             "/api/v1/analytics/events",
             post(analytics::record_viewer_event),
+        )
+        .route(
+            "/api/v1/alerts/subscriptions",
+            post(alerts::create_public_alert_subscription),
         )
         .route(
             "/api/auth/sign-in/anonymous",
