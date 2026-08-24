@@ -14,6 +14,7 @@ import { LibraryPage } from "@/pages/LibraryPage";
 import { FollowingPage } from "@/pages/FollowingPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { StudioPage } from "@/pages/StudioPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 
 function Shell() {
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: "/watchlist", element: <WatchlistPage /> },
       { path: "/library", element: <LibraryPage /> },
       { path: "/following", element: <FollowingPage /> },
+      { path: "/studio", element: <StudioPage /> },
       { path: "/profile", element: <ProfilePage /> },
       { path: "/settings", element: <SettingsPage /> },
       { path: "/auth/callback", element: <AuthCallbackPage /> },

@@ -53,7 +53,7 @@ async function main() {
     token,
     body: {
       kind: "film",
-      sourceType: "direct_upload",
+      sourceType: "resumable-upload",
       title: `Production Upload ${stamp}`,
       intendedVisibility: "private",
       bytesExpected: 4096,

@@ -21,6 +21,7 @@ import type {
   UpdatePersonProfileRequest,
   UpdateProjectCreditsRequest,
   Upload,
+  UploadJob,
   UploadStatus,
   User,
   UserLibrary,
@@ -92,6 +93,24 @@ export interface HomePayload {
   readonly featuredLive: ReadonlyArray<LiveStream>;
   readonly categories: ReadonlyArray<Category>;
   readonly continueWatching: ReadonlyArray<ViewerAppState["library"]["continueWatching"][number]>;
+}
+
+export interface CreateUploadJobInput {
+  readonly kind: string;
+  readonly sourceType: string;
+  readonly title: string;
+  readonly intendedVisibility: string;
+  readonly bytesExpected: number;
+  readonly storageKey: string;
+  readonly mimeType?: string;
+  readonly seriesId?: string | null;
+}
+
+export interface UpdateUploadJobInput {
+  readonly title?: string;
+  readonly intendedVisibility?: string;
+  readonly mimeType?: string;
+  readonly seriesId?: string | null;
 }
 
 export interface CategoryBrowsePayload {
@@ -664,6 +683,24 @@ export const repository = {
   },
   listCreatorNotifications(): ReadonlyArray<CreatorNotification> {
     return requireState().creatorNotifications;
+  },
+
+  async listUploadJobs(signal?: AbortSignal): Promise<ReadonlyArray<UploadJob>> {
+    return requestJson<ReadonlyArray<UploadJob>>("/api/v1/creator/me/upload-jobs", { signal });
+  },
+
+  async createUploadJob(input: CreateUploadJobInput): Promise<UploadJob> {
+    return requestJson<UploadJob>("/api/v1/creator/me/upload-jobs", {
+      method: "POST",
+      body: input,
+    });
+  },
+
+  async updateUploadJob(id: string, input: UpdateUploadJobInput): Promise<UploadJob> {
+    return requestJson<UploadJob>(`/api/v1/creator/me/upload-jobs/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: input,
+    });
   },
 
   search(query: string): ReadonlyArray<ContentItem> {

@@ -8,6 +8,7 @@ import {
   Users,
   Library,
   Settings,
+  UploadCloud,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { Avatar } from "@/components/ui/Avatar";
@@ -28,6 +29,7 @@ const secondary = [
 ] as const;
 
 const studio = [
+  { to: "/studio", label: "Studio", Icon: UploadCloud },
   { to: "/settings", label: "Settings", Icon: Settings },
 ] as const;
 

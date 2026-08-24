@@ -283,7 +283,8 @@ async fn fetch_postgres_upload_jobs(
     let rows = sqlx::query(
         r#"
         SELECT id, upload_id, series_id, kind, source_type, status, title, intended_visibility,
-               bytes_expected, bytes_received, storage_key, created_at, updated_at, published_content_id,
+               bytes_expected::BIGINT AS bytes_expected, bytes_received::BIGINT AS bytes_received,
+               storage_key, created_at, updated_at, published_content_id,
                mime_type, checksum_sha256, completed_at, processing_attempt_count::BIGINT AS processing_attempt_count,
                last_processing_error, last_failed_at
         FROM upload_jobs
@@ -306,7 +307,8 @@ async fn fetch_postgres_upload_job_by_id(
     let row = sqlx::query(
         r#"
         SELECT id, upload_id, series_id, kind, source_type, status, title, intended_visibility,
-               bytes_expected, bytes_received, storage_key, created_at, updated_at, published_content_id,
+               bytes_expected::BIGINT AS bytes_expected, bytes_received::BIGINT AS bytes_received,
+               storage_key, created_at, updated_at, published_content_id,
                mime_type, checksum_sha256, completed_at, processing_attempt_count::BIGINT AS processing_attempt_count,
                last_processing_error, last_failed_at
         FROM upload_jobs
