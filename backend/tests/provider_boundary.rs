@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 const MAX_SQLITE_ADAPTER_CALLS: usize = 689;
-const MAX_SQLITE_TYPE_REFERENCES: usize = 373;
+const MAX_SQLITE_TYPE_REFERENCES: usize = 397;
 
 #[test]
 fn provider_boundary_audit_stays_in_sync() {

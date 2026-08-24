@@ -13,6 +13,10 @@ mod repository;
 mod search;
 
 pub(crate) use repository::CatalogRepository;
+pub(crate) use repository::{
+    postgres_fetch_film_by_id, postgres_fetch_live_streams, postgres_fetch_series_by_id,
+    postgres_fetch_streamer_by_id,
+};
 
 #[cfg(test)]
 pub(crate) use browse::CatalogPageQuery;

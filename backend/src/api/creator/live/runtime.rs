@@ -62,14 +62,17 @@ pub(crate) async fn fetch_creator_live_control_response(
     let current_viewers = if let Some(session) = snapshot.ingest_session.as_ref() {
         session.viewers
     } else if snapshot.current_broadcast.is_some() {
-        if let Some(viewers) = health.samples.last().map(|sample| sample.viewers) {
-            viewers
-        } else {
-            fetch_live_stream_by_id(pool, &format!("lv-{}-live", snapshot.profile.handle))
-                .await
-                .map(|stream| stream.viewers)
-                .unwrap_or(0)
-        }
+        fetch_live_stream_by_id(pool, &format!("lv-{}-live", snapshot.profile.handle))
+            .await
+            .map(|stream| stream.viewers)
+            .or_else(|_| {
+                health
+                    .samples
+                    .last()
+                    .map(|sample| sample.viewers)
+                    .ok_or(AppError::NotFound)
+            })
+            .unwrap_or(0)
     } else {
         0
     };

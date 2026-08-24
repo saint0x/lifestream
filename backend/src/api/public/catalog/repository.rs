@@ -603,7 +603,7 @@ async fn postgres_fetch_series_by_slug(
     postgres_series_from_row(pool, row, progress, true).await
 }
 
-async fn postgres_fetch_series_by_id(
+pub(crate) async fn postgres_fetch_series_by_id(
     pool: &sqlx::PgPool,
     id: &str,
     progress: Option<&ContinueWatchingEntry>,
@@ -809,7 +809,7 @@ async fn postgres_fetch_film_by_slug(
     postgres_film_from_row(row, progress)
 }
 
-async fn postgres_fetch_film_by_id(
+pub(crate) async fn postgres_fetch_film_by_id(
     pool: &sqlx::PgPool,
     id: &str,
     progress: Option<&ContinueWatchingEntry>,
@@ -864,7 +864,7 @@ fn postgres_film_from_row(
     })
 }
 
-async fn postgres_fetch_live_streams(
+pub(crate) async fn postgres_fetch_live_streams(
     pool: &sqlx::PgPool,
     filter_slug: Option<&str>,
 ) -> AppResult<Vec<LiveStream>> {
@@ -1080,7 +1080,10 @@ async fn postgres_fetch_streamers(pool: &sqlx::PgPool) -> AppResult<Vec<Streamer
     .collect())
 }
 
-async fn postgres_fetch_streamer_by_id(pool: &sqlx::PgPool, id: &str) -> AppResult<Streamer> {
+pub(crate) async fn postgres_fetch_streamer_by_id(
+    pool: &sqlx::PgPool,
+    id: &str,
+) -> AppResult<Streamer> {
     let row = sqlx::query(
         r#"
         SELECT id, handle, display_name, avatar, bio, followers::BIGINT AS followers,

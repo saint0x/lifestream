@@ -7,6 +7,10 @@ mod live;
 pub(super) mod people;
 
 pub(super) use catalog::CatalogRepository;
+pub(crate) use catalog::{
+    postgres_fetch_film_by_id, postgres_fetch_live_streams, postgres_fetch_series_by_id,
+    postgres_fetch_streamer_by_id,
+};
 pub(crate) use catalog::bootstrap;
 #[cfg(test)]
 pub(crate) use catalog::{
