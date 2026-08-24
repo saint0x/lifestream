@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
   Bell,
@@ -12,6 +12,7 @@ import {
   Globe,
   LogIn,
   UserPlus,
+  ChevronRight,
 } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
@@ -22,6 +23,136 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import "./Header.css";
+
+interface Breadcrumb {
+  readonly label: string;
+  readonly href?: string;
+}
+
+function titleize(value: string): string {
+  return decodeURIComponent(value)
+    .replace(/^@/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function findEpisodeContext(id: string) {
+  if (!repository.hasState()) return null;
+  const episode = repository.getEpisode(id);
+  if (!episode) return null;
+  const series = repository.getSeriesById(episode.seriesId);
+  if (!series) return null;
+  return { episode, series };
+}
+
+function buildBreadcrumbs(pathname: string, search: string): ReadonlyArray<Breadcrumb> {
+  if (pathname === "/") return [{ label: "Home" }];
+
+  const parts = pathname.split("/").filter(Boolean);
+  const [section, value, next] = parts;
+  const home = { label: "Home", href: "/" };
+
+  if (section?.startsWith("@")) {
+    return [home, { label: "Profiles" }, { label: titleize(section) }];
+  }
+
+  if (section === "series") {
+    const series = value && repository.hasState() ? repository.getSeriesBySlug(value) : undefined;
+    return value
+      ? [home, { label: "Series", href: "/series" }, { label: series?.title ?? titleize(value) }]
+      : [home, { label: "Series" }];
+  }
+
+  if (section === "films") return [home, { label: "Films" }];
+
+  if (section === "film") {
+    const film = value && repository.hasState() ? repository.getFilmBySlug(value) : undefined;
+    return [home, { label: "Films", href: "/films" }, { label: film?.title ?? titleize(value ?? "Film") }];
+  }
+
+  if (section === "watch" && value === "episode" && next) {
+    const context = findEpisodeContext(next);
+    if (context) {
+      return [
+        home,
+        { label: "Series", href: "/series" },
+        { label: context.series.title, href: `/series/${context.series.slug}` },
+        { label: context.episode.title },
+      ];
+    }
+    return [home, { label: "Watch" }, { label: "Episode" }];
+  }
+
+  if (section === "watch" && value === "film" && next) {
+    const film = repository.hasState() ? repository.getFilmById(next) : undefined;
+    return [home, { label: "Films", href: "/films" }, { label: film?.title ?? "Film" }];
+  }
+
+  if (section === "live") {
+    const stream = value && repository.hasState() ? repository.getLiveStreamBySlug(value) : undefined;
+    return value
+      ? [home, { label: "Live", href: "/live" }, { label: stream?.title ?? titleize(value) }]
+      : [home, { label: "Live" }];
+  }
+
+  if (section === "category") {
+    return [home, { label: "Live", href: "/live" }, { label: titleize(value ?? "Category") }];
+  }
+
+  if (section === "search") {
+    const params = new URLSearchParams(search);
+    const query = params.get("q")?.trim();
+    return [home, { label: "Search", href: "/search" }, ...(query ? [{ label: query }] : [])];
+  }
+
+  if (section === "originals") return [home, { label: "Originals" }];
+  if (section === "watchlist") return [home, { label: "Watchlist" }];
+  if (section === "library") return [home, { label: "Library" }];
+  if (section === "following") return [home, { label: "Following" }];
+  if (section === "profile") return [home, { label: "Profile" }];
+  if (section === "settings") return [home, { label: "Settings" }];
+  if (section === "studio" && value === "tool") {
+    return [home, { label: "Creator Studio", href: "/studio" }, { label: titleize(next ?? "Tool") }];
+  }
+  if (section === "studio") return [home, { label: "Creator Studio" }];
+  if (section === "ad-hub") return [home, { label: "Ad Hub" }];
+
+  return [home, { label: titleize(section ?? "Page") }];
+}
+
+function BreadcrumbTrail() {
+  const location = useLocation();
+  const crumbs = buildBreadcrumbs(location.pathname, location.search);
+
+  return (
+    <nav className="ls-header__crumbs" aria-label="Page path">
+      {crumbs.map((crumb, index) => {
+        const isLast = index === crumbs.length - 1;
+        return (
+          <span className="ls-header__crumb" key={`${crumb.label}-${index}`}>
+            {index > 0 ? (
+              <ChevronRight
+                className="ls-header__crumb-sep"
+                size={12}
+                strokeWidth={1.8}
+                aria-hidden="true"
+              />
+            ) : null}
+            {crumb.href && !isLast ? (
+              <Link to={crumb.href}>{crumb.label}</Link>
+            ) : (
+              <span className="ls-header__crumb-cur" aria-current={isLast ? "page" : undefined}>
+                {crumb.label}
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </nav>
+  );
+}
 
 export function Header() {
   const navigate = useNavigate();
@@ -184,80 +315,83 @@ export function Header() {
   return (
     <header className="ls-header" ref={rootRef}>
       <div className="ls-header__grid">
-        <form
-          className="ls-header__search-wrap"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submitSearch();
-          }}
-        >
-          <label className={`ls-header__search ${open ? "is-open" : ""}`}>
-            <Search size={14} strokeWidth={1.75} />
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setOpen(true);
-              }}
-              onFocus={() => setOpen(true)}
-              placeholder="Search titles, streamers, tags…"
-              aria-label="Search"
-            />
-            <span className="ls-header__kbd mono">
-              <Command size={10} /> K
-            </span>
-          </label>
-          {open && query && (
-            <div className={`ls-header__results ${searchLoading && results.length > 0 ? "is-refreshing" : ""}`}>
-              {searchLoading && results.length === 0 ? (
-                <div className="ls-header__results-empty">Searching…</div>
-              ) : searchError ? (
-                <div className="ls-header__results-empty">{searchError}</div>
-              ) : results.length === 0 ? (
-                <div className="ls-header__results-empty">
-                  No results for <span className="mono">{query}</span>
-                </div>
-              ) : (
-                <div className="ls-header__results-list">
-                  {results.map((item) => (
-                    <button
-                      key={`${item.kind}-${item.id}`}
-                      className="ls-header__result"
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        goToResult(item);
-                      }}
-                    >
-                      {item.image ? (
-                        <img src={item.image} alt="" className="ls-header__result-img" />
-                      ) : (
-                        <span className="ls-header__result-img ls-header__result-img--empty">
-                          {item.title.slice(0, 1)}
-                        </span>
-                      )}
-                      <div className="ls-header__result-body">
-                        <div className="ls-header__result-title">
-                          {item.title}
+        <div className="ls-header__nav">
+          <BreadcrumbTrail />
+          <form
+            className="ls-header__search-wrap"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitSearch();
+            }}
+          >
+            <label className={`ls-header__search ${open ? "is-open" : ""}`}>
+              <Search size={14} strokeWidth={1.75} />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setOpen(true);
+                }}
+                onFocus={() => setOpen(true)}
+                placeholder="Search titles, streamers, tags…"
+                aria-label="Search"
+              />
+              <span className="ls-header__kbd mono">
+                <Command size={10} /> K
+              </span>
+            </label>
+            {open && query && (
+              <div className={`ls-header__results ${searchLoading && results.length > 0 ? "is-refreshing" : ""}`}>
+                {searchLoading && results.length === 0 ? (
+                  <div className="ls-header__results-empty">Searching…</div>
+                ) : searchError ? (
+                  <div className="ls-header__results-empty">{searchError}</div>
+                ) : results.length === 0 ? (
+                  <div className="ls-header__results-empty">
+                    No results for <span className="mono">{query}</span>
+                  </div>
+                ) : (
+                  <div className="ls-header__results-list">
+                    {results.map((item) => (
+                      <button
+                        key={`${item.kind}-${item.id}`}
+                        className="ls-header__result"
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          goToResult(item);
+                        }}
+                      >
+                        {item.image ? (
+                          <img src={item.image} alt="" className="ls-header__result-img" />
+                        ) : (
+                          <span className="ls-header__result-img ls-header__result-img--empty">
+                            {item.title.slice(0, 1)}
+                          </span>
+                        )}
+                        <div className="ls-header__result-body">
+                          <div className="ls-header__result-title">
+                            {item.title}
+                          </div>
+                          <div className="ls-header__result-meta mono">
+                            <span>{searchKindLabel(item.kind)}</span>
+                            {item.subtitle ? (
+                              <>
+                                <span>·</span>
+                                <span>{item.subtitle}</span>
+                              </>
+                            ) : null}
+                          </div>
                         </div>
-                        <div className="ls-header__result-meta mono">
-                          <span>{searchKindLabel(item.kind)}</span>
-                          {item.subtitle ? (
-                            <>
-                              <span>·</span>
-                              <span>{item.subtitle}</span>
-                            </>
-                          ) : null}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </form>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </form>
+        </div>
 
         <div className="ls-header__actions">
           <button
