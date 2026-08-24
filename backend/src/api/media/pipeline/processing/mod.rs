@@ -52,8 +52,8 @@ pub(crate) async fn process_media_job(
     let generated =
         generate_derivatives_and_package(&state, creator_id, job_id, &attempt, &probed).await?;
 
-    if !jobs::media_processing_lease_is_active(
-        state.db.sqlite_adapter(),
+    if !jobs::media_processing_lease_is_active_for_database(
+        &state.db,
         creator_id,
         job_id,
         &attempt.lease_updated_at,

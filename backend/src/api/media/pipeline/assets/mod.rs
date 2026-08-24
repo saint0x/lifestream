@@ -12,8 +12,11 @@ pub(crate) use asset_records::{
 };
 pub(crate) use projections::{
     NewMediaPreviewTrack, NewMediaVariant, StoredMediaPreviewTrack, fetch_media_asset_variants,
-    fetch_media_preview_track_rows, replace_media_preview_tracks, replace_media_variants,
+    fetch_media_preview_track_rows, replace_media_preview_tracks_for_database,
+    replace_media_variants_for_database,
 };
 pub(crate) use runs::{
-    fetch_media_processing_runs, finish_media_processing_run, start_media_processing_run,
+    fetch_media_processing_runs, finish_media_processing_run,
+    finish_media_processing_run_for_database, start_media_processing_run,
+    start_media_processing_run_for_database,
 };

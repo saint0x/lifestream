@@ -9,10 +9,10 @@ const API_BASE = process.env.VANTA_API_BASE || "https://api-production-4becb.up.
 const DATABASE_URL = process.env.VANTA_DATABASE_URL || process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
-  throw new Error("VANTA_DATABASE_URL or DATABASE_URL is required for publish verification.");
+  throw new Error("VANTA_DATABASE_URL or DATABASE_URL is required for cleanup verification.");
 }
 
-async function request(method, path, { token, body, headers = {}, expectOk = true } = {}) {
+async function request(method, path, { token, body, headers = {} } = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
@@ -31,10 +31,10 @@ async function request(method, path, { token, body, headers = {}, expectOk = tru
       json = { raw: text };
     }
   }
-  if (expectOk && !response.ok) {
+  if (!response.ok) {
     throw new Error(`${method} ${path} failed with ${response.status}: ${JSON.stringify(json)}`);
   }
-  return { status: response.status, ok: response.ok, json };
+  return json;
 }
 
 async function requestBytes(method, path, { token, uploadToken, body } = {}) {
@@ -82,7 +82,7 @@ function psql(sql) {
 }
 
 function generateFixtureMp4() {
-  const dir = mkdtempSync(join(tmpdir(), "vanta-production-publish-"));
+  const dir = mkdtempSync(join(tmpdir(), "vanta-production-processing-"));
   const path = join(dir, "source.mp4");
   const result = spawnSync(
     "ffmpeg",
@@ -114,109 +114,96 @@ function generateFixtureMp4() {
   return { dir, bytes: readFileSync(path) };
 }
 
+async function waitForReadyAsset(token, uploadJobId) {
+  const deadline = Date.now() + 180_000;
+  let lastJob = null;
+  let lastAsset = null;
+  while (Date.now() < deadline) {
+    const jobs = await request("GET", "/api/v1/creator/me/upload-jobs", { token });
+    lastJob = jobs.find((job) => job.id === uploadJobId) ?? lastJob;
+    try {
+      lastAsset = await request("GET", `/api/v1/creator/me/upload-jobs/${uploadJobId}/media-asset`, {
+        token,
+      });
+    } catch {
+      lastAsset = null;
+    }
+    if (lastJob?.status === "ready" && lastAsset?.status === "ready") {
+      return { job: lastJob, asset: lastAsset };
+    }
+    if (lastJob?.status === "failed" || lastAsset?.status === "failed") {
+      throw new Error(`media processing failed: ${JSON.stringify({ job: lastJob, asset: lastAsset })}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+  }
+  throw new Error(`media processing did not become ready: ${JSON.stringify({ job: lastJob, asset: lastAsset })}`);
+}
+
 async function main() {
   const stamp = Date.now();
-  const email = `vanta-publish-${stamp}@example.com`;
+  const email = `vanta-processing-${stamp}@example.com`;
   const password = `Vanta-${stamp}-password`;
-  const title = `Production Publish ${stamp}`;
-  const slug = `production-publish-${stamp}`;
+  const title = `Production Processing ${stamp}`;
+  const slug = `production-processing-${stamp}`;
+  const storageKey = `smoke/${stamp}/production-processing-check.mp4`;
   const fixture = generateFixtureMp4();
-  const uploadBytes = fixture.bytes;
-  const storageKey = `smoke/${stamp}/production-publish-check.mp4`;
 
   let uploadJobId = null;
   let uploadId = null;
 
   try {
-    const auth = (
-      await request("POST", "/api/auth/sign-up/email", {
-        body: { email, password, displayName: `Vanta Publish ${stamp}` },
-      })
-    ).json;
+    const auth = await request("POST", "/api/auth/sign-up/email", {
+      body: { email, password, displayName: `Vanta Processing ${stamp}` },
+    });
     const token = auth.accessToken;
     assert(token, "sign-up did not return accessToken", auth);
 
-    const created = (
-      await request("POST", "/api/v1/creator/me/upload-jobs", {
-        token,
-        body: {
-          kind: "film",
-          sourceType: "resumable-upload",
-          title,
-          intendedVisibility: "public",
-          bytesExpected: uploadBytes.byteLength,
-          storageKey,
-          mimeType: "video/mp4",
-        },
-      })
-    ).json;
+    const created = await request("POST", "/api/v1/creator/me/upload-jobs", {
+      token,
+      body: {
+        kind: "film",
+        sourceType: "resumable-upload",
+        title,
+        intendedVisibility: "public",
+        bytesExpected: fixture.bytes.byteLength,
+        storageKey,
+        mimeType: "video/mp4",
+      },
+    });
     uploadJobId = created.id;
     assert(uploadJobId, "upload job create did not return id", created);
 
-    const ticket = (
-      await request("POST", `/api/v1/creator/me/upload-jobs/${uploadJobId}/ingest`, { token })
-    ).json;
-    assert(ticket.uploadToken, "ingest start did not return upload token", ticket);
-
+    const ticket = await request("POST", `/api/v1/creator/me/upload-jobs/${uploadJobId}/ingest`, {
+      token,
+    });
     await requestBytes(
       "PUT",
       `/api/v1/creator/me/upload-jobs/${uploadJobId}/ingest/chunk?offset=0`,
-      { token, uploadToken: ticket.uploadToken, body: uploadBytes },
+      { token, uploadToken: ticket.uploadToken, body: fixture.bytes },
     );
-
-    const completed = (
-      await request("POST", `/api/v1/creator/me/upload-jobs/${uploadJobId}/ingest/complete`, {
-        token,
-        headers: { "x-upload-token": ticket.uploadToken },
-      })
-    ).json;
+    const completed = await request(
+      "POST",
+      `/api/v1/creator/me/upload-jobs/${uploadJobId}/ingest/complete`,
+      { token, headers: { "x-upload-token": ticket.uploadToken } },
+    );
     assert(completed.status === "uploaded", "completed job did not move to uploaded", completed);
 
-    psql(`
-      UPDATE media_assets
-      SET status = 'ready',
-          playback_relative_path = source_relative_path,
-          processed_at = COALESCE(processed_at, updated_at),
-          updated_at = updated_at
-      WHERE upload_job_id = ${sqlLiteral(uploadJobId)};
+    const { asset } = await waitForReadyAsset(token, uploadJobId);
+    assert(asset.playbackPath, "ready asset did not include playback path", asset);
+    assert(asset.variants.some((variant) => variant.variantType === "playback"), "ready asset has no playback variants", asset);
+    assert(asset.variants.some((variant) => variant.variantType === "thumbnail"), "ready asset has no thumbnail variants", asset);
 
-      UPDATE upload_jobs
-      SET status = 'ready'
-      WHERE id = ${sqlLiteral(uploadJobId)};
-    `);
-
-    const published = (
-      await request("POST", `/api/v1/creator/me/upload-jobs/${uploadJobId}/publish`, {
-        token,
-        body: {
-          slug,
-          visibility: "public",
-          description: "Production smoke publish, cleaned up after verification.",
-          accessPolicy: "free",
-        },
-      })
-    ).json;
+    const published = await request("POST", `/api/v1/creator/me/upload-jobs/${uploadJobId}/publish`, {
+      token,
+      body: {
+        slug,
+        visibility: "public",
+        description: "Production smoke processing and publish, cleaned up after verification.",
+        accessPolicy: "free",
+      },
+    });
     uploadId = published.id;
-    assert(uploadId, "publish did not return upload id", published);
-    assert(published.slug === slug, "publish did not persist requested slug", published);
     assert(published.status === "published", "publish did not return published status", published);
-    assert(published.visibility === "public", "publish did not return public visibility", published);
-
-    const state = psql(`
-      SELECT uj.status || ',' || ma.status || ',' || u.status || ',' || COUNT(nd.id)::TEXT
-      FROM upload_jobs uj
-      JOIN media_assets ma ON ma.upload_job_id = uj.id
-      JOIN uploads u ON u.id = uj.upload_id
-      LEFT JOIN notification_events ne ON ne.payload_json LIKE '%' || u.id || '%'
-      LEFT JOIN notification_deliveries nd ON nd.event_id = ne.id
-      WHERE uj.id = ${sqlLiteral(uploadJobId)}
-      GROUP BY uj.status, ma.status, u.status;
-    `);
-    assert(
-      state === "published,published,published,1",
-      "publish did not persist upload/job/asset/notification state",
-      { state },
-    );
 
     console.log(
       JSON.stringify(
@@ -227,6 +214,9 @@ async function main() {
           uploadJobId,
           uploadId,
           slug,
+          assetId: asset.id,
+          playbackPath: asset.playbackPath,
+          variantCount: asset.variants.length,
           status: published.status,
         },
         null,
@@ -236,14 +226,7 @@ async function main() {
   } finally {
     rmSync(fixture.dir, { force: true, recursive: true });
     psql(`
-      WITH smoke_upload AS (
-        SELECT ${uploadId ? sqlLiteral(uploadId) : "upload_id"} AS id
-        FROM upload_jobs
-        WHERE id = ${sqlLiteral(uploadJobId)}
-        UNION
-        SELECT ${uploadId ? sqlLiteral(uploadId) : "NULL"} AS id
-      ),
-      smoke_events AS (
+      WITH smoke_events AS (
         SELECT id FROM notification_events
         WHERE payload_json LIKE ${sqlLiteral(`%${uploadJobId ?? "no-job"}%`)}
            OR payload_json LIKE ${sqlLiteral(`%${uploadId ?? "no-upload"}%`)}

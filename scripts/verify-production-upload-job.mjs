@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+
 const API_BASE = process.env.VANTA_API_BASE || "https://api-production-4becb.up.railway.app";
 
 async function request(method, path, { token, body, headers = {} } = {}) {
@@ -62,10 +67,46 @@ function assert(condition, message, context) {
   }
 }
 
+function generateFixtureMp4() {
+  const dir = mkdtempSync(join(tmpdir(), "vanta-production-upload-"));
+  const path = join(dir, "source.mp4");
+  const result = spawnSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc=size=320x240:rate=24:duration=1",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=1000:sample_rate=48000:duration=1",
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      "-shortest",
+      path,
+    ],
+    { encoding: "utf8" },
+  );
+  if (result.status !== 0) {
+    rmSync(dir, { force: true, recursive: true });
+    throw new Error(`ffmpeg fixture generation failed: ${result.stderr}`);
+  }
+  return { dir, bytes: readFileSync(path) };
+}
+
 async function main() {
   const stamp = Date.now();
   const email = `vanta-upload-${stamp}@example.com`;
   const displayName = `Vanta Upload ${stamp}`;
+  const fixture = generateFixtureMp4();
+
+  try {
   const auth = await request("POST", "/api/auth/sign-up/email", {
     body: {
       email,
@@ -76,7 +117,7 @@ async function main() {
   const token = auth.accessToken;
   assert(token, "sign-up did not return accessToken", auth);
 
-  const uploadBytes = Buffer.from(`vanta-upload-check-${stamp}`);
+  const uploadBytes = fixture.bytes;
   const storageKey = `smoke/${stamp}/production-upload-check.mp4`;
   const created = await request("POST", "/api/v1/creator/me/upload-jobs", {
     token,
@@ -170,7 +211,11 @@ async function main() {
     { token },
   );
   assert(asset.uploadJobId === created.id, "media asset is not linked to upload job", asset);
-  assert(asset.status === "uploaded", "media asset shell status is not uploaded", asset);
+  assert(
+    ["uploaded", "processing", "ready"].includes(asset.status),
+    "media asset shell status is not in an ingest/processing state",
+    asset,
+  );
   assert(asset.fileSizeBytes === uploadBytes.byteLength, "media asset size is wrong", asset);
   assert(asset.sourcePath.includes(storageKey), "media asset source path does not include storage key", asset);
 
@@ -199,6 +244,9 @@ async function main() {
       2,
     ),
   );
+  } finally {
+    rmSync(fixture.dir, { force: true, recursive: true });
+  }
 }
 
 main().catch((error) => {

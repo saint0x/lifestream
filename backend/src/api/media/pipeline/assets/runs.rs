@@ -63,6 +63,62 @@ pub(crate) async fn start_media_processing_run(
     Ok(id)
 }
 
+pub(crate) async fn start_media_processing_run_for_database(
+    database: &crate::db::Database,
+    creator_id: &str,
+    job_id: &str,
+    asset_id: &str,
+    stage: &str,
+    details: Value,
+) -> AppResult<String> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        return start_postgres_media_processing_run(
+            pool, creator_id, job_id, asset_id, stage, details,
+        )
+        .await;
+    }
+    start_media_processing_run(
+        database.try_sqlite_adapter()?,
+        creator_id,
+        job_id,
+        asset_id,
+        stage,
+        details,
+    )
+    .await
+}
+
+async fn start_postgres_media_processing_run(
+    pool: &sqlx::PgPool,
+    creator_id: &str,
+    job_id: &str,
+    asset_id: &str,
+    stage: &str,
+    details: Value,
+) -> AppResult<String> {
+    let id = format!("mpr-{}", Uuid::new_v4().simple());
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        r#"
+        INSERT INTO media_processing_runs (
+            id, creator_id, upload_job_id, asset_id, stage, status, details_json, started_at, completed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        "#,
+    )
+    .bind(&id)
+    .bind(creator_id)
+    .bind(job_id)
+    .bind(asset_id)
+    .bind(stage)
+    .bind("running")
+    .bind(details.to_string())
+    .bind(&now)
+    .bind(Option::<String>::None)
+    .execute(pool)
+    .await?;
+    Ok(id)
+}
+
 pub(crate) async fn finish_media_processing_run(
     pool: &SqlitePool,
     run_id: &str,
@@ -72,6 +128,37 @@ pub(crate) async fn finish_media_processing_run(
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         "UPDATE media_processing_runs SET status = ?, details_json = ?, completed_at = ? WHERE id = ?",
+    )
+    .bind(status)
+    .bind(details.to_string())
+    .bind(&now)
+    .bind(run_id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub(crate) async fn finish_media_processing_run_for_database(
+    database: &crate::db::Database,
+    run_id: &str,
+    status: &str,
+    details: Value,
+) -> AppResult<()> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        return finish_postgres_media_processing_run(pool, run_id, status, details).await;
+    }
+    finish_media_processing_run(database.try_sqlite_adapter()?, run_id, status, details).await
+}
+
+async fn finish_postgres_media_processing_run(
+    pool: &sqlx::PgPool,
+    run_id: &str,
+    status: &str,
+    details: Value,
+) -> AppResult<()> {
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        "UPDATE media_processing_runs SET status = $1, details_json = $2, completed_at = $3 WHERE id = $4",
     )
     .bind(status)
     .bind(details.to_string())

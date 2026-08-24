@@ -204,6 +204,56 @@ pub(crate) async fn replace_media_variants(
     Ok(())
 }
 
+pub(crate) async fn replace_media_variants_for_database(
+    database: &crate::db::Database,
+    asset_id: &str,
+    variants: &[NewMediaVariant],
+) -> AppResult<()> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        return replace_postgres_media_variants(pool, asset_id, variants).await;
+    }
+    replace_media_variants(database.try_sqlite_adapter()?, asset_id, variants).await
+}
+
+async fn replace_postgres_media_variants(
+    pool: &sqlx::PgPool,
+    asset_id: &str,
+    variants: &[NewMediaVariant],
+) -> AppResult<()> {
+    sqlx::query("DELETE FROM media_asset_variants WHERE asset_id = $1")
+        .bind(asset_id)
+        .execute(pool)
+        .await?;
+
+    let now = Utc::now().to_rfc3339();
+    for variant in variants {
+        sqlx::query(
+            r#"
+            INSERT INTO media_asset_variants (
+                id, asset_id, variant_type, label, relative_path, mime_type, width, height,
+                bitrate_bps, file_size_bytes, is_default, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            "#,
+        )
+        .bind(format!("var-{}", Uuid::new_v4().simple()))
+        .bind(asset_id)
+        .bind(variant.variant_type)
+        .bind(&variant.label)
+        .bind(&variant.relative_path)
+        .bind(&variant.mime_type)
+        .bind(variant.width)
+        .bind(variant.height)
+        .bind(variant.bitrate_bps)
+        .bind(variant.file_size_bytes)
+        .bind(variant.is_default as i32)
+        .bind(&now)
+        .execute(pool)
+        .await?;
+    }
+
+    Ok(())
+}
+
 pub(crate) async fn replace_media_preview_tracks(
     pool: &SqlitePool,
     asset_id: &str,
@@ -237,6 +287,58 @@ pub(crate) async fn replace_media_preview_tracks(
         .bind(track.interval_sec)
         .bind(track.frame_count)
         .bind(track.is_default as i64)
+        .bind(&now)
+        .execute(pool)
+        .await?;
+    }
+
+    Ok(())
+}
+
+pub(crate) async fn replace_media_preview_tracks_for_database(
+    database: &crate::db::Database,
+    asset_id: &str,
+    tracks: &[NewMediaPreviewTrack],
+) -> AppResult<()> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        return replace_postgres_media_preview_tracks(pool, asset_id, tracks).await;
+    }
+    replace_media_preview_tracks(database.try_sqlite_adapter()?, asset_id, tracks).await
+}
+
+async fn replace_postgres_media_preview_tracks(
+    pool: &sqlx::PgPool,
+    asset_id: &str,
+    tracks: &[NewMediaPreviewTrack],
+) -> AppResult<()> {
+    sqlx::query("DELETE FROM media_timeline_previews WHERE asset_id = $1")
+        .bind(asset_id)
+        .execute(pool)
+        .await?;
+
+    let now = Utc::now().to_rfc3339();
+    for track in tracks {
+        sqlx::query(
+            r#"
+            INSERT INTO media_timeline_previews (
+                id, asset_id, label, image_relative_path, vtt_relative_path, tile_width,
+                tile_height, columns_count, rows_count, interval_sec, frame_count, is_default,
+                created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            "#,
+        )
+        .bind(format!("mtp-{}", Uuid::new_v4().simple()))
+        .bind(asset_id)
+        .bind(&track.label)
+        .bind(&track.image_relative_path)
+        .bind(&track.vtt_relative_path)
+        .bind(track.tile_width)
+        .bind(track.tile_height)
+        .bind(track.columns_count)
+        .bind(track.rows_count)
+        .bind(track.interval_sec)
+        .bind(track.frame_count)
+        .bind(track.is_default as i32)
         .bind(&now)
         .execute(pool)
         .await?;

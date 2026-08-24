@@ -174,9 +174,7 @@ pub(crate) async fn complete_upload_ingest(
         &session.relative_path,
     )
     .await?;
-    if state.db.try_postgres_adapter().is_err() {
-        schedule_media_processing(state.clone(), creator_id.to_string(), id.clone()).await;
-    }
+    schedule_media_processing(state.clone(), creator_id.to_string(), id.clone()).await;
 
     Ok(Json(completed_job))
 }

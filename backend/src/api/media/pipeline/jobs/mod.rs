@@ -8,7 +8,8 @@ mod scheduling;
 #[cfg(test)]
 pub(crate) use failures::MAX_MEDIA_PROCESSING_ATTEMPTS;
 pub(crate) use failures::{
-    fail_media_job_for_lease, media_processing_lease_is_active, requeue_media_job_for_processing,
+    fail_media_job_for_lease, fail_media_job_for_lease_in_database,
+    media_processing_lease_is_active_for_database, requeue_media_job_for_processing,
 };
 pub(crate) use queries::{
     fetch_admin_media_job_record, fetch_admin_media_jobs, fetch_pending_media_jobs,

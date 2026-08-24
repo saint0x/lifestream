@@ -6,7 +6,7 @@ pub(crate) async fn persist_media_variants(
     probed: &ProbedMedia,
     generated: &GeneratedDerivativeBundle,
 ) -> Result<(), (AppError, String)> {
-    replace_media_variants(state.db.sqlite_adapter(), &attempt.asset.id, &{
+    replace_media_variants_for_database(&state.db, &attempt.asset.id, &{
         let mut variants = vec![NewMediaVariant {
             variant_type: "source",
             label: "source".to_string(),
@@ -108,8 +108,8 @@ pub(crate) async fn persist_media_variants(
     })
     .await
     .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
-    replace_media_preview_tracks(
-        state.db.sqlite_adapter(),
+    replace_media_preview_tracks_for_database(
+        &state.db,
         &attempt.asset.id,
         &generated
             .timeline_preview_track

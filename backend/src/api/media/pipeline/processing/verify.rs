@@ -6,8 +6,8 @@ pub(crate) async fn run_probe_stage(
     job_id: &str,
     attempt: &MediaProcessingAttempt,
 ) -> Result<ProbedMedia, (AppError, String)> {
-    let probe_run_id = start_media_processing_run(
-        state.db.sqlite_adapter(),
+    let probe_run_id = start_media_processing_run_for_database(
+        &state.db,
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -21,8 +21,8 @@ pub(crate) async fn run_probe_stage(
         Ok(probed) => {
             validate_probed_media(&attempt.job, &probed)
                 .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
-            finish_media_processing_run(
-                state.db.sqlite_adapter(),
+            finish_media_processing_run_for_database(
+                &state.db,
                 &probe_run_id,
                 "completed",
                 json!({
@@ -42,8 +42,8 @@ pub(crate) async fn run_probe_stage(
             Ok(probed)
         }
         Err(error) => {
-            let _ = finish_media_processing_run(
-                state.db.sqlite_adapter(),
+            let _ = finish_media_processing_run_for_database(
+                &state.db,
                 &probe_run_id,
                 "failed",
                 json!({ "error": error.to_string() }),
@@ -61,8 +61,8 @@ pub(crate) async fn run_integrity_stage(
     attempt: &MediaProcessingAttempt,
     probed: &ProbedMedia,
 ) -> Result<(), (AppError, String)> {
-    let integrity_run_id = start_media_processing_run(
-        state.db.sqlite_adapter(),
+    let integrity_run_id = start_media_processing_run_for_database(
+        &state.db,
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -75,8 +75,8 @@ pub(crate) async fn run_integrity_stage(
     .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
     match verify_media_integrity(&attempt.source_path, probed).await {
         Ok(()) => {
-            finish_media_processing_run(
-                state.db.sqlite_adapter(),
+            finish_media_processing_run_for_database(
+                &state.db,
                 &integrity_run_id,
                 "completed",
                 json!({
@@ -90,8 +90,8 @@ pub(crate) async fn run_integrity_stage(
             Ok(())
         }
         Err(error) => {
-            let _ = finish_media_processing_run(
-                state.db.sqlite_adapter(),
+            let _ = finish_media_processing_run_for_database(
+                &state.db,
                 &integrity_run_id,
                 "failed",
                 json!({

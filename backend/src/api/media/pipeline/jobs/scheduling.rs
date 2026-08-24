@@ -81,8 +81,8 @@ pub(crate) async fn schedule_media_processing(
         let result = process_media_job(state.clone(), &creator_id, &job_id).await;
         if let Err((error, lease_updated_at)) = result {
             let (message, retryable) = classify_media_processing_error(&error);
-            let _ = fail_media_job_for_lease(
-                state.db.sqlite_adapter(),
+            let _ = fail_media_job_for_lease_in_database(
+                &state.db,
                 &creator_id,
                 &job_id,
                 &message,
