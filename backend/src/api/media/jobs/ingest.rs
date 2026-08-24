@@ -165,16 +165,20 @@ pub(crate) async fn complete_upload_ingest(
     let digest = sha256_file(&path).await?;
     let now = Utc::now().to_rfc3339();
     complete_creator_upload_ingest(&state.db, creator_id, &id, &digest, &now).await?;
+    let completed_job = get_creator_upload_job(&state.db, creator_id, &id).await?;
 
-    ensure_media_asset_shell_for_ingest(&state.db, creator_id, &job, &session.relative_path)
-        .await?;
+    ensure_media_asset_shell_for_ingest(
+        &state.db,
+        creator_id,
+        &completed_job,
+        &session.relative_path,
+    )
+    .await?;
     if state.db.try_postgres_adapter().is_err() {
         schedule_media_processing(state.clone(), creator_id.to_string(), id.clone()).await;
     }
 
-    Ok(Json(
-        get_creator_upload_job(&state.db, creator_id, &id).await?,
-    ))
+    Ok(Json(completed_job))
 }
 
 pub(crate) async fn get_creator_upload_job(
