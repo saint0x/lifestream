@@ -8,6 +8,8 @@ These prompts should help the creator make work that deserves the audience's tim
 
 In the thermal-energy model, episode quality is the first multiplier. Promotion can amplify strong work, but it cannot permanently rescue weak work. The creator should invest time, effort, and money where it most increases the episode's ability to hold attention and justify aggressive promotion.
 
+Episode quality can also improve through collaboration. The right guest, co-host, director, editor, expert, producer, or featured creator can make the episode better and create a clickable credit path for audience cross-pollination on Vanta.
+
 Creators should make episodes strong enough that viewers want to return and advertisers feel proud to appear around the work.
 
 Vanta gives strong episodes a premium home, a portfolio context, and a path to advertiser value. That only matters if the work is good enough to hold attention.
@@ -29,6 +31,9 @@ Target viewer:
 My production resources:
 [describe]
 
+Potential collaborators, guests, or credited contributors:
+[list]
+
 Evaluate whether this episode is strong enough to make viewers come back.
 
 Use Vanta context: this episode should strengthen my premium profile, create real Qualified Attention, and give me material that can be marketed without feeling forced or fake.
@@ -44,6 +49,8 @@ Score it from 1-10 across:
 - clip potential;
 - return-viewer potential;
 - advertiser suitability;
+- collaborator fit;
+- cross-pollination potential;
 - production feasibility;
 - Vanta exclusivity value.
 
@@ -53,6 +60,7 @@ Then tell me:
 - what must be added before shooting;
 - what scenes are required;
 - what shots are required;
+- what collaborator, guest, or credited role would make this stronger;
 - what moments could become clips;
 - what promotion angles this quality unlocks;
 - where spending money would most improve the episode;
@@ -113,6 +121,7 @@ Prioritize upgrades that help the episode feel worthy of my Vanta portfolio and 
 Give me practical upgrades across:
 
 - story;
+- collaborator, guest, or expert involvement;
 - location;
 - framing;
 - lighting;

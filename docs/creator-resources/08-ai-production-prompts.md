@@ -12,6 +12,8 @@ Use AI to improve quality, consistency, speed, learning, and distribution. The c
 
 AI should support the thermal-energy model: higher-quality work, more aggressive distribution, better self-marketing, and smarter self-investment. It should help the creator create more heat without making the work feel cheap or automatic.
 
+AI can also help identify collaboration leverage: which guests, co-creators, editors, directors, producers, experts, or adjacent creators could improve the work and create honest audience cross-pollination through Vanta's clickable credits.
+
 The purpose is to make the creator's Vanta portfolio stronger and help the creator bring more real returning viewers to work that can be monetized through Vanta's advertising engine.
 
 ## Prompt 1: Manual First, Then Automation
@@ -34,6 +36,7 @@ Evaluate:
 
 - scripting;
 - research;
+- collaborator research and outreach;
 - shot planning;
 - editing;
 - clip selection;
@@ -46,6 +49,7 @@ Evaluate:
 - posting;
 - analytics review;
 - audience replies.
+- credit and collaborator metadata.
 
 For each area, tell me:
 
@@ -56,6 +60,7 @@ For each area, tell me:
 - what tools or workflow would help?
 - how could automation increase output without lowering quality?
 - where should I invest money instead of trying to automate badly?
+- where should I use a real collaborator instead of an AI shortcut?
 
 The goal is higher-quality content and more returning Vanta viewers, not lazy automation.
 ```

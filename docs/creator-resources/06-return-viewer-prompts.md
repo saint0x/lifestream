@@ -8,6 +8,8 @@ Returning viewers are the creator's durable advantage. These prompts help the cr
 
 Thermal energy is not only launch heat. It is repeated heat. High-quality episodes, aggressive reminders, consistent self-marketing, and smart investment in audience systems turn one-time viewers into a recurring audience asset.
 
+Collaboration can create repeated heat too. If viewers discover a series through a guest, director, co-creator, or credited collaborator, the return-viewer system should give them reasons to follow the main creator, follow the collaborator, and continue moving between related Vanta projects.
+
 A viewer who returns every week is more valuable than a viewer who clicks once and disappears.
 
 Vanta is designed to make that repeat attention economically legible. Returning viewers make the creator's profile, series, and advertiser value stronger.
@@ -42,6 +44,8 @@ Use Vanta as the recurring destination: my profile should become the place viewe
 - newsletter or text reminder strategy;
 - paid or self-funded reminder strategy if appropriate;
 - community discussion prompts;
+- collaborator follow-up prompts;
+- ways to send viewers between my work and collaborators' credited work;
 - live watch or premiere strategy;
 - post-episode recap strategy;
 - comment reply strategy;
@@ -84,6 +88,7 @@ The hooks should:
 - avoid clickbait;
 - make the next episode feel necessary;
 - remind viewers to follow my Vanta profile;
+- mention credited collaborators or related Vanta projects when relevant;
 - push reminders/notifications;
 - build a recurring habit.
 

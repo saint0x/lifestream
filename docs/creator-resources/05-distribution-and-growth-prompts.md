@@ -28,6 +28,8 @@ Creators may use contractors, assistants, street teams, editors, or posting help
 
 Creators may also spend real money when it is disciplined: editors, designers, thumbnails, paid boosts, travel, research, gear, location access, or distribution help. The standard is simple: investment should increase quality, increase legitimate reach, or increase returning-viewer behavior.
 
+Collaboration is legitimate distribution when it is real. Creators should look for other successful creators, talented collaborators, guests, directors, producers, editors, or experts whose audience overlaps naturally. If both sides promote the work and both sides are credited on Vanta, the collaboration can cross-pollinate audiences and create more Qualified Attention than either creator would generate alone.
+
 Vanta is the multiplier on that legitimate distribution. The more real viewers a creator consistently brings to high-quality Vanta episodes, the more Vanta can help package that attention for advertiser value, and the more the creator can turn promotion into durable business value instead of temporary reach.
 
 ## Prompt 1: Internet-Wide Distribution Plan
@@ -64,6 +66,8 @@ Make Vanta the premium destination in the plan: my profile should be the link I 
 - what community posts I should make;
 - what newsletter/email pushes I should send;
 - what livestreams or live discussions I should run;
+- what creators or collaborators I should partner with;
+- how collaborator credits and links should be used;
 - how I should use my Vanta profile link;
 - how I should reuse strong clips multiple times without feeling lazy;
 - what contractors or assistants could help with;
@@ -101,6 +105,8 @@ Frame Vanta as the premiere destination: social platforms build anticipation, bu
 - "get ready with me" or day-in-the-life content;
 - creator interviews;
 - cast/guest/subject interviews if relevant;
+- collaborator-led promotion;
+- co-posts with credited contributors;
 - countdown posts;
 - premiere/live watch idea;
 - post-release discussion;
@@ -135,7 +141,12 @@ Target audience:
 Assets available:
 [clips, captions, thumbnails, links]
 
+Credited collaborators and their platforms:
+[list]
+
 The helpers should understand that Vanta is the destination and portfolio, not just another link. Their work should create real viewer interest and repeat visits.
+
+If collaborators are involved, helpers should also understand the credit graph: who is credited, what profile or project each person points to, and how promotion can help audiences move between related Vanta projects.
 
 Create:
 
@@ -185,6 +196,8 @@ Organize the ideas by:
 
 - clips;
 - collaborations;
+- credit-based cross-promotion;
+- reciprocal work on other creators' Vanta projects;
 - communities;
 - behind-the-scenes;
 - live events;

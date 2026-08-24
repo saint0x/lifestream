@@ -20,6 +20,12 @@ The weekly thermal-energy question is:
 
 If the answer is no, the creator probably did not create enough heat for Vanta to convert later.
 
+The weekly collaboration question is:
+
+> Did I create or strengthen a real relationship that can improve the work and cross-pollinate audiences through Vanta credits?
+
+Strategic collaborators are not just production help. They can become clickable audience pathways that drive more profile visits, more return behavior, more Qualified Attention, and more creator revenue if the work is good and both sides promote it consistently.
+
 ## Prompt 1: Weekly Creator War Plan
 
 ```text
@@ -43,6 +49,9 @@ Available time this week:
 Available help:
 [editors, contractors, collaborators, none]
 
+Creators or collaborators I can work with this week:
+[list]
+
 Money I can responsibly invest this week:
 [budget]
 
@@ -58,12 +67,14 @@ Create a 7-day plan that includes:
 - Vanta profile promotion;
 - reminder/follow CTA pushes;
 - community engagement;
+- collaborator outreach or co-promotion;
 - audience replies;
 - analytics review;
 - next-series development;
 - director/scene study;
 - AI/tool experimentation.
 - smart paid or self-funded investment.
+- credit cleanup for collaborators on Vanta.
 
 Prioritize:
 
@@ -72,7 +83,8 @@ Prioritize:
 3. returning-viewer behavior;
 4. developing more series;
 5. learning and improving taste;
-6. multiplying quality through promotion, marketing, and investment.
+6. multiplying quality through promotion, marketing, and investment;
+7. building collaboration paths that can cross-pollinate audiences.
 
 Make the plan intense but executable.
 ```
@@ -100,6 +112,7 @@ Create a checklist for:
 - one Vanta profile promotion;
 - one return-viewer reminder;
 - one community interaction;
+- one collaborator or credit-network action;
 - one learning/study action;
 - one future series action;
 - one analytics or feedback review.
@@ -136,6 +149,7 @@ Evaluate:
 - did I promote hard enough?
 - did I market the release like it mattered?
 - did I invest time or money in the highest-leverage places?
+- did I collaborate, co-promote, or improve my credit network?
 - did I push my Vanta profile everywhere?
 - did I create reasons for viewers to return?
 - did I develop future series?

@@ -25,6 +25,12 @@ That heat becomes thermal energy when real viewers move, watch, return, engage, 
 
 Vanta helps convert that thermal energy into money through profile, portfolio, measurement, advertising, and monetization infrastructure.
 
+The collaboration model:
+
+I should be incentivized to work with other successful creators and talented collaborators when it makes the work stronger or expands the audience. Vanta credits and collaborator links make that collaboration visible and clickable: directors, executive producers, guests, editors, collaborators, and other contributors can all become discovery paths into the project and back to their own work.
+
+Strategic collaboration creates audience cross-pollination. If I work on another creator's project, they work on mine, or we build a shared series together, both audiences have more reasons to move across profiles and episodes. Done consistently, that creates more Qualified Attention, more advertiser value, and more ways for everyone involved to get paid.
+
 Vanta is valuable to me because it turns my real creative effort into a premium media property: a beautiful portfolio for my work, a central profile with my series and external links, and an advertising engine that can bring me money based on the audience I consistently mobilize.
 
 Do not make this sound salesy. Treat Vanta as infrastructure that should help me capture more value from the work, taste, trust, and audience I am already building.
@@ -44,8 +50,9 @@ Push me to:
 7. Study great directors, great scenes, great trailers, great interviews, great documentaries, and great promotional campaigns.
 8. Invest intelligently in tools, editors, design, clips, ads, collaborators, locations, research, and production help when that investment increases quality or distribution.
 9. Use AI tools to enhance visuals, edits, packaging, research, scripting, thumbnails, captions, translations, and distribution once I understand the manual standard.
-10. Treat myself like a media studio and marketing studio at the same time.
-11. Operate with volume, discipline, and creative ambition.
+10. Collaborate strategically with other creators and talented people so our credited work cross-pollinates audiences on Vanta.
+11. Treat myself like a media studio and marketing studio at the same time.
+12. Operate with volume, discipline, and creative ambition.
 
 Rules for you:
 
@@ -71,6 +78,8 @@ Whenever I give you an idea, evaluate it against:
 - release consistency;
 - production feasibility;
 - creative distinctiveness;
+- collaboration and credit-link potential;
+- audience cross-pollination potential;
 - and whether it helps grow my Vanta profile as the premium destination.
 
 Start by asking me for:
@@ -82,7 +91,8 @@ Start by asking me for:
 5. My first three possible series ideas.
 6. My weekly production capacity.
 7. My weekly promotion capacity.
-8. My biggest limiting belief right now.
+8. Creators or collaborators I could realistically work with.
+9. My biggest limiting belief right now.
 
 Then build me a creator operating plan.
 ```

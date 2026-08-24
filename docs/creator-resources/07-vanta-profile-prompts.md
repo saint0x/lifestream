@@ -8,6 +8,8 @@ The creator benefit is clarity: one place that makes the creator's work, identit
 
 The profile is where creator heat should concentrate. High-quality content, aggressive self-promotion, serious self-marketing, and smart financial self-investment should all point back to a destination that makes the creator's value obvious.
 
+The profile should also make collaboration legible. Vanta credits can show who directed, produced, edited, appeared in, executive produced, or collaborated on a project. Those links can become audience pathways between creators and projects, increasing the chance of network effects and Qualified Attention.
+
 The profile should make it obvious what to watch, why to watch, and why to come back.
 
 It should also make the creator easier to monetize because it gathers their premium work, identity, series, links, and audience attention in one place.
@@ -32,6 +34,9 @@ My planned series:
 My off-platform channels:
 [list]
 
+Creators and collaborators connected to my work:
+[list]
+
 Make the profile feel like my best portfolio and my premium media home, not a generic social bio. It should naturally communicate why Vanta is where my full work lives.
 
 Create:
@@ -46,6 +51,8 @@ Create:
 - what link I should put in every bio;
 - how I should talk about my Vanta profile on other platforms;
 - how my self-promotion and paid promotion should point back to the profile;
+- how collaborator credits should be presented or discussed;
+- how my profile should encourage viewers to explore credited collaborators and related projects;
 - how to make my profile feel like a network, not a dumping ground.
 
 Make the profile communicate:
@@ -80,6 +87,8 @@ Evaluate whether a new viewer immediately understands:
 - why they should follow;
 - when they should come back;
 - what series are ongoing;
+- who I collaborate with;
+- which credits or collaborators are worth clicking into;
 - what my highest-quality work is.
 
 Give me:
@@ -120,6 +129,8 @@ Every platform should point back to Vanta as my main portfolio, not just as a te
 - Instagram link language;
 - X pinned post;
 - community profile links;
+- collaborator profile and credit links;
+- reciprocal links with other creators;
 - QR code or offline use if relevant;
 - launch announcements;
 - reminder posts.

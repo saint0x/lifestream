@@ -8,6 +8,8 @@ The creator benefit is leverage: one strong episode should become many honest in
 
 Clips are how creator heat travels. In the thermal-energy model, the full episode creates substance, but clips, reposts, paid boosts, collaborations, and platform-native adaptations move that substance through the internet.
 
+Collaborator clips can travel even farther. If an episode involves another creator, guest, director, producer, editor, or credited collaborator, the clip strategy should give both sides reasons to post, tag, link, and send viewers back to the Vanta episode and credited profiles.
+
 The complete episode lives on Vanta.
 
 The best moments travel everywhere.
@@ -46,6 +48,8 @@ For each clip, provide:
 - CTA to the full Vanta episode;
 - whether it should be posted once, reposted, remixed, or turned into a thread;
 - whether it deserves paid boosting or extra editing investment;
+- whether it should be co-posted, tagged, or promoted by a collaborator;
+- which credited person the clip could help viewers discover;
 - whether it is emotional, funny, educational, controversial, beautiful, surprising, or narrative.
 
 Then rank the clips by expected ability to bring viewers back to Vanta.
@@ -70,6 +74,8 @@ Audience:
 [describe]
 
 Make each asset naturally point back to my Vanta profile as the home of the full episode and the rest of my work.
+
+If a collaborator appears in or helped make the scene, make the asset useful for both of us: something they would want to share, something their audience would understand, and something that points back to the Vanta episode and credit surface.
 
 Create:
 
@@ -118,6 +124,7 @@ Create a calendar that includes:
 - reposts;
 - alternate hooks;
 - behind-the-scenes posts;
+- collaborator posts, reposts, or co-promotion windows;
 - comment prompts;
 - story posts;
 - newsletter mentions;

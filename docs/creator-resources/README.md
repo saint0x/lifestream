@@ -16,6 +16,8 @@ Creators win when they:
 
 - make high-quality exclusive content;
 - create more strong series over time;
+- link up with other successful creators and talented collaborators;
+- give real collaborators visible credit so audiences can discover everyone involved;
 - promote their Vanta profile everywhere;
 - clip and distribute the best moments aggressively;
 - build returning audience behavior;
@@ -32,6 +34,7 @@ Vanta gives creators:
 
 - a premium portfolio that can become their main home on the internet;
 - a beautiful profile that shows their work, series, identity, and external links in one place;
+- clickable collaborator and credit surfaces that can show directors, executive producers, guests, editors, collaborators, and other people involved in the work;
 - no need to abandon their existing platforms;
 - an exclusive destination for their best long-form work;
 - a marketplace and advertising engine built to turn their real audience attention into revenue;
@@ -59,6 +62,8 @@ Vanta helps convert that thermal energy into money
 
 Quality alone is not enough. Promotion alone is not enough. Spending money alone is not enough. The creator creates heat by combining all of them: making work that deserves attention, pushing it relentlessly, marketing it like a real release, and investing in the tools, people, clips, ads, editing, design, travel, research, or production help that make the work and distribution stronger.
 
+Collaboration is another heat multiplier. Creators should realistically be incentivized to link up with other successful creators, directors, producers, editors, guests, and talented collaborators. When collaborators are credited on Vanta, those credit links become discovery paths. A viewer can find the creator through a collaborator, find the collaborator through the creator, and move between related projects. More direct collaboration on the platform increases the chance of audience cross-pollination, which can create more Qualified Attention and more monetizable audience value over time.
+
 The creator still has to make excellent work and market it hard. These prompts exist to make that work clearer, more repeatable, and more valuable.
 
 Vanta helps package that effort into something advertisers can understand, buy, and renew.
@@ -78,6 +83,7 @@ better series
 -> better episodes
 -> better clips
 -> more creator self-promotion and self-investment
+-> more strategic collaborations and clickable credits
 -> more audience migration
 -> more returning viewers
 -> stronger Qualified Attention
