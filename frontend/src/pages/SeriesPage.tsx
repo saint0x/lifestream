@@ -172,7 +172,7 @@ export function SeriesPage() {
             kicker="More like this"
             title="You might also like"
             items={related}
-            layout="poster"
+            layout="landscape"
           />
         )}
       </div>

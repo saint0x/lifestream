@@ -132,7 +132,7 @@ export function HomePage() {
           kicker="03 / Trending"
           title="Everyone is watching"
           items={trending}
-          layout="poster"
+          layout="landscape"
           seeAllHref="/live"
         />
 
@@ -140,7 +140,7 @@ export function HomePage() {
           kicker="04 / Originals"
           title="VANTA Originals"
           items={originals}
-          layout="poster"
+          layout="landscape"
           seeAllHref="/originals"
         />
 
@@ -148,7 +148,7 @@ export function HomePage() {
           kicker="05 / Series"
           title="Series we're obsessed with"
           items={series}
-          layout="poster"
+          layout="landscape"
           seeAllHref="/series"
         />
 
@@ -156,7 +156,7 @@ export function HomePage() {
           kicker="06 / Films"
           title="Films worth the runtime"
           items={films}
-          layout="poster"
+          layout="landscape"
           seeAllHref="/films"
         />
 
@@ -164,7 +164,7 @@ export function HomePage() {
           kicker="07 / Genre"
           title="Hard science fiction"
           items={sciFi}
-          layout="poster"
+          layout="landscape"
           seeAllHref="/series?genre=Science%20Fiction"
         />
       </div>
