@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageMetadata } from "@/components/seo/PageMetadata";
+import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import { repository } from "@/lib/repository";
 import type { AdMarketplaceOffer, AdMarketplaceSummary, CreatorAdHubResponse } from "@/types";
 import "./AdHubPage.css";
@@ -77,6 +78,11 @@ export function AdHubPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedPackageId, setExpandedPackageId] = useState<string | null>(null);
+
+  usePageBreadcrumbs([
+    { label: "Dashboard", href: "/" },
+    { label: "Ad Hub" },
+  ]);
 
   const offers = hub?.offers ?? emptyOffers;
   const selectedOffer = useMemo(

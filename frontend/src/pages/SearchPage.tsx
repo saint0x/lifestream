@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Search as SearchIcon } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { PageMetadata } from "@/components/seo/PageMetadata";
+import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import type { SearchResult } from "@/types";
 import "./SearchPage.css";
 
@@ -15,6 +16,13 @@ export function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pageSize = 16;
+  const currentQuery = params.get("q")?.trim();
+
+  usePageBreadcrumbs([
+    { label: "Dashboard", href: "/" },
+    { label: "Search", href: currentQuery ? "/search" : undefined },
+    ...(currentQuery ? [{ label: currentQuery }] : []),
+  ]);
 
   useEffect(() => {
     setQuery(params.get("q") ?? "");
@@ -96,16 +104,16 @@ export function SearchPage() {
   return (
     <div className="ls-search">
       <PageMetadata
-        title={params.get("q") ? `Search "${params.get("q")}" - VANTA` : "Search VANTA"}
+        title={currentQuery ? `Search "${currentQuery}" - VANTA` : "Search VANTA"}
         description="Search VANTA's database-backed catalog of premium series, films, episodes, creators, live streams, categories, and metadata."
-        path={params.get("q") ? `/search?q=${encodeURIComponent(params.get("q") ?? "")}` : "/search"}
+        path={currentQuery ? `/search?q=${encodeURIComponent(currentQuery)}` : "/search"}
         structuredData={{
           "@context": "https://schema.org",
           "@type": "SearchResultsPage",
           name: "VANTA Search",
           description:
             "Search VANTA's premium exclusive catalog of long-form episodes, films, creators, live streams, and metadata.",
-          about: params.get("q") ?? "VANTA catalog search",
+          about: currentQuery ?? "VANTA catalog search",
           mainEntity: results.slice(0, 20).map((item) => ({
             "@type": "Thing",
             name: item.title,

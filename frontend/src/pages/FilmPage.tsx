@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ContentRow } from "@/components/content/ContentRow";
 import { PageMetadata } from "@/components/seo/PageMetadata";
+import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import { formatRuntime } from "@/lib/format";
 import { shareCurrentPage } from "@/lib/share";
 import type { Film, Series } from "@/types";
@@ -21,6 +22,12 @@ export function FilmPage() {
   const inWatchlist = useAppStore((s) => (film ? s.watchlist.has(film.id) : false));
   const toggleWatchlist = useAppStore((s) => s.toggleWatchlist);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+
+  usePageBreadcrumbs([
+    { label: "Dashboard", href: "/" },
+    { label: "Films", href: "/films" },
+    { label: film?.title ?? "Film" },
+  ]);
 
   useEffect(() => {
     if (!slug) return;

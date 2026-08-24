@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ContentCard } from "@/components/content/ContentCard";
 import { PageMetadata } from "@/components/seo/PageMetadata";
+import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import { Button } from "@/components/ui/Button";
 import { repository } from "@/lib/repository";
 import type { Film, Genre, Series } from "@/types";
@@ -63,6 +64,19 @@ export function CatalogPage({ kind, originalsOnly = false }: CatalogPageProps) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const pageLabel = originalsOnly
+    ? "Originals"
+    : kind === "series"
+      ? "Series"
+      : kind === "film"
+        ? "Films"
+        : "Browse";
+
+  usePageBreadcrumbs([
+    { label: "Dashboard", href: "/" },
+    { label: pageLabel },
+  ]);
 
   useEffect(() => {
     setOriginals(originalsOnly);

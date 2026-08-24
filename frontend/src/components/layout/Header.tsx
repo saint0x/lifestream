@@ -22,12 +22,8 @@ import type { SearchResult } from "@/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { usePageNavigation, type PageCrumb } from "./PageNavigation";
 import "./Header.css";
-
-interface Breadcrumb {
-  readonly label: string;
-  readonly href?: string;
-}
 
 function titleize(value: string): string {
   return decodeURIComponent(value)
@@ -47,84 +43,85 @@ function findEpisodeContext(id: string) {
   return { episode, series };
 }
 
-function buildBreadcrumbs(pathname: string, search: string): ReadonlyArray<Breadcrumb> {
-  if (pathname === "/") return [{ label: "Home" }];
+function buildBreadcrumbs(pathname: string, search: string): ReadonlyArray<PageCrumb> {
+  if (pathname === "/") return [{ label: "Dashboard" }];
 
   const parts = pathname.split("/").filter(Boolean);
   const [section, value, next] = parts;
-  const home = { label: "Home", href: "/" };
+  const dashboard = { label: "Dashboard", href: "/" };
 
   if (section?.startsWith("@")) {
-    return [home, { label: "Profiles" }, { label: titleize(section) }];
+    return [dashboard, { label: titleize(section) }];
   }
 
   if (section === "series") {
     const series = value && repository.hasState() ? repository.getSeriesBySlug(value) : undefined;
     return value
-      ? [home, { label: "Series", href: "/series" }, { label: series?.title ?? titleize(value) }]
-      : [home, { label: "Series" }];
+      ? [dashboard, { label: "Series", href: "/series" }, { label: series?.title ?? titleize(value) }]
+      : [dashboard, { label: "Series" }];
   }
 
-  if (section === "films") return [home, { label: "Films" }];
+  if (section === "films") return [dashboard, { label: "Films" }];
 
   if (section === "film") {
     const film = value && repository.hasState() ? repository.getFilmBySlug(value) : undefined;
-    return [home, { label: "Films", href: "/films" }, { label: film?.title ?? titleize(value ?? "Film") }];
+    return [dashboard, { label: "Films", href: "/films" }, { label: film?.title ?? titleize(value ?? "Film") }];
   }
 
   if (section === "watch" && value === "episode" && next) {
     const context = findEpisodeContext(next);
     if (context) {
       return [
-        home,
+        dashboard,
         { label: "Series", href: "/series" },
         { label: context.series.title, href: `/series/${context.series.slug}` },
         { label: context.episode.title },
       ];
     }
-    return [home, { label: "Watch" }, { label: "Episode" }];
+    return [dashboard, { label: "Watch" }, { label: "Episode" }];
   }
 
   if (section === "watch" && value === "film" && next) {
     const film = repository.hasState() ? repository.getFilmById(next) : undefined;
-    return [home, { label: "Films", href: "/films" }, { label: film?.title ?? "Film" }];
+    return [dashboard, { label: "Films", href: "/films" }, { label: film?.title ?? "Film" }];
   }
 
   if (section === "live") {
     const stream = value && repository.hasState() ? repository.getLiveStreamBySlug(value) : undefined;
     return value
-      ? [home, { label: "Live", href: "/live" }, { label: stream?.title ?? titleize(value) }]
-      : [home, { label: "Live" }];
+      ? [dashboard, { label: "Live", href: "/live" }, { label: stream?.title ?? titleize(value) }]
+      : [dashboard, { label: "Live" }];
   }
 
   if (section === "category") {
-    return [home, { label: "Live", href: "/live" }, { label: titleize(value ?? "Category") }];
+    return [dashboard, { label: "Live", href: "/live" }, { label: titleize(value ?? "Category") }];
   }
 
   if (section === "search") {
     const params = new URLSearchParams(search);
     const query = params.get("q")?.trim();
-    return [home, { label: "Search", href: "/search" }, ...(query ? [{ label: query }] : [])];
+    return [dashboard, { label: "Search", href: "/search" }, ...(query ? [{ label: query }] : [])];
   }
 
-  if (section === "originals") return [home, { label: "Originals" }];
-  if (section === "watchlist") return [home, { label: "Watchlist" }];
-  if (section === "library") return [home, { label: "Library" }];
-  if (section === "following") return [home, { label: "Following" }];
-  if (section === "profile") return [home, { label: "Profile" }];
-  if (section === "settings") return [home, { label: "Settings" }];
+  if (section === "originals") return [dashboard, { label: "Originals" }];
+  if (section === "watchlist") return [dashboard, { label: "Watchlist" }];
+  if (section === "library") return [dashboard, { label: "Library" }];
+  if (section === "following") return [dashboard, { label: "Following" }];
+  if (section === "profile") return [dashboard, { label: "Profile" }];
+  if (section === "settings") return [dashboard, { label: "Settings" }];
   if (section === "studio" && value === "tool") {
-    return [home, { label: "Creator Studio", href: "/studio" }, { label: titleize(next ?? "Tool") }];
+    return [dashboard, { label: "Creator Studio", href: "/studio" }, { label: titleize(next ?? "Tool") }];
   }
-  if (section === "studio") return [home, { label: "Creator Studio" }];
-  if (section === "ad-hub") return [home, { label: "Ad Hub" }];
+  if (section === "studio") return [dashboard, { label: "Creator Studio" }];
+  if (section === "ad-hub") return [dashboard, { label: "Ad Hub" }];
 
-  return [home, { label: titleize(section ?? "Page") }];
+  return [dashboard, { label: titleize(section ?? "Page") }];
 }
 
 function BreadcrumbTrail() {
   const location = useLocation();
-  const crumbs = buildBreadcrumbs(location.pathname, location.search);
+  const { crumbs: pageCrumbs } = usePageNavigation();
+  const crumbs = pageCrumbs ?? buildBreadcrumbs(location.pathname, location.search);
 
   return (
     <nav className="ls-header__crumbs" aria-label="Page path">

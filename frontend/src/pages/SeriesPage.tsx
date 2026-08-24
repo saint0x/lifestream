@@ -9,6 +9,7 @@ import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { EpisodeList } from "@/components/content/EpisodeList";
 import { ContentRow } from "@/components/content/ContentRow";
 import { PageMetadata } from "@/components/seo/PageMetadata";
+import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import { shareCurrentPage } from "@/lib/share";
 import type { Film, Series } from "@/types";
 import "./DetailPage.css";
@@ -22,6 +23,12 @@ export function SeriesPage() {
   const inWatchlist = useAppStore((s) => (series ? s.watchlist.has(series.id) : false));
   const toggleWatchlist = useAppStore((s) => s.toggleWatchlist);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+
+  usePageBreadcrumbs([
+    { label: "Dashboard", href: "/" },
+    { label: "Series", href: "/series" },
+    { label: series?.title ?? "Series" },
+  ]);
 
   useEffect(() => {
     if (!slug) return;

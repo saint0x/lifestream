@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { repository } from "@/lib/repository";
 import { LiveCard } from "@/components/content/LiveCard";
 import { PageMetadata } from "@/components/seo/PageMetadata";
+import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import type { Category, Genre, LiveStream } from "@/types";
 import "./BrowseLivePage.css";
 
@@ -25,6 +26,11 @@ export function BrowseLivePage() {
   const [limit, setLimit] = useState(24);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  usePageBreadcrumbs([
+    { label: "Dashboard", href: "/" },
+    { label: "Live" },
+  ]);
 
   useEffect(() => {
     const controller = new AbortController();

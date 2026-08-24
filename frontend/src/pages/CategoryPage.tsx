@@ -4,6 +4,7 @@ import { repository } from "@/lib/repository";
 import { LiveCard } from "@/components/content/LiveCard";
 import { ContentCard } from "@/components/content/ContentCard";
 import { PageMetadata } from "@/components/seo/PageMetadata";
+import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import type { Category, Film, LiveStream, Series } from "@/types";
 import "./CategoryPage.css";
 
@@ -17,6 +18,12 @@ export function CategoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pageSize = 18;
+
+  usePageBreadcrumbs([
+    { label: "Dashboard", href: "/" },
+    { label: "Live", href: "/live" },
+    { label: cat?.name ?? "Category" },
+  ]);
 
   useEffect(() => {
     if (!slug) return;

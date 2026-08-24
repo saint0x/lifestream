@@ -16,6 +16,7 @@ import { FaFacebookF, FaImdb, FaInstagram, FaLinkedinIn, FaXTwitter } from "reac
 import { repository } from "@/lib/repository";
 import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { PageMetadata } from "@/components/seo/PageMetadata";
+import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAppStore } from "@/lib/store";
@@ -140,6 +141,11 @@ export function ProfilePage() {
   const [status, setStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  usePageBreadcrumbs([
+    { label: "Dashboard", href: "/" },
+    { label: profile?.displayName ?? "Profile" },
+  ]);
 
   useEffect(() => {
     if (!isOwnProfile && !publicSlug) {

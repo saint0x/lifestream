@@ -4,6 +4,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { PageMetadata } from "@/components/seo/PageMetadata";
+import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { useAppStore } from "@/lib/store";
 import { formatDuration } from "@/lib/format";
@@ -41,6 +42,26 @@ export function WatchPage({ kind }: WatchPageProps) {
     kind === "episode"
       ? episode?.playbackSessionUrl
       : film?.playbackSessionUrl;
+
+  usePageBreadcrumbs(
+    kind === "episode" && episode && series
+      ? [
+          { label: "Dashboard", href: "/" },
+          { label: "Series", href: "/series" },
+          { label: series.title, href: `/series/${series.slug}` },
+          { label: episode.title },
+        ]
+      : kind === "film" && film
+        ? [
+            { label: "Dashboard", href: "/" },
+            { label: "Films", href: "/films" },
+            { label: film.title },
+          ]
+        : [
+            { label: "Dashboard", href: "/" },
+            { label: "Watch" },
+          ],
+  );
 
   useEffect(() => {
     if (!id) return;
