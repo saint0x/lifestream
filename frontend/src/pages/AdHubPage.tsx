@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BadgeDollarSign,
   Check,
+  ChevronDown,
   ClipboardCheck,
   RefreshCw,
   Send,
@@ -74,6 +75,7 @@ export function AdHubPage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedPackageId, setExpandedPackageId] = useState<string | null>(null);
 
   const offers = hub?.offers ?? emptyOffers;
   const selectedOffer = useMemo(
@@ -168,7 +170,6 @@ export function AdHubPage() {
   };
 
   const summary = hub?.summary;
-  const provider = hub?.paymentProvider;
   const canSubmit = selectedOffer?.status === "accepted" || selectedOffer?.status === "in_review";
 
   return (
@@ -215,11 +216,6 @@ export function AdHubPage() {
         <div className="ls-ad-hub__metric">
           <span className="mono">Creator payout</span>
           <strong>{money(summary?.totalCreatorPayoutCents ?? 0, summary?.currency ?? "USD")}</strong>
-        </div>
-        <div className="ls-ad-hub__metric">
-          <span className="mono">Payments</span>
-          <strong>{provider ? provider.displayName : "Whop"}</strong>
-          <em>{provider?.enabled ? provider.mode : provider?.status ?? "pending"}</em>
         </div>
       </section>
 
@@ -386,13 +382,41 @@ export function AdHubPage() {
           </div>
           <div className="ls-ad-hub__packages">
             {(hub?.packages ?? []).map((pkg) => (
-              <div key={pkg.id} className="ls-ad-hub__package">
-                <div>
-                  <strong>{pkg.title}</strong>
-                  <span className="mono">{pkg.placementKind.replace("_", " ")}</span>
-                </div>
-                <span>{money(pkg.basePriceCents, pkg.currency)}</span>
-              </div>
+              <button
+                key={pkg.id}
+                type="button"
+                className={`ls-ad-hub__package ${expandedPackageId === pkg.id ? "is-expanded" : ""}`}
+                aria-expanded={expandedPackageId === pkg.id}
+                onClick={() => setExpandedPackageId((current) => (current === pkg.id ? null : pkg.id))}
+              >
+                <span className="ls-ad-hub__package-main">
+                  <span>
+                    <strong>{pkg.title}</strong>
+                    <span className="mono">{pkg.placementKind.replace("_", " ")}</span>
+                  </span>
+                  <span className="ls-ad-hub__package-price">
+                    {money(pkg.basePriceCents, pkg.currency)}
+                    <ChevronDown size={15} strokeWidth={1.75} />
+                  </span>
+                </span>
+                {expandedPackageId === pkg.id ? (
+                  <span className="ls-ad-hub__package-detail">
+                    <span>{pkg.description}</span>
+                    <span className="ls-ad-hub__package-facts">
+                      <span><span className="mono">Code</span>{pkg.code}</span>
+                      <span><span className="mono">Length</span>{pkg.spotLengthSeconds ? `${pkg.spotLengthSeconds}s` : "Flexible"}</span>
+                      <span><span className="mono">Status</span>{pkg.status}</span>
+                    </span>
+                    {pkg.deliverables.length > 0 ? (
+                      <span className="ls-ad-hub__package-deliverables">
+                        {pkg.deliverables.map((item) => (
+                          <span key={item}><ShieldCheck size={13} />{item}</span>
+                        ))}
+                      </span>
+                    ) : null}
+                  </span>
+                ) : null}
+              </button>
             ))}
           </div>
         </div>

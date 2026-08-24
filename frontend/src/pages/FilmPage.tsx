@@ -82,7 +82,7 @@ export function FilmPage() {
           <div>
             <div className="ls-detail__kicker mono">
               <span className="ls-detail__kicker-dot" />
-              {film.isOriginal ? "VANTA ORIGINAL" : "FILM"}
+              FILM
               <span className="ls-detail__kicker-sep">—</span>
               {formatRuntime(film.durationSec)}
             </div>

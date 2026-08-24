@@ -57,8 +57,8 @@
 
 .ls-ad-hub__metrics {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .ls-ad-hub__metric,
@@ -71,8 +71,9 @@
 
 .ls-ad-hub__metric {
   display: grid;
-  gap: 8px;
-  padding: 16px;
+  gap: 5px;
+  min-height: 76px;
+  padding: 11px 12px;
 }
 
 .ls-ad-hub__metric span,
@@ -88,7 +89,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 500;
 }
 
@@ -177,7 +178,7 @@
 
 .ls-ad-hub__offer-top,
 .ls-ad-hub__detail-title,
-.ls-ad-hub__package {
+.ls-ad-hub__package-main {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -302,10 +303,81 @@
   overflow-wrap: anywhere;
 }
 
-.ls-ad-hub__package div {
+.ls-ad-hub__package {
+  display: grid;
+  gap: 0;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out);
+}
+
+.ls-ad-hub__package:hover,
+.ls-ad-hub__package.is-expanded {
+  border-color: var(--c-border-hi);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ls-ad-hub__package-main > span:first-child {
   display: grid;
   gap: 6px;
   min-width: 0;
+}
+
+.ls-ad-hub__package-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--c-text);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.ls-ad-hub__package-price svg {
+  color: var(--c-text-faint);
+  transition: transform 160ms var(--ease-out);
+}
+
+.ls-ad-hub__package.is-expanded .ls-ad-hub__package-price svg {
+  transform: rotate(180deg);
+}
+
+.ls-ad-hub__package-detail {
+  display: grid;
+  gap: 12px;
+  margin-top: 13px;
+  padding-top: 13px;
+  border-top: 1px solid var(--c-border);
+  color: var(--c-text-dim);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ls-ad-hub__package-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ls-ad-hub__package-facts > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: rgba(0, 0, 0, 0.18);
+  overflow-wrap: anywhere;
+}
+
+.ls-ad-hub__package-deliverables {
+  display: grid;
+  gap: 7px;
+}
+
+.ls-ad-hub__package-deliverables > span {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
 }
 
 .ls-ad-hub__empty {
@@ -334,11 +406,12 @@
   .ls-ad-hub__panel-head,
   .ls-ad-hub__offer-top,
   .ls-ad-hub__detail-title,
-  .ls-ad-hub__package {
+  .ls-ad-hub__package-main {
     flex-direction: column;
   }
 
-  .ls-ad-hub__facts div {
+  .ls-ad-hub__facts div,
+  .ls-ad-hub__package-facts {
     grid-template-columns: 1fr;
   }
 }

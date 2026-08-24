@@ -47,7 +47,7 @@ export function HeroCarousel({ items }: HeroCarouselProps) {
       <div className="ls-hero__content">
         <div className="ls-hero__kicker mono">
           <span className="ls-hero__kicker-dot" />
-          {current.isOriginal ? "VANTA ORIGINAL" : "FEATURED"}
+          FEATURED
           <span className="ls-hero__kicker-sep">—</span>
           <span>{current.kind === "series" ? "SERIES" : "FILM"}</span>
         </div>

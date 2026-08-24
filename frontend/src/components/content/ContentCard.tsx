@@ -51,11 +51,7 @@ export function ContentCard({
         <img src={poster} alt={item.title} loading="lazy" />
         <div className="ls-card__scrim" />
         <div className="ls-card__top">
-          {item.kind === "live" ? (
-            <Badge tone="live">LIVE</Badge>
-          ) : item.isOriginal ? (
-            <Badge tone="original">VANTA</Badge>
-          ) : null}
+          {item.kind === "live" ? <Badge tone="live">LIVE</Badge> : null}
           {item.kind !== "live" &&
           item.isOriginal === false &&
           item.trending ? (
