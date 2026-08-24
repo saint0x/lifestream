@@ -655,10 +655,10 @@ async fn fetch_postgres_creator_live_settings(
     .ok_or(AppError::NotFound)?;
 
     Ok(CreatorLiveSettings {
-        subscriber_only: row.get::<i64, _>("subscriber_only") != 0,
+        subscriber_only: row.get::<i32, _>("subscriber_only") != 0,
         slow_mode_seconds: row.get("slow_mode_seconds"),
         auto_mod_level: row.get("auto_mod_level"),
-        notify_followers_default: row.get::<i64, _>("notify_followers_default") != 0,
+        notify_followers_default: row.get::<i32, _>("notify_followers_default") != 0,
         delivery_class: row.get("delivery_class"),
         active_scene_id: row.get("active_scene_id"),
         scenes: from_json(row.get::<String, _>("scenes_json"))?,
