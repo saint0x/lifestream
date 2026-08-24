@@ -186,6 +186,25 @@ This creates another monetization mechanism without requiring either party to pa
 
 ---
 
+## Future Optional Layer: Vanta Plus
+
+Vanta's core platform should remain free. That principle does not prevent Vanta from eventually offering Vanta Plus as an optional subscription product for serious creators.
+
+The distinction is important:
+
+```text
+Vanta Free = Run your channel.
+Vanta Plus = Run your studio.
+```
+
+Vanta Plus should not be a paywall around publishing, distribution, or basic monetization. It should be a studio operating system for creators who need more leverage: production planning, creator automations, studio memory, audience intelligence, sponsorship operations, collaborator workflows, IP libraries, and business reporting.
+
+The creator-benefit logic is direct. Free Vanta gives creators the environment to publish stronger work, bring audiences into a premium viewing experience, and turn qualified attention into advertiser value. Vanta Plus helps the creator create more heat around that system by improving the quality, consistency, promotion, coordination, and business operation behind the work.
+
+In other words, Vanta Plus is not "premium Vanta." It is optional infrastructure for creators who are starting to operate like media companies.
+
+---
+
 ## Why Vanta Can Be Completely Free
 
 This is one of the most important consequences of the model.
