@@ -399,8 +399,7 @@ export function AdHubPage() {
                     <ChevronDown size={15} strokeWidth={1.75} />
                   </span>
                 </span>
-                {expandedPackageId === pkg.id ? (
-                  <span className="ls-ad-hub__package-detail">
+                <span className="ls-ad-hub__package-detail" aria-hidden={expandedPackageId !== pkg.id}>
                     <span>{pkg.description}</span>
                     <span className="ls-ad-hub__package-facts">
                       <span><span className="mono">Code</span>{pkg.code}</span>
@@ -414,8 +413,7 @@ export function AdHubPage() {
                         ))}
                       </span>
                     ) : null}
-                  </span>
-                ) : null}
+                </span>
               </button>
             ))}
           </div>
