@@ -1,13 +1,36 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, FileVideo, RefreshCw, Save, Send, UploadCloud } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  Activity,
+  BarChart3,
+  Check,
+  ChevronRight,
+  Clapperboard,
+  Edit3,
+  Eye,
+  FileVideo,
+  FolderOpen,
+  MessageSquare,
+  Radio,
+  RefreshCw,
+  Save,
+  Send,
+  Sparkles,
+  UploadCloud,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { repository } from "@/lib/repository";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import type { MediaAsset, UploadJob } from "@/types";
+import { formatNumber, formatRelativeTime, formatRuntime, formatViewers } from "@/lib/format";
+import type { AnalyticsPoint, Broadcast, MediaAsset, TopContent, Upload, UploadJob } from "@/types";
 import "./StudioPage.css";
 
 const visibilityOptions = ["private", "unlisted", "public"] as const;
 const kindOptions = ["film", "episode"] as const;
+
+type StudioView = "stream" | "series";
 
 interface UploadJobForm {
   readonly kind: string;
@@ -25,7 +48,7 @@ interface PublishForm {
 }
 
 const initialForm: UploadJobForm = {
-  kind: "film",
+  kind: "episode",
   title: "",
   intendedVisibility: "private",
   bytesExpected: "1048576",
@@ -54,7 +77,132 @@ function formatBytes(value: number): string {
   return `${value} B`;
 }
 
+function money(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function pct(value: number): string {
+  return `${Math.round(value)}%`;
+}
+
+function compactDate(value?: string | null): string {
+  if (!value) return "not scheduled";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
+function latestAnalytics(analytics: ReadonlyArray<AnalyticsPoint>) {
+  return analytics.at(-1) ?? null;
+}
+
+function uploadsForView(uploads: ReadonlyArray<Upload>, view: StudioView): ReadonlyArray<Upload> {
+  if (view === "stream") return uploads.filter((item) => item.kind === "vod" || item.kind === "clip" || item.kind === "trailer");
+  return uploads.filter((item) => item.kind === "episode" || item.kind === "film");
+}
+
+function uploadLabel(upload: Upload): string {
+  if (upload.seriesTitle && upload.seasonNumber && upload.episodeNumber) {
+    return `${upload.seriesTitle} / S${upload.seasonNumber} E${upload.episodeNumber}`;
+  }
+  return upload.kind;
+}
+
+function MetricCard({ label, value, note }: { readonly label: string; readonly value: string; readonly note: string }) {
+  return (
+    <div className="ls-studio__metric">
+      <span className="mono">{label}</span>
+      <strong>{value}</strong>
+      <em>{note}</em>
+    </div>
+  );
+}
+
+function ToolCard({
+  icon,
+  title,
+  body,
+  action,
+  onClick,
+}: {
+  readonly icon: ReactNode;
+  readonly title: string;
+  readonly body: string;
+  readonly action: string;
+  readonly onClick: () => void;
+}) {
+  return (
+    <button type="button" className="ls-studio__tool" onClick={onClick}>
+      <span className="ls-studio__tool-icon">{icon}</span>
+      <span className="ls-studio__tool-copy">
+        <strong>{title}</strong>
+        <span>{body}</span>
+      </span>
+      <span className="ls-studio__tool-action mono">
+        {action}
+        <ChevronRight size={14} strokeWidth={1.75} />
+      </span>
+    </button>
+  );
+}
+
+function RecentBroadcastRow({ broadcast }: { readonly broadcast: Broadcast }) {
+  return (
+    <div className="ls-studio__recent-row">
+      <img src={broadcast.thumbnail} alt="" />
+      <span>
+        <strong>{broadcast.title}</strong>
+        <span className="mono">
+          {broadcast.status} / {broadcast.category} / {formatViewers(broadcast.peakViewers)} peak
+        </span>
+      </span>
+      <em>{money(broadcast.revenue)}</em>
+    </div>
+  );
+}
+
+function RecentUploadRow({ upload }: { readonly upload: Upload }) {
+  return (
+    <div className="ls-studio__recent-row">
+      <img src={upload.thumbnail} alt="" />
+      <span>
+        <strong>{upload.title}</strong>
+        <span className="mono">
+          {upload.status} / {uploadLabel(upload)} / {formatRuntime(upload.durationSec)}
+        </span>
+      </span>
+      <em>{formatNumber(upload.views)} views</em>
+    </div>
+  );
+}
+
+function TopContentRow({ item }: { readonly item: TopContent }) {
+  return (
+    <div className="ls-studio__top-row">
+      <img src={item.thumbnail} alt="" />
+      <span>
+        <strong>{item.title}</strong>
+        <span className="mono">
+          {item.kind} / {formatNumber(item.views)} views / {formatNumber(item.watchHours)} hours
+        </span>
+      </span>
+      <em className={item.trend >= 0 ? "is-positive" : ""}>{item.trend >= 0 ? "+" : ""}{pct(item.trend)}</em>
+    </div>
+  );
+}
+
 export function StudioPage() {
+  const [view, setView] = useState<StudioView>("stream");
+  const [broadcasts, setBroadcasts] = useState<ReadonlyArray<Broadcast>>([]);
+  const [creatorUploads, setCreatorUploads] = useState<ReadonlyArray<Upload>>([]);
+  const [analytics, setAnalytics] = useState<ReadonlyArray<AnalyticsPoint>>([]);
+  const [topContent, setTopContent] = useState<ReadonlyArray<TopContent>>([]);
   const [jobs, setJobs] = useState<ReadonlyArray<UploadJob>>([]);
   const [form, setForm] = useState<UploadJobForm>(initialForm);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -90,6 +238,26 @@ export function StudioPage() {
     && selectedAsset.playbackPath !== null
     && selectedAsset.playbackPath !== undefined;
 
+  const selectedUploads = useMemo(
+    () => uploadsForView(creatorUploads, view),
+    [creatorUploads, view],
+  );
+  const recentUploads = selectedUploads.slice(0, 5);
+  const recentBroadcasts = broadcasts.filter((item) => item.status === "ended").slice(0, 5);
+  const liveBroadcast = broadcasts.find((item) => item.status === "live") ?? null;
+  const currentAnalytics = latestAnalytics(analytics);
+  const streamChatCount =
+    (liveBroadcast?.chatMessages ?? 0)
+    || recentBroadcasts.reduce((sum, item) => sum + item.chatMessages, 0);
+  const streamRevenue =
+    (liveBroadcast?.revenue ?? 0)
+    || recentBroadcasts.reduce((sum, item) => sum + item.revenue, 0);
+  const seriesViews = selectedUploads.reduce((sum, item) => sum + item.views, 0);
+  const seriesWatchHours = selectedUploads.reduce((sum, item) => sum + item.watchHours, 0);
+  const seriesEngagements = selectedUploads.reduce((sum, item) => sum + item.likes + item.comments, 0);
+  const publishedSeriesUploads = selectedUploads.filter((item) => item.status === "published").length;
+  const processingSeriesUploads = selectedUploads.filter((item) => item.status === "processing").length;
+
   const selectJob = useCallback((job: UploadJob) => {
     setSelectedId(job.id);
     setSelectedTitle(job.title);
@@ -102,18 +270,24 @@ export function StudioPage() {
     }));
   }, []);
 
-  const loadJobs = useCallback(async (signal?: AbortSignal) => {
+  const loadStudio = useCallback(async (signal?: AbortSignal) => {
     setError(null);
     const [nextJobs, nextAssets] = await Promise.all([
       repository.listUploadJobs(signal),
       repository.listMediaAssets(signal),
     ]);
+    if (repository.hasState()) {
+      setBroadcasts(repository.listBroadcasts());
+      setCreatorUploads(repository.listUploads());
+      setAnalytics(repository.getAnalytics());
+      setTopContent(repository.getTopContent());
+    }
     setJobs(nextJobs);
     setAssets(nextAssets);
     const firstJob = nextJobs[0];
     if (firstJob) {
       setSelectedId((currentId) => {
-        if (currentId) return currentId;
+        if (currentId && nextJobs.some((job) => job.id === currentId)) return currentId;
         setSelectedTitle(firstJob.title);
         setSelectedVisibility(firstJob.intendedVisibility);
         setSelectedMimeType(firstJob.mimeType);
@@ -130,17 +304,17 @@ export function StudioPage() {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
-    void loadJobs(controller.signal)
+    void loadStudio(controller.signal)
       .catch((err) => {
         if (!controller.signal.aborted) {
-          setError(err instanceof Error ? err.message : "Unable to load studio uploads.");
+          setError(err instanceof Error ? err.message : "Unable to load Creator Studio.");
         }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [loadJobs]);
+  }, [loadStudio]);
 
   const updateField = (field: keyof UploadJobForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -148,6 +322,11 @@ export function StudioPage() {
 
   const updatePublishField = (field: keyof PublishForm, value: string) => {
     setPublishForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const openFutureTool = (toolName: string) => {
+    setStatus(`${toolName} is queued for the next studio module.`);
+    setError(null);
   };
 
   const createJob = async () => {
@@ -268,7 +447,7 @@ export function StudioPage() {
         visibility: publishForm.visibility,
         description: publishForm.description.trim() || undefined,
       });
-      await loadJobs();
+      await loadStudio();
       setStatus(`Published ${published.title}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to publish upload.");
@@ -278,15 +457,61 @@ export function StudioPage() {
     }
   };
 
+  const metricCards = view === "stream"
+    ? [
+        {
+          label: "Live viewers",
+          value: formatViewers(liveBroadcast?.averageViewers ?? currentAnalytics?.viewers ?? 0),
+          note: liveBroadcast ? `${formatViewers(liveBroadcast.peakViewers)} peak now` : "latest audience point",
+        },
+        {
+          label: "Chat velocity",
+          value: formatNumber(streamChatCount),
+          note: liveBroadcast ? "messages this broadcast" : "recent stream messages",
+        },
+        {
+          label: "New follows",
+          value: formatNumber(liveBroadcast?.newFollowers ?? currentAnalytics?.newFollowers ?? 0),
+          note: "latest creator movement",
+        },
+        {
+          label: "Tips / revenue",
+          value: money(streamRevenue || currentAnalytics?.revenue || 0),
+          note: "stream-side creator earnings",
+        },
+      ]
+    : [
+        {
+          label: "Series viewers",
+          value: formatNumber(seriesViews),
+          note: `${formatNumber(seriesEngagements)} likes and comments`,
+        },
+        {
+          label: "Watch hours",
+          value: formatNumber(seriesWatchHours),
+          note: `${formatNumber(seriesWatchHours)} watch hours`,
+        },
+        {
+          label: "Published",
+          value: formatNumber(publishedSeriesUploads),
+          note: `${processingSeriesUploads} processing`,
+        },
+        {
+          label: "Avg retention",
+          value: selectedUploads.length > 0 ? `${Math.round(seriesWatchHours / selectedUploads.length)}h` : "0h",
+          note: "watch hours per title",
+        },
+      ];
+
   return (
     <div className="ls-studio">
       <header className="ls-studio__head">
         <div className="ls-studio__kicker mono">/ creator / studio</div>
         <div className="ls-studio__title-row">
           <div>
-            <h1 className="ls-studio__title">Studio</h1>
+            <h1 className="ls-studio__title">Creator Studio</h1>
             <p className="ls-studio__sub">
-              Create upload jobs, prepare metadata, and keep media handoff state visible.
+              The operating dashboard for live broadcasts, long-form series, uploads, and production handoff.
             </p>
           </div>
           <Button
@@ -294,282 +519,337 @@ export function StudioPage() {
             icon={<RefreshCw />}
             onClick={() => {
               setLoading(true);
-              void loadJobs().finally(() => setLoading(false));
+              void loadStudio().finally(() => setLoading(false));
             }}
             disabled={loading || saving}
           >
             Refresh
           </Button>
         </div>
+        <div className="ls-studio__switch" role="tablist" aria-label="Creator Studio view">
+          <button
+            type="button"
+            className={view === "stream" ? "is-active" : ""}
+            onClick={() => setView("stream")}
+            role="tab"
+            aria-selected={view === "stream"}
+          >
+            <Radio size={15} strokeWidth={1.75} />
+            Streamer
+          </button>
+          <button
+            type="button"
+            className={view === "series" ? "is-active" : ""}
+            onClick={() => setView("series")}
+            role="tab"
+            aria-selected={view === "series"}
+          >
+            <Clapperboard size={15} strokeWidth={1.75} />
+            Series Director
+          </button>
+        </div>
       </header>
 
       {status ? <div className="ls-studio__notice"><Check size={14} />{status}</div> : null}
       {error ? <div className="ls-studio__error">{error}</div> : null}
 
-      <section className="ls-studio__layout">
-        <div className="ls-studio__panel">
-          <div className="ls-studio__panel-head">
-            <div>
-              <h2>Create upload job</h2>
-              <p>Prepare a media slot before upload ingest starts.</p>
+      <section className="ls-studio__metrics" aria-label="Engagement stats">
+        {metricCards.map((item) => (
+          <MetricCard key={item.label} label={item.label} value={item.value} note={item.note} />
+        ))}
+      </section>
+
+      <section className="ls-studio__command-grid">
+        <ToolCard
+          icon={view === "stream" ? <Radio size={18} strokeWidth={1.75} /> : <Edit3 size={18} strokeWidth={1.75} />}
+          title={view === "stream" ? "Streaming editing hub" : "Series editing hub"}
+          body={view === "stream"
+            ? "Scene layout, clips, show notes, and broadcast packaging."
+            : "Episode cuts, seasons, credits, release windows, and metadata polish."}
+          action="Open hub"
+          onClick={() => openFutureTool(view === "stream" ? "Streaming editing hub" : "Series editing hub")}
+        />
+        <ToolCard
+          icon={view === "stream" ? <MessageSquare size={18} strokeWidth={1.75} /> : <FolderOpen size={18} strokeWidth={1.75} />}
+          title={view === "stream" ? "Live operations console" : "File manager"}
+          body={view === "stream"
+            ? "Audience pulse, chat moderation, live tips, and stream health."
+            : "Browse source files, processed media, thumbnails, captions, and delivery assets."}
+          action="Open"
+          onClick={() => openFutureTool(view === "stream" ? "Live operations console" : "File manager")}
+        />
+      </section>
+
+      {view === "stream" ? (
+        <section className="ls-studio__dashboard-grid">
+          <div className="ls-studio__panel ls-studio__panel--wide">
+            <div className="ls-studio__panel-head">
+              <div>
+                <h2>Live room</h2>
+                <p>{liveBroadcast ? "Broadcast is currently live." : "No active broadcast."}</p>
+              </div>
+              <Activity size={18} strokeWidth={1.75} />
             </div>
-            <UploadCloud size={18} strokeWidth={1.75} />
+            <div className="ls-studio__live-room">
+              <div>
+                <span className="mono">Now</span>
+                <strong>{liveBroadcast?.title ?? "Offline"}</strong>
+                <p>{liveBroadcast ? `${liveBroadcast.category} / ${liveBroadcast.tags.join(" · ")}` : "Prepare the next broadcast from the live operations console."}</p>
+              </div>
+              <div className="ls-studio__live-grid">
+                <div><span className="mono">Viewers</span>{formatViewers(liveBroadcast?.averageViewers ?? 0)}</div>
+                <div><span className="mono">Tips</span>{money(liveBroadcast?.revenue ?? 0)}</div>
+                <div><span className="mono">Chat</span>{formatNumber(liveBroadcast?.chatMessages ?? 0)}</div>
+                <div><span className="mono">Followers</span>{formatNumber(liveBroadcast?.newFollowers ?? 0)}</div>
+              </div>
+            </div>
           </div>
 
-          <div className="ls-studio__form">
-            <label className="ls-studio__field">
-              <span className="mono">Title</span>
-              <Input
-                value={form.title}
-                onChange={(event) => updateField("title", event.target.value)}
-                placeholder="Pilot cut"
-              />
-            </label>
-            <label className="ls-studio__field">
-              <span className="mono">Media file</span>
-              <input
-                className="ls-studio__file"
-                type="file"
-                accept="video/*,audio/*"
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0] ?? null;
-                  setSelectedFile(file);
-                  if (file) {
-                    setForm((current) => ({
-                      ...current,
-                      title: current.title || file.name.replace(/\.[^.]+$/, ""),
-                      bytesExpected: String(file.size),
-                      mimeType: file.type || current.mimeType,
-                    }));
-                  }
-                }}
-              />
-              {selectedFile ? (
-                <span className="ls-studio__file-meta mono">
-                  {selectedFile.name} / {formatBytes(selectedFile.size)}
-                </span>
-              ) : null}
-            </label>
-            <label className="ls-studio__field">
-              <span className="mono">Storage key</span>
-              <Input
-                value={form.storageKey}
-                onChange={(event) => updateField("storageKey", event.target.value)}
-                placeholder="Auto-generated from title"
-              />
-            </label>
-            <div className="ls-studio__split">
-              <label className="ls-studio__field">
-                <span className="mono">Kind</span>
-                <select value={form.kind} onChange={(event) => updateField("kind", event.target.value)}>
-                  {kindOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
-              <label className="ls-studio__field">
-                <span className="mono">Visibility</span>
-                <select
-                  value={form.intendedVisibility}
-                  onChange={(event) => updateField("intendedVisibility", event.target.value)}
-                >
-                  {visibilityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
+          <div className="ls-studio__panel">
+            <div className="ls-studio__panel-head">
+              <div>
+                <h2>Recent streams</h2>
+                <p>{recentBroadcasts.length} recent broadcasts</p>
+              </div>
+              <Radio size={18} strokeWidth={1.75} />
             </div>
-            <div className="ls-studio__split">
-              <label className="ls-studio__field">
-                <span className="mono">Bytes expected</span>
-                <Input
-                  type="number"
-                  min={1}
-                  value={form.bytesExpected}
-                  onChange={(event) => updateField("bytesExpected", event.target.value)}
-                />
-              </label>
-              <label className="ls-studio__field">
-                <span className="mono">MIME type</span>
-                <Input
-                  value={form.mimeType}
-                  onChange={(event) => updateField("mimeType", event.target.value)}
-                />
-              </label>
+            <div className="ls-studio__recent-list">
+              {recentBroadcasts.length === 0 ? <div className="ls-studio__empty">No recent streams yet.</div> : null}
+              {recentBroadcasts.map((item) => <RecentBroadcastRow key={item.id} broadcast={item} />)}
             </div>
-            <Button
-              variant="primary"
-              icon={<UploadCloud />}
-              onClick={() => void createJob()}
-              disabled={saving}
-            >
-              {saving ? "Creating..." : "Create job"}
-            </Button>
-            <Button
-              variant="outline"
-              icon={<UploadCloud />}
-              onClick={() => void uploadSelectedFile()}
-              disabled={saving || !selectedFile}
-            >
-              {saving ? "Working..." : "Create and ingest file"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="ls-studio__panel ls-studio__panel--jobs">
-          <div className="ls-studio__panel-head">
-            <div>
-              <h2>Upload jobs</h2>
-              <p>{loading ? "Loading..." : `${jobs.length} queued or processed jobs`}</p>
-            </div>
-            <FileVideo size={18} strokeWidth={1.75} />
           </div>
 
-          <div className="ls-studio__jobs">
-            {jobs.length === 0 && !loading ? (
-              <div className="ls-studio__empty">No upload jobs yet.</div>
-            ) : null}
-            {jobs.map((job) => (
-              <button
-                key={job.id}
-                type="button"
-                className={`ls-studio__job ${job.id === selectedId ? "is-active" : ""}`}
-                onClick={() => selectJob(job)}
-              >
-                <span className="ls-studio__job-title">{job.title}</span>
-                <span className="ls-studio__job-meta mono">
-                  {job.status} / {job.intendedVisibility} / {formatBytes(job.bytesExpected)}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="ls-studio__panel ls-studio__panel--editor">
-          <div className="ls-studio__panel-head">
-            <div>
-              <h2>Metadata</h2>
-              <p>{selectedJob ? selectedJob.id : "Select a job to edit."}</p>
+          <div className="ls-studio__panel">
+            <div className="ls-studio__panel-head">
+              <div>
+                <h2>Chat and tips</h2>
+                <p>Live audience signals for the streamer side.</p>
+              </div>
+              <MessageSquare size={18} strokeWidth={1.75} />
             </div>
-            <Save size={18} strokeWidth={1.75} />
+            <div className="ls-studio__signal-list">
+              <div><Users size={14} />{formatNumber(liveBroadcast?.newSubscribers ?? 0)} new subscribers</div>
+              <div><Wallet size={14} />{money(liveBroadcast?.revenue ?? streamRevenue)} captured tips and stream revenue</div>
+              <div><MessageSquare size={14} />{formatNumber(streamChatCount)} chat messages tracked</div>
+              <div><Eye size={14} />{formatViewers(liveBroadcast?.peakViewers ?? 0)} peak live viewers</div>
+            </div>
           </div>
 
-          {selectedJob ? (
+          <div className="ls-studio__panel ls-studio__panel--wide">
+            <div className="ls-studio__panel-head">
+              <div>
+                <h2>Top content</h2>
+                <p>What is pulling audience attention back to the platform.</p>
+              </div>
+              <BarChart3 size={18} strokeWidth={1.75} />
+            </div>
+            <div className="ls-studio__top-list">
+              {topContent.slice(0, 5).map((item) => <TopContentRow key={item.id} item={item} />)}
+              {topContent.length === 0 ? <div className="ls-studio__empty">No top content yet.</div> : null}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="ls-studio__layout">
+          <div className="ls-studio__panel ls-studio__panel--wide">
+            <div className="ls-studio__panel-head">
+              <div>
+                <h2>Recent episodes and films</h2>
+                <p>{recentUploads.length} newest long-form uploads</p>
+              </div>
+              <Clapperboard size={18} strokeWidth={1.75} />
+            </div>
+            <div className="ls-studio__recent-list">
+              {recentUploads.length === 0 ? <div className="ls-studio__empty">No series or film uploads yet.</div> : null}
+              {recentUploads.map((item) => <RecentUploadRow key={item.id} upload={item} />)}
+            </div>
+          </div>
+
+          <div className="ls-studio__panel">
+            <div className="ls-studio__panel-head">
+              <div>
+                <h2>Series health</h2>
+                <p>Publishing, storage, and attention snapshot.</p>
+              </div>
+              <Sparkles size={18} strokeWidth={1.75} />
+            </div>
+            <div className="ls-studio__facts">
+              <div><span className="mono">Uploads</span>{formatNumber(selectedUploads.length)}</div>
+              <div><span className="mono">Storage</span>{formatBytes(selectedUploads.reduce((sum, item) => sum + item.sizeBytes, 0))}</div>
+              <div><span className="mono">Latest</span>{compactDate(recentUploads[0]?.publishedAt ?? recentUploads[0]?.uploadedAt)}</div>
+              <div><span className="mono">Engagement</span>{formatNumber(seriesEngagements)}</div>
+            </div>
+          </div>
+
+          <div className="ls-studio__panel">
+            <div className="ls-studio__panel-head">
+              <div>
+                <h2>Create upload</h2>
+                <p>Prepare a media slot or ingest a local file.</p>
+              </div>
+              <UploadCloud size={18} strokeWidth={1.75} />
+            </div>
             <div className="ls-studio__form">
               <label className="ls-studio__field">
                 <span className="mono">Title</span>
-                <Input value={selectedTitle} onChange={(event) => setSelectedTitle(event.target.value)} />
+                <Input value={form.title} onChange={(event) => updateField("title", event.target.value)} placeholder="Pilot cut" />
+              </label>
+              <label className="ls-studio__field">
+                <span className="mono">Media file</span>
+                <input
+                  className="ls-studio__file"
+                  type="file"
+                  accept="video/*,audio/*"
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0] ?? null;
+                    setSelectedFile(file);
+                    if (file) {
+                      setForm((current) => ({
+                        ...current,
+                        title: current.title || file.name.replace(/\.[^.]+$/, ""),
+                        bytesExpected: String(file.size),
+                        mimeType: file.type || current.mimeType,
+                      }));
+                    }
+                  }}
+                />
+                {selectedFile ? <span className="ls-studio__file-meta mono">{selectedFile.name} / {formatBytes(selectedFile.size)}</span> : null}
+              </label>
+              <label className="ls-studio__field">
+                <span className="mono">Storage key</span>
+                <Input value={form.storageKey} onChange={(event) => updateField("storageKey", event.target.value)} placeholder="Auto-generated from title" />
               </label>
               <div className="ls-studio__split">
                 <label className="ls-studio__field">
-                  <span className="mono">Visibility</span>
-                  <select
-                    value={selectedVisibility}
-                    onChange={(event) => setSelectedVisibility(event.target.value)}
-                  >
-                    {visibilityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                  <span className="mono">Kind</span>
+                  <select value={form.kind} onChange={(event) => updateField("kind", event.target.value)}>
+                    {kindOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label className="ls-studio__field">
-                  <span className="mono">MIME type</span>
-                  <Input
-                    value={selectedMimeType}
-                    onChange={(event) => setSelectedMimeType(event.target.value)}
-                  />
+                  <span className="mono">Visibility</span>
+                  <select value={form.intendedVisibility} onChange={(event) => updateField("intendedVisibility", event.target.value)}>
+                    {visibilityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
                 </label>
               </div>
-              <div className="ls-studio__facts">
-                <div><span className="mono">Storage</span>{selectedJob.storageKey}</div>
-                <div><span className="mono">Received</span>{formatBytes(selectedJob.bytesReceived)}</div>
-                <div><span className="mono">Updated</span>{selectedJob.updatedAt}</div>
+              <div className="ls-studio__split">
+                <label className="ls-studio__field">
+                  <span className="mono">Bytes expected</span>
+                  <Input type="number" min={1} value={form.bytesExpected} onChange={(event) => updateField("bytesExpected", event.target.value)} />
+                </label>
+                <label className="ls-studio__field">
+                  <span className="mono">MIME type</span>
+                  <Input value={form.mimeType} onChange={(event) => updateField("mimeType", event.target.value)} />
+                </label>
               </div>
-              <Button
-                variant="primary"
-                icon={<Save />}
-                onClick={() => void saveSelectedJob()}
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Save metadata"}
+              <Button variant="primary" icon={<UploadCloud />} onClick={() => void uploadSelectedFile()} disabled={saving || !selectedFile}>
+                {saving ? "Working..." : "Create and ingest file"}
+              </Button>
+              <Button variant="outline" icon={<UploadCloud />} onClick={() => void createJob()} disabled={saving}>
+                {saving ? "Creating..." : "Create job only"}
               </Button>
             </div>
-          ) : (
-            <div className="ls-studio__empty">Select an upload job.</div>
-          )}
-        </div>
-
-        <div className="ls-studio__panel ls-studio__panel--assets">
-          <div className="ls-studio__panel-head">
-            <div>
-              <h2>Media assets</h2>
-              <p>{assets.length} uploaded shells and processed assets</p>
-            </div>
-            <FileVideo size={18} strokeWidth={1.75} />
           </div>
-          <div className="ls-studio__jobs">
-            {assets.length === 0 ? <div className="ls-studio__empty">No media assets yet.</div> : null}
-            {assets.map((asset) => (
-              <div key={asset.id} className="ls-studio__asset-row">
-                <span className="ls-studio__job-title">{asset.title}</span>
-                <span className="ls-studio__job-meta mono">
-                  {asset.status} / {asset.visibility} / {formatBytes(asset.fileSizeBytes)}
-                </span>
+
+          <div className="ls-studio__panel">
+            <div className="ls-studio__panel-head">
+              <div>
+                <h2>Upload jobs</h2>
+                <p>{loading ? "Loading..." : `${jobs.length} queued or processed jobs`}</p>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="ls-studio__panel ls-studio__panel--publish">
-          <div className="ls-studio__panel-head">
-            <div>
-              <h2>Publish</h2>
-              <p>{selectedJob ? selectedJob.status : "Select a ready upload job."}</p>
+              <FileVideo size={18} strokeWidth={1.75} />
             </div>
-            <Send size={18} strokeWidth={1.75} />
+            <div className="ls-studio__jobs">
+              {jobs.length === 0 && !loading ? <div className="ls-studio__empty">No upload jobs yet.</div> : null}
+              {jobs.map((job) => (
+                <button key={job.id} type="button" className={`ls-studio__job ${job.id === selectedId ? "is-active" : ""}`} onClick={() => selectJob(job)}>
+                  <span className="ls-studio__job-title">{job.title}</span>
+                  <span className="ls-studio__job-meta mono">{job.status} / {job.intendedVisibility} / {formatBytes(job.bytesExpected)}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {selectedJob ? (
-            <div className="ls-studio__form">
-              <label className="ls-studio__field">
-                <span className="mono">Slug</span>
-                <Input
-                  value={publishForm.slug}
-                  onChange={(event) => updatePublishField("slug", event.target.value)}
-                  placeholder="pilot-cut"
-                />
-              </label>
-              <label className="ls-studio__field">
-                <span className="mono">Description</span>
-                <textarea
-                  className="ls-studio__textarea"
-                  value={publishForm.description}
-                  onChange={(event) => updatePublishField("description", event.target.value)}
-                  rows={4}
-                />
-              </label>
-              <label className="ls-studio__field">
-                <span className="mono">Visibility</span>
-                <select
-                  value={publishForm.visibility}
-                  onChange={(event) => updatePublishField("visibility", event.target.value)}
-                >
-                  {visibilityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-              </label>
-              <div className="ls-studio__facts">
-                <div><span className="mono">Asset</span>{selectedAsset?.status ?? "pending"}</div>
-                <div><span className="mono">Playback</span>{selectedAsset?.playbackPath ?? "pending"}</div>
-                <div><span className="mono">Content</span>{selectedJob.publishedContentId ?? "not published"}</div>
+          <div className="ls-studio__panel">
+            <div className="ls-studio__panel-head">
+              <div>
+                <h2>Metadata</h2>
+                <p>{selectedJob ? selectedJob.id : "Select a job to edit."}</p>
               </div>
-              <Button
-                variant="primary"
-                icon={<Send />}
-                onClick={() => void publishSelectedJob()}
-                disabled={saving || !selectedJobCanPublish}
-              >
-                {saving ? "Publishing..." : "Publish upload"}
-              </Button>
+              <Save size={18} strokeWidth={1.75} />
             </div>
-          ) : (
-            <div className="ls-studio__empty">Select an upload job.</div>
-          )}
-        </div>
-      </section>
+            {selectedJob ? (
+              <div className="ls-studio__form">
+                <label className="ls-studio__field">
+                  <span className="mono">Title</span>
+                  <Input value={selectedTitle} onChange={(event) => setSelectedTitle(event.target.value)} />
+                </label>
+                <div className="ls-studio__split">
+                  <label className="ls-studio__field">
+                    <span className="mono">Visibility</span>
+                    <select value={selectedVisibility} onChange={(event) => setSelectedVisibility(event.target.value)}>
+                      {visibilityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                  </label>
+                  <label className="ls-studio__field">
+                    <span className="mono">MIME type</span>
+                    <Input value={selectedMimeType} onChange={(event) => setSelectedMimeType(event.target.value)} />
+                  </label>
+                </div>
+                <div className="ls-studio__facts">
+                  <div><span className="mono">Storage</span>{selectedJob.storageKey}</div>
+                  <div><span className="mono">Received</span>{formatBytes(selectedJob.bytesReceived)}</div>
+                  <div><span className="mono">Updated</span>{formatRelativeTime(selectedJob.updatedAt)}</div>
+                </div>
+                <Button variant="primary" icon={<Save />} onClick={() => void saveSelectedJob()} disabled={saving}>
+                  {saving ? "Saving..." : "Save metadata"}
+                </Button>
+              </div>
+            ) : (
+              <div className="ls-studio__empty">Select an upload job.</div>
+            )}
+          </div>
+
+          <div className="ls-studio__panel">
+            <div className="ls-studio__panel-head">
+              <div>
+                <h2>Publish</h2>
+                <p>{selectedJob ? selectedJob.status : "Select a ready upload job."}</p>
+              </div>
+              <Send size={18} strokeWidth={1.75} />
+            </div>
+            {selectedJob ? (
+              <div className="ls-studio__form">
+                <label className="ls-studio__field">
+                  <span className="mono">Slug</span>
+                  <Input value={publishForm.slug} onChange={(event) => updatePublishField("slug", event.target.value)} placeholder="pilot-cut" />
+                </label>
+                <label className="ls-studio__field">
+                  <span className="mono">Description</span>
+                  <textarea className="ls-studio__textarea" value={publishForm.description} onChange={(event) => updatePublishField("description", event.target.value)} rows={4} />
+                </label>
+                <label className="ls-studio__field">
+                  <span className="mono">Visibility</span>
+                  <select value={publishForm.visibility} onChange={(event) => updatePublishField("visibility", event.target.value)}>
+                    {visibilityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </label>
+                <div className="ls-studio__facts">
+                  <div><span className="mono">Asset</span>{selectedAsset?.status ?? "pending"}</div>
+                  <div><span className="mono">Playback</span>{selectedAsset?.playbackPath ?? "pending"}</div>
+                  <div><span className="mono">Content</span>{selectedJob.publishedContentId ?? "not published"}</div>
+                </div>
+                <Button variant="primary" icon={<Send />} onClick={() => void publishSelectedJob()} disabled={saving || !selectedJobCanPublish}>
+                  {saving ? "Publishing..." : "Publish upload"}
+                </Button>
+              </div>
+            ) : (
+              <div className="ls-studio__empty">Select an upload job.</div>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
