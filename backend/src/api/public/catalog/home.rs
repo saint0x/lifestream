@@ -70,15 +70,24 @@ pub(crate) async fn bootstrap(
         _ => None,
     };
     let (creator, creator_state) = match identity.as_ref() {
-        Some(identity)
-            if identity.creator_id.is_some()
-                && state.database_kind != crate::config::DatabaseKind::Postgres =>
-        {
-            let creator_id = identity.require_creator_scope()?;
-            (
-                Some(catalog.creator_dashboard_shell(creator_id).await?),
-                Some(catalog.creator_app_state(identity).await?),
-            )
+        Some(identity) if identity.creator_id.is_some() => {
+            if state.database_kind == crate::config::DatabaseKind::Postgres {
+                (
+                    Some(
+                        crate::api::dashboard::creator_dashboard_payload_for_database(
+                            &state.db, identity,
+                        )
+                        .await?,
+                    ),
+                    None,
+                )
+            } else {
+                let creator_id = identity.require_creator_scope()?;
+                (
+                    Some(catalog.creator_dashboard_shell(creator_id).await?),
+                    Some(catalog.creator_app_state(identity).await?),
+                )
+            }
         }
         _ => (None, None),
     };
