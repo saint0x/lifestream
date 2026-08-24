@@ -41,10 +41,10 @@ pub(crate) async fn update_upload(
         input.rental_window_hours.or(current.rental_window_hours),
     )?;
     if monetized_access_policy(&access_terms.access_policy) {
-        ensure_creator_can_publish_paid_content(state.db.try_sqlite_adapter()?, creator_id).await?;
+        ensure_creator_can_publish_paid_content_for_database(&state.db, creator_id).await?;
     }
-    validate_creator_access_tier(
-        state.db.try_sqlite_adapter()?,
+    validate_creator_access_tier_for_database(
+        &state.db,
         creator_id,
         &access_terms.access_policy,
         access_terms.access_tier_id.as_deref(),
@@ -63,38 +63,132 @@ pub(crate) async fn update_upload(
         release_at.as_deref(),
         &now,
     )?;
-    sqlx::query(
-        "UPDATE uploads SET title = ?, slug = ?, description = ?, status = ?, visibility = ?, release_at = ?, access_policy = ?, access_tier_id = ?, price_cents = ?, currency = ?, rental_window_hours = ?, published_at = CASE WHEN ? = 'published' AND published_at IS NULL THEN ? WHEN ? != 'published' THEN published_at ELSE published_at END WHERE id = ?",
+    update_upload_content_record(
+        &state.db,
+        creator_id,
+        &id,
+        input.title.unwrap_or(current.title),
+        slug,
+        input.description.unwrap_or(current.description),
+        &next_status,
+        &visibility,
+        release_at,
+        access_terms.access_policy,
+        access_terms.access_tier_id,
+        access_terms.price_cents,
+        access_terms.currency,
+        access_terms.rental_window_hours,
+        &now,
     )
-    .bind(input.title.unwrap_or(current.title))
-    .bind(slug)
-    .bind(input.description.unwrap_or(current.description))
-    .bind(&next_status)
-    .bind(&visibility)
-    .bind(&release_at)
-    .bind(access_terms.access_policy)
-    .bind(access_terms.access_tier_id)
-    .bind(access_terms.price_cents)
-    .bind(access_terms.currency)
-    .bind(access_terms.rental_window_hours)
-    .bind(&next_status)
-    .bind(&now)
-    .bind(&next_status)
-    .bind(&id)
-    .execute(state.db.try_sqlite_adapter()?)
     .await?;
-    sqlx::query(
-        "UPDATE media_assets SET visibility = ?, status = ?, updated_at = ? WHERE upload_id = ? AND creator_id = ?",
-    )
-    .bind(&visibility)
-    .bind(&next_status)
-    .bind(&now)
-    .bind(&id)
-    .bind(creator_id)
-    .execute(state.db.try_sqlite_adapter()?)
-    .await?;
-    expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, &id).await?;
+    sync_upload_media_asset_lifecycle(&state.db, creator_id, &id, &visibility, &next_status, &now)
+        .await?;
+    expire_playback_sessions_for_upload_in_database(&state.db, &id).await?;
     Ok(Json(
         fetch_upload_by_id_for_database(&state.db, creator_id, &id).await?,
     ))
+}
+
+async fn update_upload_content_record(
+    database: &crate::db::Database,
+    creator_id: &str,
+    upload_id: &str,
+    title: String,
+    slug: Option<String>,
+    description: String,
+    status: &str,
+    visibility: &str,
+    release_at: Option<String>,
+    access_policy: String,
+    access_tier_id: Option<String>,
+    price_cents: Option<i64>,
+    currency: Option<String>,
+    rental_window_hours: Option<i64>,
+    now: &str,
+) -> AppResult<()> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        sqlx::query(
+            r#"
+            UPDATE uploads
+            SET title = $1,
+                slug = $2,
+                description = $3,
+                status = $4,
+                visibility = $5,
+                release_at = $6,
+                access_policy = $7,
+                access_tier_id = $8,
+                price_cents = $9,
+                currency = $10,
+                rental_window_hours = $11,
+                published_at = CASE
+                    WHEN $12 = 'published' AND published_at IS NULL THEN $13
+                    WHEN $14 != 'published' THEN published_at
+                    ELSE published_at
+                END
+            WHERE id = $15 AND creator_id = $16
+            "#,
+        )
+        .bind(title)
+        .bind(slug)
+        .bind(description)
+        .bind(status)
+        .bind(visibility)
+        .bind(release_at)
+        .bind(access_policy)
+        .bind(access_tier_id)
+        .bind(price_cents)
+        .bind(currency)
+        .bind(rental_window_hours)
+        .bind(status)
+        .bind(now)
+        .bind(status)
+        .bind(upload_id)
+        .bind(creator_id)
+        .execute(pool)
+        .await?;
+        return Ok(());
+    }
+
+    sqlx::query(
+        r#"
+        UPDATE uploads
+        SET title = ?,
+            slug = ?,
+            description = ?,
+            status = ?,
+            visibility = ?,
+            release_at = ?,
+            access_policy = ?,
+            access_tier_id = ?,
+            price_cents = ?,
+            currency = ?,
+            rental_window_hours = ?,
+            published_at = CASE
+                WHEN ? = 'published' AND published_at IS NULL THEN ?
+                WHEN ? != 'published' THEN published_at
+                ELSE published_at
+            END
+        WHERE id = ? AND creator_id = ?
+        "#,
+    )
+    .bind(title)
+    .bind(slug)
+    .bind(description)
+    .bind(status)
+    .bind(visibility)
+    .bind(release_at)
+    .bind(access_policy)
+    .bind(access_tier_id)
+    .bind(price_cents)
+    .bind(currency)
+    .bind(rental_window_hours)
+    .bind(status)
+    .bind(now)
+    .bind(status)
+    .bind(upload_id)
+    .bind(creator_id)
+    .execute(database.try_sqlite_adapter()?)
+    .await?;
+    Ok(())
 }
