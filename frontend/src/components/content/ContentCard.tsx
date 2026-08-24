@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Play, Plus, Check } from "lucide-react";
 import { clsx } from "clsx";
 import type { ContentItem } from "@/types";
@@ -22,6 +23,7 @@ export function ContentCard({
 }: ContentCardProps) {
   const isInWatchlist = useAppStore((s) => s.watchlist.has(item.id));
   const toggleWatchlist = useAppStore((s) => s.toggleWatchlist);
+  const [imageFailed, setImageFailed] = useState(false);
 
   const href =
     item.kind === "series"
@@ -41,6 +43,10 @@ export function ContentCard({
 
   const accent = item.kind === "live" ? "#ff2d55" : item.heroColor;
 
+  useEffect(() => {
+    setImageFailed(false);
+  }, [poster]);
+
   return (
     <Link
       to={href}
@@ -48,7 +54,13 @@ export function ContentCard({
       style={{ ["--card-accent" as string]: accent }}
     >
       <div className="ls-card__media">
-        <img src={poster} alt={item.title} loading="lazy" />
+        {poster && !imageFailed ? (
+          <img src={poster} alt="" loading="lazy" onError={() => setImageFailed(true)} />
+        ) : (
+          <div className="ls-card__media-fallback" aria-hidden="true">
+            <span>{item.title}</span>
+          </div>
+        )}
         <div className="ls-card__scrim" />
         <div className="ls-card__top">
           {item.kind === "live" ? <Badge tone="live">LIVE</Badge> : null}

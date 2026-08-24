@@ -18,6 +18,7 @@ pub(crate) async fn setup_test_state() -> AppResult<(SharedState, CreatorProfile
         PRAGMA journal_mode = WAL;
         PRAGMA synchronous = NORMAL;
         PRAGMA foreign_keys = ON;
+        PRAGMA trusted_schema = ON;
         PRAGMA busy_timeout = 5000;
         "#,
     )

@@ -58,6 +58,31 @@
   filter: saturate(0.96) brightness(0.92);
 }
 
+.ls-card__media-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 20% 10%, color-mix(in srgb, var(--card-accent) 20%, transparent), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02) 42%, rgba(0, 0, 0, 0.62)),
+    var(--c-surface);
+  color: var(--c-text);
+}
+
+.ls-card__media-fallback span {
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 .ls-card:hover .ls-card__media {
   border-color: var(--card-accent);
   transform: translateY(-2px);

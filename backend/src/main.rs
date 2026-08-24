@@ -80,6 +80,7 @@ async fn apply_sqlite_pragmas(pool: &SqlitePool) -> Result<(), sqlx::Error> {
         PRAGMA journal_mode = WAL;
         PRAGMA synchronous = NORMAL;
         PRAGMA foreign_keys = ON;
+        PRAGMA trusted_schema = ON;
         PRAGMA busy_timeout = 5000;
         PRAGMA temp_store = MEMORY;
         PRAGMA cache_size = -32768;
