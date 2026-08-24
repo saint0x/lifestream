@@ -883,64 +883,9 @@ async fn persist_postgres_creator_attention_rollup(
 async fn fetch_sqlite_creator_ids_for_attention_rollup(
     pool: &SqlitePool,
 ) -> AppResult<Vec<String>> {
-    let rows = sqlx::query(
-        r#"
-        SELECT DISTINCT cp.id AS creator_id
-        FROM creator_profiles cp
-        WHERE EXISTS (
-            SELECT 1
-            FROM live_viewer_sessions lvs
-            JOIN live_streams ls ON ls.id = lvs.stream_id
-            JOIN streamers s ON s.id = ls.streamer_id
-            WHERE s.handle = cp.handle
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM viewer_events ve
-            JOIN live_streams ls ON ls.id = ve.stream_id
-            JOIN streamers s ON s.id = ls.streamer_id
-            WHERE s.handle = cp.handle
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM viewer_events ve
-            JOIN uploads u ON u.id = ve.content_id
-            WHERE u.creator_id = cp.id
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM viewer_events ve
-            JOIN content_credits cc ON cc.content_kind = ve.content_kind AND cc.content_id = ve.content_id
-            JOIN person_profiles pp ON pp.id = cc.person_id
-            WHERE ve.content_kind IN ('series', 'film')
-              AND lower(replace(cp.handle, '-', '')) = lower(replace(pp.slug, '-', ''))
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM viewer_events ve
-            JOIN content_credits cc ON cc.content_kind IN ('series', 'film') AND cc.content_id = ve.content_id
-            JOIN person_profiles pp ON pp.id = cc.person_id
-            WHERE ve.content_id IS NOT NULL
-              AND (ve.content_kind IS NULL OR ve.content_kind NOT IN ('series', 'film', 'episode'))
-              AND lower(replace(cp.handle, '-', '')) = lower(replace(pp.slug, '-', ''))
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM viewer_events ve
-            JOIN episodes e ON e.id = ve.episode_id OR (ve.content_kind = 'episode' AND e.id = ve.content_id)
-            JOIN content_credits cc ON cc.content_kind = 'series' AND cc.content_id = e.series_id
-            JOIN person_profiles pp ON pp.id = cc.person_id
-            WHERE lower(replace(cp.handle, '-', '')) = lower(replace(pp.slug, '-', ''))
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM creator_attention_daily cad
-            WHERE cad.creator_id = cp.id
-        )
-        "#,
-    )
-    .fetch_all(pool)
-    .await?;
+    let rows = sqlx::query("SELECT id AS creator_id FROM creator_profiles ORDER BY id ASC")
+        .fetch_all(pool)
+        .await?;
     Ok(rows
         .into_iter()
         .map(|row| row.get::<String, _>("creator_id"))
@@ -948,64 +893,9 @@ async fn fetch_sqlite_creator_ids_for_attention_rollup(
 }
 
 async fn fetch_postgres_creator_ids_for_attention_rollup(pool: &PgPool) -> AppResult<Vec<String>> {
-    let rows = sqlx::query(
-        r#"
-        SELECT DISTINCT cp.id AS creator_id
-        FROM creator_profiles cp
-        WHERE EXISTS (
-            SELECT 1
-            FROM live_viewer_sessions lvs
-            JOIN live_streams ls ON ls.id = lvs.stream_id
-            JOIN streamers s ON s.id = ls.streamer_id
-            WHERE s.handle = cp.handle
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM viewer_events ve
-            JOIN live_streams ls ON ls.id = ve.stream_id
-            JOIN streamers s ON s.id = ls.streamer_id
-            WHERE s.handle = cp.handle
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM viewer_events ve
-            JOIN uploads u ON u.id = ve.content_id
-            WHERE u.creator_id = cp.id
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM viewer_events ve
-            JOIN content_credits cc ON cc.content_kind = ve.content_kind AND cc.content_id = ve.content_id
-            JOIN person_profiles pp ON pp.id = cc.person_id
-            WHERE ve.content_kind IN ('series', 'film')
-              AND lower(replace(cp.handle, '-', '')) = lower(replace(pp.slug, '-', ''))
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM viewer_events ve
-            JOIN content_credits cc ON cc.content_kind IN ('series', 'film') AND cc.content_id = ve.content_id
-            JOIN person_profiles pp ON pp.id = cc.person_id
-            WHERE ve.content_id IS NOT NULL
-              AND (ve.content_kind IS NULL OR ve.content_kind NOT IN ('series', 'film', 'episode'))
-              AND lower(replace(cp.handle, '-', '')) = lower(replace(pp.slug, '-', ''))
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM viewer_events ve
-            JOIN episodes e ON e.id = ve.episode_id OR (ve.content_kind = 'episode' AND e.id = ve.content_id)
-            JOIN content_credits cc ON cc.content_kind = 'series' AND cc.content_id = e.series_id
-            JOIN person_profiles pp ON pp.id = cc.person_id
-            WHERE lower(replace(cp.handle, '-', '')) = lower(replace(pp.slug, '-', ''))
-        )
-        OR EXISTS (
-            SELECT 1
-            FROM creator_attention_daily cad
-            WHERE cad.creator_id = cp.id
-        )
-        "#,
-    )
-    .fetch_all(pool)
-    .await?;
+    let rows = sqlx::query("SELECT id AS creator_id FROM creator_profiles ORDER BY id ASC")
+        .fetch_all(pool)
+        .await?;
     Ok(rows
         .into_iter()
         .map(|row| row.get::<String, _>("creator_id"))

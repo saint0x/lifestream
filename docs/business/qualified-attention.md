@@ -378,6 +378,6 @@ Raw measurement tables are the source of truth. CAV and Verified Viewer Score ar
 
 Do not store arbitrary score numbers on creator rows. Do not show static score fixtures. Do not backfill fake engagement signals. Every multiplier must come from measured data, explicit coefficients, or a documented algorithm version.
 
-The backend persists derived daily rows in `creator_attention_daily` using `(creator_id, day, algorithm_version)` as the key. Those rows are materialized from the canonical raw measurement calculation and may be safely overwritten by later reconciliation passes for the same day/version.
+The backend persists derived daily rows in `creator_attention_daily` using `(creator_id, day, algorithm_version)` as the key. Those rows are materialized from the canonical raw measurement calculation and may be safely overwritten by later reconciliation passes for the same day/version. Every `creator_profiles` row receives a daily materialization for the active algorithm version; creators without measured qualified attention get explicit zero-value rows instead of being absent from the metric table.
 
 Production uses Railway Postgres for this calculation. SQLite is only a development and test mirror.
