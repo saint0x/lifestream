@@ -127,6 +127,42 @@
   font: inherit;
 }
 
+.ls-studio__file {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text-dim);
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.ls-studio__file::file-selector-button {
+  min-height: 28px;
+  margin-right: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-bg-elevated);
+  color: var(--c-text);
+  padding: 0 11px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ls-studio__file-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--c-text-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .ls-studio__split {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -158,6 +194,18 @@
 .ls-studio__job.is-active {
   border-color: var(--c-border-hi);
   background: rgba(255, 255, 255, 0.06);
+}
+
+.ls-studio__asset-row {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-border);
+  color: var(--c-text);
+  background: var(--c-surface);
 }
 
 .ls-studio__job-title {

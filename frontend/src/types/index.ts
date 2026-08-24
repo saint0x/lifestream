@@ -683,6 +683,71 @@ export interface PlaybackGrant {
   readonly defaultPreviewTrackId?: ID | null;
 }
 
+export interface MediaAssetVariant {
+  readonly id: ID;
+  readonly variantType: string;
+  readonly label: string;
+  readonly relativePath: string;
+  readonly url: string;
+  readonly mimeType: string;
+  readonly width?: number | null;
+  readonly height?: number | null;
+  readonly bitrateBps?: number | null;
+  readonly fileSizeBytes: number;
+  readonly isDefault: boolean;
+  readonly createdAt: string;
+}
+
+export interface MediaProcessingRun {
+  readonly id: ID;
+  readonly stage: string;
+  readonly status: string;
+  readonly details: unknown;
+  readonly startedAt: string;
+  readonly completedAt?: string | null;
+}
+
+export interface MediaAsset {
+  readonly id: ID;
+  readonly uploadJobId: ID;
+  readonly uploadId?: ID | null;
+  readonly seriesId?: ID | null;
+  readonly kind: string;
+  readonly title: string;
+  readonly status: string;
+  readonly visibility: string;
+  readonly sourcePath: string;
+  readonly sourceUrl: string;
+  readonly posterPath?: string | null;
+  readonly posterUrl?: string | null;
+  readonly playbackPath?: string | null;
+  readonly playbackUrl?: string | null;
+  readonly mimeType: string;
+  readonly checksumSha256?: string | null;
+  readonly containerFormat?: string | null;
+  readonly fileSizeBytes: number;
+  readonly durationSec: number;
+  readonly width?: number | null;
+  readonly height?: number | null;
+  readonly frameRate?: number | null;
+  readonly videoCodec?: string | null;
+  readonly audioCodec?: string | null;
+  readonly hasVideo: boolean;
+  readonly hasAudio: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly processedAt?: string | null;
+  readonly publishedContentId?: ID | null;
+  readonly variants: ReadonlyArray<MediaAssetVariant>;
+  readonly audioTracks: ReadonlyArray<PlaybackAudioTrack>;
+  readonly captionTracks: ReadonlyArray<PlaybackCaptionTrack>;
+  readonly previewTracks: ReadonlyArray<PlaybackPreviewTrack>;
+  readonly defaultAudioTrackId?: ID | null;
+  readonly defaultCaptionTrackId?: ID | null;
+  readonly defaultPreviewTrackId?: ID | null;
+  readonly processingRuns: ReadonlyArray<MediaProcessingRun>;
+}
+
 export interface TopContent {
   readonly id: ID;
   readonly title: string;

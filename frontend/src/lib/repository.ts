@@ -12,6 +12,7 @@ import type {
   FollowingFeedResponse,
   Genre,
   LiveStream,
+  MediaAsset,
   PersonProfile,
   RevenueEntry,
   Series,
@@ -21,6 +22,7 @@ import type {
   UpdatePersonProfileRequest,
   UpdateProjectCreditsRequest,
   Upload,
+  UploadIngestTicket,
   UploadJob,
   UploadStatus,
   User,
@@ -36,6 +38,7 @@ import {
   createGuestSession,
   getAccessToken,
   requestJson,
+  requestBytes,
 } from "./api";
 
 interface BootstrapPayload {
@@ -701,6 +704,51 @@ export const repository = {
       method: "PATCH",
       body: input,
     });
+  },
+
+  async startUploadIngest(jobId: string): Promise<UploadIngestTicket> {
+    return requestJson<UploadIngestTicket>(
+      `/api/v1/creator/me/upload-jobs/${encodeURIComponent(jobId)}/ingest`,
+      { method: "POST" },
+    );
+  },
+
+  async appendUploadChunk(
+    jobId: string,
+    uploadToken: string,
+    offset: number,
+    body: BodyInit,
+  ): Promise<UploadIngestTicket["session"]> {
+    return requestBytes<UploadIngestTicket["session"]>(
+      `/api/v1/creator/me/upload-jobs/${encodeURIComponent(jobId)}/ingest/chunk?offset=${offset}`,
+      {
+        method: "PUT",
+        body,
+        headers: { "x-upload-token": uploadToken },
+        timeoutMs: 120_000,
+      },
+    );
+  },
+
+  async completeUploadIngest(jobId: string, uploadToken: string): Promise<UploadJob> {
+    return requestJson<UploadJob>(
+      `/api/v1/creator/me/upload-jobs/${encodeURIComponent(jobId)}/ingest/complete`,
+      {
+        method: "POST",
+        headers: { "x-upload-token": uploadToken },
+        timeoutMs: 120_000,
+      },
+    );
+  },
+
+  async getMediaAssetForUploadJob(jobId: string): Promise<MediaAsset> {
+    return requestJson<MediaAsset>(
+      `/api/v1/creator/me/upload-jobs/${encodeURIComponent(jobId)}/media-asset`,
+    );
+  },
+
+  async listMediaAssets(signal?: AbortSignal): Promise<ReadonlyArray<MediaAsset>> {
+    return requestJson<ReadonlyArray<MediaAsset>>("/api/v1/creator/me/media-assets", { signal });
   },
 
   search(query: string): ReadonlyArray<ContentItem> {

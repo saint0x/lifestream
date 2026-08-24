@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, FileVideo, RefreshCw, Save, UploadCloud } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import type { UploadJob } from "@/types";
+import type { MediaAsset, UploadJob } from "@/types";
 import "./StudioPage.css";
 
 const visibilityOptions = ["private", "unlisted", "public"] as const;
@@ -51,6 +51,8 @@ export function StudioPage() {
   const [selectedTitle, setSelectedTitle] = useState("");
   const [selectedVisibility, setSelectedVisibility] = useState("private");
   const [selectedMimeType, setSelectedMimeType] = useState("video/mp4");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [assets, setAssets] = useState<ReadonlyArray<MediaAsset>>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -61,15 +63,32 @@ export function StudioPage() {
     [jobs, selectedId],
   );
 
-  const loadJobs = async (signal?: AbortSignal) => {
+  const selectJob = useCallback((job: UploadJob) => {
+    setSelectedId(job.id);
+    setSelectedTitle(job.title);
+    setSelectedVisibility(job.intendedVisibility);
+    setSelectedMimeType(job.mimeType);
+  }, []);
+
+  const loadJobs = useCallback(async (signal?: AbortSignal) => {
     setError(null);
-    const nextJobs = await repository.listUploadJobs(signal);
+    const [nextJobs, nextAssets] = await Promise.all([
+      repository.listUploadJobs(signal),
+      repository.listMediaAssets(signal),
+    ]);
     setJobs(nextJobs);
+    setAssets(nextAssets);
     const firstJob = nextJobs[0];
-    if (!selectedId && firstJob) {
-      selectJob(firstJob);
+    if (firstJob) {
+      setSelectedId((currentId) => {
+        if (currentId) return currentId;
+        setSelectedTitle(firstJob.title);
+        setSelectedVisibility(firstJob.intendedVisibility);
+        setSelectedMimeType(firstJob.mimeType);
+        return firstJob.id;
+      });
     }
-  };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -84,17 +103,10 @@ export function StudioPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, []);
+  }, [loadJobs]);
 
   const updateField = (field: keyof UploadJobForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
-  };
-
-  const selectJob = (job: UploadJob) => {
-    setSelectedId(job.id);
-    setSelectedTitle(job.title);
-    setSelectedVisibility(job.intendedVisibility);
-    setSelectedMimeType(job.mimeType);
   };
 
   const createJob = async () => {
@@ -128,6 +140,51 @@ export function StudioPage() {
       setStatus("Upload job created.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to create upload job.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const uploadSelectedFile = async () => {
+    const file = selectedFile;
+    if (!file) {
+      setError("Choose a media file before ingest.");
+      return;
+    }
+    const title = form.title.trim() || file.name.replace(/\.[^.]+$/, "");
+    const storageKey = form.storageKey.trim() || storageKeyFromTitle(title);
+    setSaving(true);
+    setStatus("Creating upload job...");
+    setError(null);
+    try {
+      const created = await repository.createUploadJob({
+        kind: form.kind,
+        sourceType: "resumable-upload",
+        title,
+        intendedVisibility: form.intendedVisibility,
+        bytesExpected: file.size,
+        storageKey,
+        mimeType: form.mimeType.trim() || file.type || "application/octet-stream",
+      });
+      setJobs((current) => [created, ...current.filter((job) => job.id !== created.id)]);
+      selectJob(created);
+
+      setStatus("Starting ingest session...");
+      const ticket = await repository.startUploadIngest(created.id);
+      setStatus("Uploading file...");
+      await repository.appendUploadChunk(created.id, ticket.uploadToken, 0, file);
+      setStatus("Completing ingest...");
+      const completed = await repository.completeUploadIngest(created.id, ticket.uploadToken);
+      const asset = await repository.getMediaAssetForUploadJob(created.id);
+      setJobs((current) => current.map((job) => (job.id === completed.id ? completed : job)));
+      setAssets((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
+      selectJob(completed);
+      setSelectedFile(null);
+      setForm(initialForm);
+      setStatus("File uploaded and media asset created.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to ingest selected file.");
+      setStatus(null);
     } finally {
       setSaving(false);
     }
@@ -202,6 +259,31 @@ export function StudioPage() {
               />
             </label>
             <label className="ls-studio__field">
+              <span className="mono">Media file</span>
+              <input
+                className="ls-studio__file"
+                type="file"
+                accept="video/*,audio/*"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0] ?? null;
+                  setSelectedFile(file);
+                  if (file) {
+                    setForm((current) => ({
+                      ...current,
+                      title: current.title || file.name.replace(/\.[^.]+$/, ""),
+                      bytesExpected: String(file.size),
+                      mimeType: file.type || current.mimeType,
+                    }));
+                  }
+                }}
+              />
+              {selectedFile ? (
+                <span className="ls-studio__file-meta mono">
+                  {selectedFile.name} / {formatBytes(selectedFile.size)}
+                </span>
+              ) : null}
+            </label>
+            <label className="ls-studio__field">
               <span className="mono">Storage key</span>
               <Input
                 value={form.storageKey}
@@ -251,6 +333,14 @@ export function StudioPage() {
               disabled={saving}
             >
               {saving ? "Creating..." : "Create job"}
+            </Button>
+            <Button
+              variant="outline"
+              icon={<UploadCloud />}
+              onClick={() => void uploadSelectedFile()}
+              disabled={saving || !selectedFile}
+            >
+              {saving ? "Working..." : "Create and ingest file"}
             </Button>
           </div>
         </div>
@@ -334,6 +424,27 @@ export function StudioPage() {
           ) : (
             <div className="ls-studio__empty">Select an upload job.</div>
           )}
+        </div>
+
+        <div className="ls-studio__panel ls-studio__panel--assets">
+          <div className="ls-studio__panel-head">
+            <div>
+              <h2>Media assets</h2>
+              <p>{assets.length} uploaded shells and processed assets</p>
+            </div>
+            <FileVideo size={18} strokeWidth={1.75} />
+          </div>
+          <div className="ls-studio__jobs">
+            {assets.length === 0 ? <div className="ls-studio__empty">No media assets yet.</div> : null}
+            {assets.map((asset) => (
+              <div key={asset.id} className="ls-studio__asset-row">
+                <span className="ls-studio__job-title">{asset.title}</span>
+                <span className="ls-studio__job-meta mono">
+                  {asset.status} / {asset.visibility} / {formatBytes(asset.fileSizeBytes)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </div>
