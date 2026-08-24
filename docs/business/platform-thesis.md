@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Life Stream is a free, creator-driven streaming platform combining the premium episodic presentation of HBO Max with the live-streaming capabilities of Twitch.
+Vanta is a free, creator-driven streaming platform combining the premium episodic presentation of HBO Max with the live-streaming capabilities of Twitch.
 
 The platform allows creators to publish:
 
@@ -16,23 +16,23 @@ The platform allows creators to publish:
 - Recurring live programming
 - Other premium long-form media
 
-Life Stream's primary differentiation is not simply its content format. Life Stream is designed around a fundamentally different economic relationship between creators, audiences, advertisers, and the platform itself.
+Vanta's primary differentiation is not simply its content format. Vanta is designed around a fundamentally different economic relationship between creators, audiences, advertisers, and the platform itself.
 
-Instead of charging viewers a subscription or charging creators SaaS fees, Life Stream creates an economic flywheel:
+Instead of charging viewers a subscription or charging creators SaaS fees, Vanta creates an economic flywheel:
 
-> Creators bring exclusive content. Creators bring their existing audiences. Audiences generate qualified attention. Life Stream packages that attention into premium advertising inventory. Advertisers purchase access. Creators earn substantially more from their content. Better creators are attracted to the platform. More audiences arrive. Advertising inventory becomes increasingly valuable.
+> Creators bring exclusive content. Creators bring their existing audiences. Audiences generate qualified attention. Vanta packages that attention into premium advertising inventory. Advertisers purchase access. Creators earn substantially more from their content. Better creators are attracted to the platform. More audiences arrive. Advertising inventory becomes increasingly valuable.
 
 The platform therefore monetizes the economic activity surrounding content rather than requiring the content itself to sit behind a paywall.
 
 At a high level:
 
-> Life Stream gives internet creators their own HBO-quality distribution environment, gives advertisers direct access to highly qualified creator audiences, and monetizes the infrastructure connecting the two.
+> Vanta gives internet creators their own HBO-quality distribution environment, gives advertisers direct access to highly qualified creator audiences, and monetizes the infrastructure connecting the two.
 
 ---
 
 ## The Core Product
 
-Life Stream combines two traditionally separate media experiences.
+Vanta combines two traditionally separate media experiences.
 
 ### Premium On-Demand Media
 
@@ -66,17 +66,17 @@ Instead of:
 
 The creator can say:
 
-> Episode 4 of my series is now streaming exclusively on Life Stream.
+> Episode 4 of my series is now streaming exclusively on Vanta.
 
 That distinction is important.
 
-Life Stream is intended to make internet-native creators feel more like media properties, personalities, directors, producers, and studios rather than simply social-media accounts.
+Vanta is intended to make internet-native creators feel more like media properties, personalities, directors, producers, and studios rather than simply social-media accounts.
 
 ---
 
 ## The Live Streaming Layer
 
-The second half of Life Stream operates more like Twitch.
+The second half of Vanta operates more like Twitch.
 
 Creators can broadcast live directly to their audiences.
 
@@ -95,7 +95,7 @@ This allows the platform to support:
 - Interactive entertainment
 - Community broadcasts
 
-Life Stream therefore does not force creators to choose between live media and produced media. Both exist inside the same ecosystem.
+Vanta therefore does not force creators to choose between live media and produced media. Both exist inside the same ecosystem.
 
 A creator could, for example:
 
@@ -112,7 +112,7 @@ This creates a much broader media ecosystem than either a traditional streaming 
 
 ## The Initial Creator Target
 
-Life Stream does not initially need to convince creators to build audiences from zero.
+Vanta does not initially need to convince creators to build audiences from zero.
 
 Instead, it targets creators who already possess valuable audiences elsewhere.
 
@@ -129,13 +129,13 @@ Yet the majority of their economic relationship with those followers is controll
 
 They produce the content. They develop the personality. They cultivate the audience. They generate the engagement. But the platform controls the distribution infrastructure and captures a significant portion of the economic value surrounding that attention.
 
-Life Stream changes this relationship.
+Vanta changes this relationship.
 
 ---
 
 ## The Creator Pitch
 
-The Life Stream pitch to an established creator is effectively:
+The Vanta pitch to an established creator is effectively:
 
 > You already have an audience. We will give you the infrastructure to turn yourself into a real media property.
 
@@ -147,7 +147,7 @@ For example:
 
 > 30-second clips about restoring cars.
 
-### Life Stream
+### Vanta
 
 > Restored  
 > Season One  
@@ -159,7 +159,7 @@ Or:
 
 > Fitness creator posts workout clips.
 
-### Life Stream
+### Vanta
 
 > 12 Weeks  
 > A structured documentary series following several people through complete physical transformations.
@@ -170,7 +170,7 @@ Or:
 
 > Fashion creator posts outfits.
 
-### Life Stream
+### Vanta
 
 > Behind the Collection  
 > A six-part series documenting the creation and launch of an independent fashion collection.
@@ -183,7 +183,7 @@ The platform therefore gives creators something social networks generally cannot
 
 ## "Be Taken Seriously" As A Product Feature
 
-One of Life Stream's less obvious but potentially powerful creator-acquisition advantages is status.
+One of Vanta's less obvious but potentially powerful creator-acquisition advantages is status.
 
 There is an enormous gap between:
 
@@ -195,7 +195,7 @@ and:
 
 Traditional premium media companies act as gatekeepers to the second category.
 
-A talented creator cannot simply upload their independently produced show to HBO. Life Stream removes that gatekeeper.
+A talented creator cannot simply upload their independently produced show to HBO. Vanta removes that gatekeeper.
 
 A creator can transform:
 
@@ -213,27 +213,27 @@ It changes how creators can think about themselves and how brands can evaluate t
 
 ## Exclusivity Is Critical
 
-Life Stream's strategy depends heavily on exclusive content.
+Vanta's strategy depends heavily on exclusive content.
 
 Creators are not merely mirroring content that already exists elsewhere.
 
-The most valuable Life Stream programming should be available only on Life Stream.
+The most valuable Vanta programming should be available only on Vanta.
 
-Social platforms then become marketing channels for Life Stream content.
+Social platforms then become marketing channels for Vanta content.
 
 For example, a creator with 500,000 Instagram followers could post:
 
-> Episode 3 is streaming now exclusively on Life Stream.
+> Episode 3 is streaming now exclusively on Vanta.
 
 The creator's existing social graph becomes the customer-acquisition mechanism.
 
-Life Stream therefore does not necessarily have to purchase those viewers through traditional paid advertising. The creator brings them.
+Vanta therefore does not necessarily have to purchase those viewers through traditional paid advertising. The creator brings them.
 
 ---
 
 ## The Audience Migration Thesis
 
-Life Stream does not need 100% of a creator's followers to migrate.
+Vanta does not need 100% of a creator's followers to migrate.
 
 Suppose a creator has:
 
@@ -243,9 +243,9 @@ Perhaps only 10% are genuinely dedicated followers.
 
 That still represents:
 
-> 100,000 potential Life Stream viewers.
+> 100,000 potential Vanta viewers.
 
-If Life Stream recruits ten comparable creators:
+If Vanta recruits ten comparable creators:
 
 > Approximately 1,000,000 potential highly engaged viewers
 
@@ -253,7 +253,7 @@ without necessarily acquiring those viewers individually through paid advertisin
 
 This creates one of the fundamental advantages of the model:
 
-> Life Stream acquires audiences indirectly by acquiring creators.
+> Vanta acquires audiences indirectly by acquiring creators.
 
 Every creator becomes both:
 
@@ -266,7 +266,7 @@ Every creator becomes both:
 
 The arrangement is deliberately reciprocal.
 
-Life Stream provides:
+Vanta provides:
 
 - Streaming infrastructure
 - Premium presentation
@@ -294,7 +294,7 @@ The creator provides:
 
 In other words:
 
-> Life Stream provides the media company; the creator provides the media property.
+> Vanta provides the media company; the creator provides the media property.
 
 ---
 
@@ -311,7 +311,7 @@ This page acts partly like:
 - A Linktree
 - A creator website
 
-A creator's custom Life Stream URL can become the primary destination they advertise across the internet.
+A creator's custom Vanta URL can become the primary destination they advertise across the internet.
 
 For example:
 

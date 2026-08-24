@@ -31,13 +31,13 @@ For example:
 > Integrated Product Placement: Available  
 > Live Sponsorship: Available
 
-Life Stream transforms fragmented creator sponsorships into structured media inventory.
+Vanta transforms fragmented creator sponsorships into structured media inventory.
 
 ---
 
-## Life Stream Becomes A Media Sales Organization
+## Vanta Becomes A Media Sales Organization
 
-This means Life Stream is not merely a technology company.
+This means Vanta is not merely a technology company.
 
 It becomes several businesses simultaneously:
 
@@ -54,7 +54,7 @@ The combination is significantly more important than any individual component.
 
 ## The Initial Marketplace Problem
 
-Like every marketplace, Life Stream initially has a chicken-and-egg problem.
+Like every marketplace, Vanta initially has a chicken-and-egg problem.
 
 Advertisers want audiences.
 
@@ -64,9 +64,9 @@ Creators want monetization.
 
 Therefore:
 
-> How does Life Stream start?
+> How does Vanta start?
 
-The answer is that Life Stream should not try to launch as a broad, fully liquid marketplace on day one.
+The answer is that Vanta should not try to launch as a broad, fully liquid marketplace on day one.
 
 It should begin as a curated media network.
 
@@ -89,7 +89,7 @@ The early business is not won by having every creator and every advertiser. It i
 
 ## The Beachhead Strategy
 
-Life Stream should begin with a narrow creator segment where the audience is valuable, the creator already has distribution, and the content can become meaningfully better in long-form or live format.
+Vanta should begin with a narrow creator segment where the audience is valuable, the creator already has distribution, and the content can become meaningfully better in long-form or live format.
 
 Strong early categories include:
 
@@ -108,10 +108,10 @@ The ideal first creator has:
 - A clear niche advertisers understand
 - Enough trust with their audience to move viewers off-platform
 - A content format that benefits from episodes, seasons, films, or live programming
-- A willingness to promote exclusive Life Stream releases externally
+- A willingness to promote exclusive Vanta releases externally
 - Commercial appeal beyond generic social impressions
 
-Life Stream should initially optimize for creator quality, audience trust, and category clarity rather than raw follower count.
+Vanta should initially optimize for creator quality, audience trust, and category clarity rather than raw follower count.
 
 A creator with 75,000 loyal followers in a commercially valuable niche may be more useful than a creator with 1,000,000 shallow followers in a weak category.
 
@@ -121,13 +121,13 @@ A creator with 75,000 loyal followers in a commercially valuable niche may be mo
 
 The first phase is supply-led.
 
-Life Stream should recruit a small cohort of anchor creators and help them create exclusive programming that feels meaningfully more premium than ordinary social content.
+Vanta should recruit a small cohort of anchor creators and help them create exclusive programming that feels meaningfully more premium than ordinary social content.
 
 The target is not "upload whatever you already made."
 
 The target is:
 
-> Build your first real Life Stream property.
+> Build your first real Vanta property.
 
 Examples:
 
@@ -148,13 +148,13 @@ Each anchor creator should have:
 - Qualified-viewer tracking
 - Monetization reporting
 
-The goal of Phase 1 is to prove that creators can bring audiences into Life Stream.
+The goal of Phase 1 is to prove that creators can bring audiences into Vanta.
 
 ---
 
 ## Phase 2: Package Inventory Before Automating It
 
-Life Stream should not wait for a perfect self-service ad marketplace before selling.
+Vanta should not wait for a perfect self-service ad marketplace before selling.
 
 At the beginning, inventory should be packaged manually.
 
@@ -189,7 +189,7 @@ The early advertiser needs a credible package, a creator-audience fit, clear pri
 
 The first advertiser motion should look more like media sales than self-service performance ads.
 
-Life Stream should identify brands that already buy creator sponsorships, podcast sponsorships, YouTube integrations, newsletter placements, or niche community advertising.
+Vanta should identify brands that already buy creator sponsorships, podcast sponsorships, YouTube integrations, newsletter placements, or niche community advertising.
 
 Good early advertiser categories include:
 
@@ -206,7 +206,7 @@ Good early advertiser categories include:
 
 The pitch is simple:
 
-> Life Stream gives you structured access to exclusive creator media properties, with better measurement than fragmented one-off sponsorships.
+> Vanta gives you structured access to exclusive creator media properties, with better measurement than fragmented one-off sponsorships.
 
 The advertiser receives:
 
@@ -220,7 +220,7 @@ The advertiser receives:
 - Campaign recap
 - Repeat sponsorship opportunities
 
-This lets Life Stream compete less with commodity display advertising and more with premium creator sponsorships, media buys, and branded entertainment.
+This lets Vanta compete less with commodity display advertising and more with premium creator sponsorships, media buys, and branded entertainment.
 
 ---
 
@@ -232,16 +232,16 @@ The key proof is that the loop works:
 
 ```text
 Creator promotes exclusive content
--> Audience migrates to Life Stream
+-> Audience migrates to Vanta
 -> Viewers watch meaningfully
--> Life Stream identifies Qualified Viewers
+-> Vanta identifies Qualified Viewers
 -> Advertiser pays for access
 -> Creator earns attractive revenue
 -> Creator promotes more content
 -> More creators want in
 ```
 
-Life Stream should measure this loop obsessively.
+Vanta should measure this loop obsessively.
 
 Important early metrics include:
 
@@ -258,7 +258,7 @@ Important early metrics include:
 - Audience-support conversion
 - Sponsor revenue per qualified viewer
 - Creator payout
-- Life Stream marketplace fee
+- Vanta marketplace fee
 - Repeat advertiser interest
 - Creator willingness to produce another season
 
@@ -268,7 +268,7 @@ The platform should not only report whether people clicked. It should report whe
 
 ## Phase 5: Turn Manual Sales Into Marketplace Infrastructure
 
-Once Life Stream has repeated successful campaigns, the manual sales process can become product infrastructure.
+Once Vanta has repeated successful campaigns, the manual sales process can become product infrastructure.
 
 The platform can turn repeated sales patterns into:
 
@@ -286,13 +286,13 @@ The platform can turn repeated sales patterns into:
 
 At that point, the advertising portal becomes a natural extension of proven behavior rather than a speculative interface.
 
-The marketplace should be automated only after Life Stream understands what buyers repeatedly ask for, which creator categories convert, which metrics close deals, and what packaging produces renewals.
+The marketplace should be automated only after Vanta understands what buyers repeatedly ask for, which creator categories convert, which metrics close deals, and what packaging produces renewals.
 
 ---
 
 ## Early Pricing Philosophy
 
-Life Stream should avoid pricing purely on raw views.
+Vanta should avoid pricing purely on raw views.
 
 Early pricing should be based on a blend of:
 
@@ -327,7 +327,7 @@ The pitch evolves from:
 
 to:
 
-> Creators like you are turning exclusive series into real sponsorship revenue on Life Stream.
+> Creators like you are turning exclusive series into real sponsorship revenue on Vanta.
 
 This matters because creators do not only want tools. They want evidence that the platform can improve their status, audience relationship, and economics.
 
@@ -340,13 +340,13 @@ The strongest creator-acquisition asset will be creator proof:
 - Before/after monetization comparisons
 - Examples of creators being positioned as shows, studios, or media properties
 
-The more Life Stream can show creators earning more from fewer but higher-quality viewers, the more differentiated the pitch becomes.
+The more Vanta can show creators earning more from fewer but higher-quality viewers, the more differentiated the pitch becomes.
 
 ---
 
 ## Advertiser Acquisition Flywheel
 
-Advertiser acquisition improves as Life Stream aggregates more exclusive creators and develops better attention data.
+Advertiser acquisition improves as Vanta aggregates more exclusive creators and develops better attention data.
 
 The advertiser pitch evolves from:
 
@@ -364,11 +364,11 @@ As the platform grows, advertisers can buy:
 - One launch event
 - A bundle of related creators
 - A seasonal campaign
-- A cross-platform Life Stream sponsorship
+- A cross-platform Vanta sponsorship
 
 This creates progressively more valuable inventory.
 
-The advertising business becomes stronger as Life Stream develops:
+The advertising business becomes stronger as Vanta develops:
 
 - More exclusive content
 - More category density
@@ -390,7 +390,7 @@ It needs four things:
 3. Advertiser-ready sponsorship packages.
 4. Trustworthy reporting after campaigns.
 
-If those four pieces exist, Life Stream can begin selling.
+If those four pieces exist, Vanta can begin selling.
 
 The marketplace can start as a spreadsheet, sales deck, and manually operated campaign workflow, as long as the viewer data and creator inventory are real.
 
@@ -403,7 +403,7 @@ The product should then absorb the repeated manual work into software.
 The cleanest sequence is:
 
 1. Recruit a narrow cohort of strong creators.
-2. Help each creator package one exclusive Life Stream property.
+2. Help each creator package one exclusive Vanta property.
 3. Make creator pages feel premium and commercially legible.
 4. Require creators to promote launches to existing audiences.
 5. Measure audience migration and Qualified Viewers.
@@ -419,7 +419,7 @@ This avoids the trap of trying to build a marketplace before proving the market.
 
 ## Strategic Conclusion
 
-Life Stream starts by acting like a premium media network for internet-native creators.
+Vanta starts by acting like a premium media network for internet-native creators.
 
 It then becomes an advertising marketplace because the same actions that make creators more valuable also make the platform's advertising inventory more valuable:
 

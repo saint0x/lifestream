@@ -41,7 +41,7 @@ Define use cases for slow motion, speed ramps, time lapse, freeze frames, repeat
 
 ## 41. Preserving Personality
 
-Life Stream should have a recognizable taste level without making every creator feel identical.
+Vanta should have a recognizable taste level without making every creator feel identical.
 
 1. Which visual rules should be universal?
 2. Which should vary by creator?

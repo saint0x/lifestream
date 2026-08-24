@@ -63,7 +63,7 @@ Usually follow unless context strongly suggests otherwise.
 
 ### C: Style Preference
 
-A Life Stream preference, but not inherently superior.
+A Vanta preference, but not inherently superior.
 
 ### D: Situational Tool
 
@@ -200,7 +200,7 @@ Questions:
 
 ## 65. The Executive Director Review
 
-Before anything can be considered Life Stream Ready, the system should answer:
+Before anything can be considered Vanta Ready, the system should answer:
 
 ### Story
 
@@ -240,7 +240,7 @@ Before anything can be considered Life Stream Ready, the system should answer:
 
 - Does the creator still feel like themselves?
 - Does the project possess its own visual identity?
-- Does it nevertheless meet Life Stream's quality bar?
+- Does it nevertheless meet Vanta's quality bar?
 
 ### Taste
 
@@ -301,7 +301,7 @@ Anything that cannot yet be reliably formalized.
 
 Once this questionnaire is fully answered, the output should not remain one giant prose document.
 
-It should be decomposed into a structured Life Stream Taste Library containing at minimum:
+It should be decomposed into a structured Vanta Taste Library containing at minimum:
 
 **Principles:**  
 The individual rules of taste.
@@ -341,6 +341,6 @@ The standards a production must satisfy before publication.
 
 The ultimate objective is that an intelligent production system should be able to consult this archive and reason:
 
-> Given what is happening in this footage, what would an elite Life Stream executive director do next?
+> Given what is happening in this footage, what would an elite Vanta executive director do next?
 
 That is the actual purpose of the protocol.

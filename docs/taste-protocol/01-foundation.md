@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This questionnaire is designed to extract the decision-making system of an elite executive director, filmmaker, editor, cinematographer, and creative producer into a structured archive that can later function as the taste layer for Life Stream's automated media-production system.
+This questionnaire is designed to extract the decision-making system of an elite executive director, filmmaker, editor, cinematographer, and creative producer into a structured archive that can later function as the taste layer for Vanta's automated media-production system.
 
 The goal is not simply to document:
 
@@ -17,7 +17,7 @@ The real objective is to capture:
 
 > How an elite creative director decides what should happen, when it should happen, why it should happen, and when the normal rule should be broken.
 
-The eventual Life Stream Taste Protocol should allow an intelligent system to take raw footage and reason through questions such as:
+The eventual Vanta Taste Protocol should allow an intelligent system to take raw footage and reason through questions such as:
 
 - What is the actual story hidden inside this footage?
 - Which moments are meaningful?

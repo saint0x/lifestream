@@ -108,20 +108,20 @@ If a sequence lacks an essential shot:
 
 ---
 
-## 55. What Does Life Stream Quality Mean?
+## 55. What Does Vanta Quality Mean?
 
 Define what should make a viewer recognize:
 
-> This belongs on Life Stream.
+> This belongs on Vanta.
 
 Questions:
 
-1. What should every Life Stream production have in common?
+1. What should every Vanta production have in common?
 2. What aesthetic qualities should never appear?
 3. What editing cliches should be banned?
 4. What visual cliches should be banned?
 5. Which social-media conventions should be avoided?
 6. Which should be embraced when useful?
 7. What does "premium internet-native cinema" mean?
-8. How should Life Stream differ aesthetically from YouTube, TikTok, Twitch, Netflix, HBO, and traditional television?
+8. How should Vanta differ aesthetically from YouTube, TikTok, Twitch, Netflix, HBO, and traditional television?
 

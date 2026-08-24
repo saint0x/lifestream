@@ -2,7 +2,7 @@
 
 ## The Fundamental Business Model
 
-Life Stream intentionally avoids relying on subscriptions.
+Vanta intentionally avoids relying on subscriptions.
 
 There are three primary revenue engines:
 
@@ -18,13 +18,13 @@ These systems reinforce one another.
 
 This is potentially the most important component of the model.
 
-Life Stream builds an internal advertising marketplace connecting:
+Vanta builds an internal advertising marketplace connecting:
 
 > Brands <-> Creators
 
-Rather than requiring every creator to individually find sponsors, negotiate contracts, prove analytics, invoice companies, and manage campaigns, Life Stream aggregates the entire process.
+Rather than requiring every creator to individually find sponsors, negotiate contracts, prove analytics, invoice companies, and manage campaigns, Vanta aggregates the entire process.
 
-Life Stream can approach advertisers and effectively say:
+Vanta can approach advertisers and effectively say:
 
 > We represent advertising inventory across a portfolio of exclusive creator media properties.
 
@@ -53,27 +53,27 @@ Traditional creator monetization often requires enormous scale.
 
 A creator may generate hundreds of thousands of views and receive relatively little revenue because their content participates in a massive standardized advertising marketplace.
 
-Life Stream instead attempts to move creators closer to the economics of direct sponsorships and premium media advertising.
+Vanta instead attempts to move creators closer to the economics of direct sponsorships and premium media advertising.
 
 Rather than saying:
 
 > You generated X views, so here is your share of generic ad revenue.
 
-Life Stream can say:
+Vanta can say:
 
 > A company paid $50,000 to sponsor this series.
 
 The economics become based on the value of the commercial agreement, rather than purely the number of commodity impressions.
 
-Life Stream can then distribute a significant portion of that deal directly to the creator.
+Vanta can then distribute a significant portion of that deal directly to the creator.
 
 This potentially allows an episode with a relatively modest but highly valuable audience to generate dramatically more revenue than the same number of views on a conventional social platform.
 
 ---
 
-## Life Stream As Advertising Broker
+## Vanta As Advertising Broker
 
-Life Stream also earns revenue for facilitating these transactions.
+Vanta also earns revenue for facilitating these transactions.
 
 The platform performs:
 
@@ -88,25 +88,25 @@ The platform performs:
 - Measurement
 - Payment processing
 
-Life Stream can therefore retain a platform fee, marketplace fee, or brokerage percentage from advertising deals.
+Vanta can therefore retain a platform fee, marketplace fee, or brokerage percentage from advertising deals.
 
 The transaction becomes:
 
 ```text
 Advertiser pays campaign budget
 -> Creator receives majority share
--> Life Stream retains marketplace fee
+-> Vanta retains marketplace fee
 ```
 
 This creates revenue without requiring creators to pay upfront.
 
-Life Stream makes money when creators make money. That alignment is strategically important.
+Vanta makes money when creators make money. That alignment is strategically important.
 
 ---
 
-## Revenue Engine 2: Life Stream's Own Advertising Inventory
+## Revenue Engine 2: Vanta's Own Advertising Inventory
 
-Life Stream simultaneously owns valuable advertising inventory itself.
+Vanta simultaneously owns valuable advertising inventory itself.
 
 There are effectively two classes of inventory:
 
@@ -116,7 +116,7 @@ Advertising attached directly to a creator, series, episode, livestream, or crea
 
 ### Platform Inventory
 
-Advertising associated with Life Stream itself.
+Advertising associated with Vanta itself.
 
 Platform inventory could eventually include:
 
@@ -141,9 +141,9 @@ This is where creator acquisition becomes especially valuable.
 
 Every successful creator brings an audience.
 
-That audience does not only view the creator's content. They enter the Life Stream ecosystem.
+That audience does not only view the creator's content. They enter the Vanta ecosystem.
 
-As Life Stream acquires more creators:
+As Vanta acquires more creators:
 
 ```text
 More creators
@@ -156,7 +156,7 @@ More creators
 -> More valuable advertising inventory
 ```
 
-Life Stream therefore receives an indirect economic benefit every time a creator successfully grows their Life Stream property.
+Vanta therefore receives an indirect economic benefit every time a creator successfully grows their Vanta property.
 
 ---
 
@@ -171,24 +171,24 @@ The economics are intentionally creator-friendly:
 | Party | Share |
 | :---- | ----: |
 | Creator | 90% |
-| Life Stream | 10% |
+| Vanta | 10% |
 
 For example, if a creator receives $10,000 in audience support:
 
 | Party | Amount |
 | :---- | ----: |
 | Creator | $9,000 |
-| Life Stream | $1,000 |
+| Vanta | $1,000 |
 
 This creates another monetization mechanism without requiring either party to pay a subscription.
 
 ---
 
-## Why Life Stream Can Be Completely Free
+## Why Vanta Can Be Completely Free
 
 This is one of the most important consequences of the model.
 
-Life Stream does not fundamentally require:
+Vanta does not fundamentally require:
 
 - Viewer subscriptions
 - Creator subscriptions
@@ -209,7 +209,7 @@ Advertisers pay with:
 
 > Capital
 
-Life Stream monetizes the interaction between the three.
+Vanta monetizes the interaction between the three.
 
 This produces a simple economic structure:
 
@@ -217,16 +217,16 @@ This produces a simple economic structure:
 Creators create attention.
 Viewers provide attention.
 Advertisers purchase access to attention.
-Life Stream operates the marketplace and infrastructure.
+Vanta operates the marketplace and infrastructure.
 ```
 
 ---
 
 ## Frictionless Viewing
 
-Because Life Stream does not depend upon subscriptions, content does not necessarily need to be gated behind registration.
+Because Vanta does not depend upon subscriptions, content does not necessarily need to be gated behind registration.
 
-A viewer could click a creator's Life Stream link and immediately begin watching.
+A viewer could click a creator's Vanta link and immediately begin watching.
 
 This is strategically important.
 
@@ -248,7 +248,7 @@ Instagram -> Link -> Signup -> Email Verification -> Login -> Video
 
 Removing account requirements lowers migration friction.
 
-Life Stream can still strongly encourage account creation because registered viewers produce:
+Vanta can still strongly encourage account creation because registered viewers produce:
 
 - Better recommendations
 - Watch histories
