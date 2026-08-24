@@ -272,16 +272,19 @@ export function StudioPage() {
 
   const loadStudio = useCallback(async (signal?: AbortSignal) => {
     setError(null);
-    const [nextJobs, nextAssets] = await Promise.all([
+    const [dashboard, nextJobs, nextAssets] = await Promise.all([
+      repository.fetchCreatorDashboard(signal),
       repository.listUploadJobs(signal),
       repository.listMediaAssets(signal),
     ]);
-    if (repository.hasState()) {
-      setBroadcasts(repository.listBroadcasts());
-      setCreatorUploads(repository.listUploads());
-      setAnalytics(repository.getAnalytics());
-      setTopContent(repository.getTopContent());
-    }
+    setBroadcasts([
+      ...(dashboard.currentBroadcast ? [dashboard.currentBroadcast] : []),
+      ...dashboard.scheduledBroadcasts,
+      ...dashboard.recentBroadcasts,
+    ]);
+    setCreatorUploads(dashboard.uploads);
+    setAnalytics(dashboard.analytics);
+    setTopContent(dashboard.topContent);
     setJobs(nextJobs);
     setAssets(nextAssets);
     const firstJob = nextJobs[0];

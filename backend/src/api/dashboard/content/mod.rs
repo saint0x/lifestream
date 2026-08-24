@@ -11,8 +11,9 @@ pub(crate) use operations::{
     summarize_creator_content,
 };
 pub(crate) use uploads::{
-    fetch_creator_content_summary, fetch_filtered_uploads_unreconciled, fetch_upload_by_id,
-    fetch_uploads, filter_creator_uploads,
+    fetch_creator_content_summary, fetch_filtered_uploads_for_database,
+    fetch_filtered_uploads_unreconciled, fetch_upload_by_id, fetch_upload_by_id_for_database,
+    fetch_uploads, fetch_uploads_for_database,
 };
 pub(crate) use validation::{
     derive_upload_lifecycle_status, validate_bulk_upload_action, validate_upload_job_kind,

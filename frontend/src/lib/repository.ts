@@ -8,6 +8,7 @@ import type {
   Credit,
   CreatorNotification,
   CreatorAdHubResponse,
+  CreatorDashboardPayload,
   CreatorProfile,
   Episode,
   Film,
@@ -815,6 +816,30 @@ export const repository = {
   },
   listCreatorNotifications(): ReadonlyArray<CreatorNotification> {
     return requireState().creatorNotifications;
+  },
+
+  async fetchCreatorDashboard(signal?: AbortSignal): Promise<CreatorDashboardPayload> {
+    const dashboard = await requestJson<CreatorDashboardPayload>("/api/v1/creator/me/dashboard", {
+      signal,
+    });
+    if (state) {
+      state = {
+        ...state,
+        creatorProfile: dashboard.profile,
+        broadcasts: dedupeBroadcasts([
+          ...(dashboard.currentBroadcast ? [dashboard.currentBroadcast] : []),
+          ...dashboard.scheduledBroadcasts,
+          ...dashboard.recentBroadcasts,
+        ]),
+        uploads: dashboard.uploads.map(normalizeUpload),
+        analytics: dashboard.analytics,
+        trafficSources: dashboard.trafficSources,
+        topContent: dashboard.topContent,
+        revenue: dashboard.revenue,
+        creatorNotifications: dashboard.notifications,
+      };
+    }
+    return dashboard;
   },
 
   async listUploadJobs(signal?: AbortSignal): Promise<ReadonlyArray<UploadJob>> {

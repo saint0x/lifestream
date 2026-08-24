@@ -22,8 +22,7 @@ pub(super) async fn bulk_uploads(
     let now = Utc::now().to_rfc3339();
 
     for upload_id in &input.upload_ids {
-        let current =
-            fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, upload_id).await?;
+        let current = fetch_upload_by_id_for_database(&state.db, creator_id, upload_id).await?;
         match input.action.as_str() {
             "archive" => {
                 validate_bulk_upload_action(&current, "archive")?;

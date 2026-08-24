@@ -15,7 +15,7 @@ pub(crate) async fn update_upload(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    let current = fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?;
+    let current = fetch_upload_by_id_for_database(&state.db, creator_id, &id).await?;
     if current.status == "taken_down"
         && (input.visibility.is_some()
             || input.release_at.is_some()
@@ -95,6 +95,6 @@ pub(crate) async fn update_upload(
     .await?;
     expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, &id).await?;
     Ok(Json(
-        fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?,
+        fetch_upload_by_id_for_database(&state.db, creator_id, &id).await?,
     ))
 }

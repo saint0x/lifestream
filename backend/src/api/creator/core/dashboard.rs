@@ -8,7 +8,7 @@ pub(super) async fn creator_dashboard(
 ) -> AppResult<Json<CreatorDashboard>> {
     let identity = require_identity(&state.db, &headers).await?;
     identity.require_creator_scope()?;
-    let payload = creator_dashboard_payload(state.db.try_sqlite_adapter()?, &identity).await?;
+    let payload = creator_dashboard_payload_for_database(&state.db, &identity).await?;
     Ok(Json(payload))
 }
 

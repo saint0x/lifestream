@@ -8,7 +8,7 @@ pub(super) async fn update_upload_lifecycle(
 ) -> AppResult<Json<Upload>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let current = fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?;
+    let current = fetch_upload_by_id_for_database(&state.db, creator_id, &id).await?;
     if current.status == "taken_down" {
         return Err(AppError::BadRequest(
             "taken-down uploads cannot be updated through lifecycle patch".to_string(),
@@ -47,7 +47,7 @@ pub(super) async fn update_upload_lifecycle(
     .await?;
     expire_playback_sessions_for_upload(state.db.try_sqlite_adapter()?, &id).await?;
     Ok(Json(
-        fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?,
+        fetch_upload_by_id_for_database(&state.db, creator_id, &id).await?,
     ))
 }
 
@@ -58,7 +58,7 @@ pub(crate) async fn unpublish_upload(
 ) -> AppResult<Json<Upload>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let current = fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?;
+    let current = fetch_upload_by_id_for_database(&state.db, creator_id, &id).await?;
     if current.status == "taken_down" {
         return Err(AppError::BadRequest(
             "taken-down uploads cannot be unpublished".to_string(),
@@ -98,7 +98,7 @@ pub(crate) async fn unpublish_upload(
     )
     .await?;
     Ok(Json(
-        fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?,
+        fetch_upload_by_id_for_database(&state.db, creator_id, &id).await?,
     ))
 }
 
@@ -109,7 +109,7 @@ pub(crate) async fn takedown_upload(
 ) -> AppResult<Json<Upload>> {
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let current = fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?;
+    let current = fetch_upload_by_id_for_database(&state.db, creator_id, &id).await?;
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         "UPDATE uploads SET visibility = 'private', status = 'taken_down', release_at = NULL WHERE id = ?",
@@ -144,6 +144,6 @@ pub(crate) async fn takedown_upload(
     )
     .await?;
     Ok(Json(
-        fetch_upload_by_id(state.db.try_sqlite_adapter()?, creator_id, &id).await?,
+        fetch_upload_by_id_for_database(&state.db, creator_id, &id).await?,
     ))
 }
