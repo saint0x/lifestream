@@ -525,8 +525,19 @@ async fn ensure_postgres_viewer_account_bundle_rows(
         INSERT INTO user_parental_controls (
             user_id, max_rating, require_pin_for_mature, hide_live_chat_for_kids,
             block_mature_live_streams, pin_set
-        ) VALUES ($1, 'TV-MA', 0, 0, 0, 0)
+        ) VALUES ($1, 'TV-MA / R', 0, 0, 0, 0)
         ON CONFLICT(user_id) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        UPDATE user_parental_controls
+        SET max_rating = 'TV-MA / R'
+        WHERE user_id = $1 AND max_rating NOT IN ('G', 'PG', 'PG-13', 'TV-14', 'TV-MA / R')
         "#,
     )
     .bind(user_id)

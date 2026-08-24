@@ -303,7 +303,18 @@ async fn ensure_viewer_account_bundle_rows(pool: &SqlitePool, user_id: &str) -> 
         INSERT OR IGNORE INTO user_parental_controls (
             user_id, max_rating, require_pin_for_mature, hide_live_chat_for_kids,
             block_mature_live_streams, pin_set
-        ) VALUES (?, 'TV-14 / PG-13', 0, 0, 0, 0)
+        ) VALUES (?, 'TV-MA / R', 0, 0, 0, 0)
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        UPDATE user_parental_controls
+        SET max_rating = 'TV-MA / R'
+        WHERE user_id = ? AND max_rating NOT IN ('G', 'PG', 'PG-13', 'TV-14', 'TV-MA / R')
         "#,
     )
     .bind(user_id)
