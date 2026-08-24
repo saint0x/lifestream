@@ -141,6 +141,12 @@ export function WatchPage({ kind }: WatchPageProps) {
       (entry) => entry.kind === "series" && entry.contentId === series.id && entry.episodeId === episode.id,
     );
 
+    const episodePoster =
+      playbackGrant?.posterUrl ??
+      playbackGrant?.thumbnailUrl ??
+      episode.thumbnail ??
+      series.images.backdrop;
+
     return (
       <div className="ls-watch">
         <PageMetadata
@@ -185,7 +191,7 @@ export function WatchPage({ kind }: WatchPageProps) {
           {playbackLoading ? <div className="ls-watch__state">Preparing playback session…</div> : null}
           {playbackError ? <div className="ls-watch__state ls-watch__state--error">{playbackError}</div> : null}
           <VideoPlayer
-            poster={playbackGrant?.posterUrl ? resolveApiUrl(playbackGrant.posterUrl) : series.images.backdrop}
+            poster={resolveApiUrl(episodePoster)}
             title={`${series.title} — ${episode.title}`}
             subtitle={episode.synopsis}
             durationSec={episode.durationSec}
@@ -257,6 +263,12 @@ export function WatchPage({ kind }: WatchPageProps) {
     );
   }
 
+  const filmPoster =
+    playbackGrant?.posterUrl ??
+    playbackGrant?.thumbnailUrl ??
+    film.images.thumbnail ??
+    film.images.backdrop;
+
   return (
     <div className="ls-watch">
       <PageMetadata
@@ -295,7 +307,7 @@ export function WatchPage({ kind }: WatchPageProps) {
         {playbackLoading ? <div className="ls-watch__state">Preparing playback session…</div> : null}
         {playbackError ? <div className="ls-watch__state ls-watch__state--error">{playbackError}</div> : null}
         <VideoPlayer
-          poster={playbackGrant?.posterUrl ? resolveApiUrl(playbackGrant.posterUrl) : film.images.backdrop}
+          poster={resolveApiUrl(filmPoster)}
           title={film.title}
           durationSec={film.durationSec}
           initialProgressSec={

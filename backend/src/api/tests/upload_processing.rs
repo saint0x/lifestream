@@ -285,6 +285,7 @@ async fn processed_upload_materializes_thumbnail_variant_and_publish_uses_it() -
     )
     .await?
     .0;
+    assert_eq!(grant.thumbnail_url.as_deref(), Some(published.thumbnail.as_str()));
     assert_eq!(grant.preview_tracks.len(), 1);
     assert_eq!(grant.preview_tracks[0].label, "timeline_preview");
     assert!(grant.preview_tracks[0].published);

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Play } from "lucide-react";
-import type { Series } from "@/types";
+import type { Episode, Series } from "@/types";
 import { formatDuration } from "@/lib/format";
 import "./EpisodeList.css";
 
@@ -43,12 +43,7 @@ export function EpisodeList({ series }: EpisodeListProps) {
               <div className="ls-eplist__num mono">
                 {String(ep.episodeNumber).padStart(2, "0")}
               </div>
-              <div className="ls-eplist__thumb">
-                <img src={ep.thumbnail} alt="" loading="lazy" />
-                <div className="ls-eplist__play">
-                  <Play size={14} strokeWidth={2} fill="currentColor" />
-                </div>
-              </div>
+              <EpisodeThumbnail episode={ep} fallbackImage={series.images.backdrop} />
               <div className="ls-eplist__body">
                 <div className="ls-eplist__row">
                   <div className="ls-eplist__ep-title">{ep.title}</div>
@@ -62,5 +57,44 @@ export function EpisodeList({ series }: EpisodeListProps) {
         ))}
       </ul>
     </section>
+  );
+}
+
+interface EpisodeThumbnailProps {
+  readonly episode: Episode;
+  readonly fallbackImage: string;
+}
+
+function EpisodeThumbnail({ episode, fallbackImage }: EpisodeThumbnailProps) {
+  const [imageSrc, setImageSrc] = useState(episode.thumbnail || fallbackImage);
+  const [failedPrimary, setFailedPrimary] = useState(false);
+  const showFallback = failedPrimary && imageSrc === "";
+
+  return (
+    <div className="ls-eplist__thumb">
+      {showFallback ? (
+        <div className="ls-eplist__thumb-fallback" aria-hidden="true">
+          <span>{episode.title.slice(0, 1)}</span>
+        </div>
+      ) : (
+        <img
+          src={imageSrc}
+          alt=""
+          loading="lazy"
+          onError={() => {
+            if (!failedPrimary && fallbackImage && imageSrc !== fallbackImage) {
+              setFailedPrimary(true);
+              setImageSrc(fallbackImage);
+              return;
+            }
+            setFailedPrimary(true);
+            setImageSrc("");
+          }}
+        />
+      )}
+      <div className="ls-eplist__play">
+        <Play size={14} strokeWidth={2} fill="currentColor" />
+      </div>
+    </div>
   );
 }

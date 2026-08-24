@@ -110,6 +110,7 @@ pub struct PlaybackGrant {
     pub playback_token: String,
     pub manifest_url: String,
     pub poster_url: Option<String>,
+    pub thumbnail_url: Option<String>,
     pub media_authorization: PlaybackMediaAuthorization,
     pub content_title: String,
     pub content_kind: String,

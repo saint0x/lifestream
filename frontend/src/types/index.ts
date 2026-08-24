@@ -729,6 +729,7 @@ export interface PlaybackGrant {
   readonly playbackToken: string;
   readonly manifestUrl: string;
   readonly posterUrl?: string | null;
+  readonly thumbnailUrl?: string | null;
   readonly mediaAuthorization: PlaybackMediaAuthorization;
   readonly contentTitle: string;
   readonly contentKind: string;
