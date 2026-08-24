@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, FileVideo, RefreshCw, Save, UploadCloud } from "lucide-react";
+import { Check, FileVideo, RefreshCw, Save, Send, UploadCloud } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -18,6 +18,12 @@ interface UploadJobForm {
   readonly mimeType: string;
 }
 
+interface PublishForm {
+  readonly slug: string;
+  readonly description: string;
+  readonly visibility: string;
+}
+
 const initialForm: UploadJobForm = {
   kind: "film",
   title: "",
@@ -27,13 +33,17 @@ const initialForm: UploadJobForm = {
   mimeType: "video/mp4",
 };
 
-function storageKeyFromTitle(title: string): string {
-  const slug = title
+function slugFromTitle(title: string): string {
+  return title
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 64);
+}
+
+function storageKeyFromTitle(title: string): string {
+  const slug = slugFromTitle(title);
   return `studio/${Date.now()}/${slug || "untitled-upload"}.mp4`;
 }
 
@@ -51,6 +61,11 @@ export function StudioPage() {
   const [selectedTitle, setSelectedTitle] = useState("");
   const [selectedVisibility, setSelectedVisibility] = useState("private");
   const [selectedMimeType, setSelectedMimeType] = useState("video/mp4");
+  const [publishForm, setPublishForm] = useState<PublishForm>({
+    slug: "",
+    description: "",
+    visibility: "private",
+  });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [assets, setAssets] = useState<ReadonlyArray<MediaAsset>>([]);
   const [loading, setLoading] = useState(true);
@@ -63,11 +78,28 @@ export function StudioPage() {
     [jobs, selectedId],
   );
 
+  const selectedAsset = useMemo(
+    () => assets.find((asset) => asset.uploadJobId === selectedId) ?? null,
+    [assets, selectedId],
+  );
+
+  const selectedJobCanPublish =
+    selectedJob !== null
+    && (selectedJob.status === "ready" || selectedJob.status === "published")
+    && selectedAsset !== null
+    && selectedAsset.playbackPath !== null
+    && selectedAsset.playbackPath !== undefined;
+
   const selectJob = useCallback((job: UploadJob) => {
     setSelectedId(job.id);
     setSelectedTitle(job.title);
     setSelectedVisibility(job.intendedVisibility);
     setSelectedMimeType(job.mimeType);
+    setPublishForm((current) => ({
+      ...current,
+      slug: slugFromTitle(job.title),
+      visibility: job.intendedVisibility,
+    }));
   }, []);
 
   const loadJobs = useCallback(async (signal?: AbortSignal) => {
@@ -85,6 +117,11 @@ export function StudioPage() {
         setSelectedTitle(firstJob.title);
         setSelectedVisibility(firstJob.intendedVisibility);
         setSelectedMimeType(firstJob.mimeType);
+        setPublishForm((current) => ({
+          ...current,
+          slug: current.slug || slugFromTitle(firstJob.title),
+          visibility: firstJob.intendedVisibility,
+        }));
         return firstJob.id;
       });
     }
@@ -107,6 +144,10 @@ export function StudioPage() {
 
   const updateField = (field: keyof UploadJobForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const updatePublishField = (field: keyof PublishForm, value: string) => {
+    setPublishForm((current) => ({ ...current, [field]: value }));
   };
 
   const createJob = async () => {
@@ -206,6 +247,32 @@ export function StudioPage() {
       setStatus("Upload job saved.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save upload job.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const publishSelectedJob = async () => {
+    if (!selectedJob) return;
+    const slug = publishForm.slug.trim() || slugFromTitle(selectedJob.title);
+    if (!slug) {
+      setError("Add a slug before publishing.");
+      return;
+    }
+    setSaving(true);
+    setStatus("Publishing upload...");
+    setError(null);
+    try {
+      const published = await repository.publishUploadJob(selectedJob.id, {
+        slug,
+        visibility: publishForm.visibility,
+        description: publishForm.description.trim() || undefined,
+      });
+      await loadJobs();
+      setStatus(`Published ${published.title}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to publish upload.");
+      setStatus(null);
     } finally {
       setSaving(false);
     }
@@ -445,6 +512,62 @@ export function StudioPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="ls-studio__panel ls-studio__panel--publish">
+          <div className="ls-studio__panel-head">
+            <div>
+              <h2>Publish</h2>
+              <p>{selectedJob ? selectedJob.status : "Select a ready upload job."}</p>
+            </div>
+            <Send size={18} strokeWidth={1.75} />
+          </div>
+
+          {selectedJob ? (
+            <div className="ls-studio__form">
+              <label className="ls-studio__field">
+                <span className="mono">Slug</span>
+                <Input
+                  value={publishForm.slug}
+                  onChange={(event) => updatePublishField("slug", event.target.value)}
+                  placeholder="pilot-cut"
+                />
+              </label>
+              <label className="ls-studio__field">
+                <span className="mono">Description</span>
+                <textarea
+                  className="ls-studio__textarea"
+                  value={publishForm.description}
+                  onChange={(event) => updatePublishField("description", event.target.value)}
+                  rows={4}
+                />
+              </label>
+              <label className="ls-studio__field">
+                <span className="mono">Visibility</span>
+                <select
+                  value={publishForm.visibility}
+                  onChange={(event) => updatePublishField("visibility", event.target.value)}
+                >
+                  {visibilityOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </label>
+              <div className="ls-studio__facts">
+                <div><span className="mono">Asset</span>{selectedAsset?.status ?? "pending"}</div>
+                <div><span className="mono">Playback</span>{selectedAsset?.playbackPath ?? "pending"}</div>
+                <div><span className="mono">Content</span>{selectedJob.publishedContentId ?? "not published"}</div>
+              </div>
+              <Button
+                variant="primary"
+                icon={<Send />}
+                onClick={() => void publishSelectedJob()}
+                disabled={saving || !selectedJobCanPublish}
+              >
+                {saving ? "Publishing..." : "Publish upload"}
+              </Button>
+            </div>
+          ) : (
+            <div className="ls-studio__empty">Select an upload job.</div>
+          )}
         </div>
       </section>
     </div>

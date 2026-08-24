@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "fozzylang.report.v0",
+  "status": "pass",
+  "capabilities": [
+    "thread"
+  ],
+  "scheduler": "fifo",
+  "seed": 1787547834,
+  "discoveredTests": 0,
+  "deterministicTests": 0,
+  "executedTasks": 1,
+  "asyncCheckpoints": 0,
+  "rpcFrames": 0,
+  "generatedScenarios": 1,
+  "events": 3,
+  "failureClasses": [
+    {
+      "id": "baseline",
+      "priority": 9,
+      "signal": "deterministic"
+    }
+  ],
+  "findings": [],
+  "rpcValidation": [],
+  "threadFindings": []
+}

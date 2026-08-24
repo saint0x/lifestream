@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "fozzylang.shrink.v0",
+  "scenarioPriorities": [
+    {
+      "scenario": "backend/tests/studio-publish-20260824.trace.scenarios/all.fozzy.json",
+      "score": 70
+    }
+  ],
+  "hints": [
+    {
+      "kind": "task_order",
+      "order": [
+        0
+      ]
+    }
+  ],
+  "minimalRpcRepro": []
+}

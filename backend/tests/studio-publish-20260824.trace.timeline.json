@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "fozzylang.timeline.v0",
+  "entries": [
+    {
+      "step": 0,
+      "decision": "thread.schedule",
+      "taskId": 0,
+      "scheduler": "fifo"
+    }
+  ]
+}

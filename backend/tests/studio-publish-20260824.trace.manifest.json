@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "fozzylang.artifacts.v0",
+  "trace": "backend/tests/studio-publish-20260824.trace.native.trace.json",
+  "report": "backend/tests/studio-publish-20260824.trace.report.json",
+  "timeline": "backend/tests/studio-publish-20260824.trace.timeline.json",
+  "explore": "backend/tests/studio-publish-20260824.trace.explore.json",
+  "shrink": "backend/tests/studio-publish-20260824.trace.shrink.json",
+  "scenariosIndex": "backend/tests/studio-publish-20260824.trace.scenarios.json",
+  "primaryScenario": "backend/tests/studio-publish-20260824.trace.scenarios/all.fozzy.json",
+  "goalTrace": "backend/tests/studio-publish-20260824.trace.fozzy",
+  "detail": "rich"
+}

@@ -116,6 +116,22 @@ export interface UpdateUploadJobInput {
   readonly seriesId?: string | null;
 }
 
+export interface PublishUploadJobInput {
+  readonly description?: string;
+  readonly visibility?: string;
+  readonly slug?: string;
+  readonly releaseAt?: string;
+  readonly accessPolicy?: string;
+  readonly accessTierId?: string;
+  readonly priceCents?: number;
+  readonly currency?: string;
+  readonly rentalWindowHours?: number;
+  readonly seasonNumber?: number;
+  readonly episodeNumber?: number;
+  readonly seasonTitle?: string;
+  readonly seasonSynopsis?: string;
+}
+
 export interface CategoryBrowsePayload {
   readonly category: Category;
   readonly liveStreams: ReadonlyArray<LiveStream>;
@@ -704,6 +720,23 @@ export const repository = {
       method: "PATCH",
       body: input,
     });
+  },
+
+  async publishUploadJob(jobId: string, input: PublishUploadJobInput): Promise<Upload> {
+    const upload = normalizeUpload(await requestJson<Upload>(
+      `/api/v1/creator/me/upload-jobs/${encodeURIComponent(jobId)}/publish`,
+      {
+        method: "POST",
+        body: input,
+      },
+    ));
+    if (state) {
+      state = {
+        ...state,
+        uploads: [upload, ...state.uploads.filter((item) => item.id !== upload.id)],
+      };
+    }
+    return upload;
   },
 
   async startUploadIngest(jobId: string): Promise<UploadIngestTicket> {

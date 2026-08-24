@@ -127,6 +127,25 @@
   font: inherit;
 }
 
+.ls-studio__textarea {
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ls-studio__textarea:focus {
+  outline: 1px solid var(--c-border-hi);
+  outline-offset: 0;
+}
+
 .ls-studio__file {
   width: 100%;
   min-height: 44px;
@@ -241,6 +260,8 @@
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
   gap: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 12px;
   color: var(--c-text-dim);
 }
