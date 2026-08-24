@@ -17,6 +17,7 @@ import type {
   MediaAsset,
   PersonProfile,
   RevenueEntry,
+  SearchResult,
   Series,
   Streamer,
   TopContent,
@@ -80,6 +81,7 @@ interface RepositoryState {
 }
 
 export interface SearchPayload {
+  readonly items: ReadonlyArray<SearchResult>;
   readonly series: ReadonlyArray<Series>;
   readonly films: ReadonlyArray<Film>;
   readonly liveStreams: ReadonlyArray<LiveStream>;
@@ -833,11 +835,11 @@ export const repository = {
     });
   },
 
-  async searchRemote(query: string, signal?: AbortSignal): Promise<ReadonlyArray<ContentItem>> {
+  async searchRemote(query: string, signal?: AbortSignal): Promise<ReadonlyArray<SearchResult>> {
     const q = query.trim();
     if (!q) return [];
     const payload = await this.searchRemotePage(q, { limit: 8, offset: 0 }, signal);
-    return [...payload.series, ...payload.films, ...payload.liveStreams];
+    return payload.items;
   },
 
   async searchRemotePage(
@@ -847,7 +849,7 @@ export const repository = {
   ): Promise<SearchPagePayload> {
     const q = query.trim();
     if (!q) {
-      return { series: [], films: [], liveStreams: [], total: 0, limit: 0, offset: 0, hasMore: false };
+      return { items: [], series: [], films: [], liveStreams: [], total: 0, limit: 0, offset: 0, hasMore: false };
     }
     const params = new URLSearchParams();
     params.set("q", q);

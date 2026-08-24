@@ -48,6 +48,14 @@ pub struct ProvisionedCreator<'a> {
 pub struct CatalogSearchHit {
     pub entity_id: String,
     pub kind: String,
+    pub slug: String,
+    pub title: String,
+    pub subtitle: String,
+    pub image: Option<String>,
+    pub href: String,
+    pub metadata_json: String,
+    pub score: f64,
+    pub total_count: i64,
 }
 
 pub struct EmailCredential {
@@ -1027,23 +1035,56 @@ impl Database {
         &self,
         query: &str,
         limit: i64,
+        offset: i64,
     ) -> AppResult<Vec<CatalogSearchHit>> {
         match &self.provider {
             DatabaseProvider::Sqlite(pool) => {
                 let Some(fts_query) = build_sqlite_fts_query(query) else {
                     return Ok(Vec::new());
                 };
+                let normalized_query = search_tokens(query).join(" ");
                 let rows = sqlx::query(
                     r#"
-                    SELECT entity_id, kind
-                    FROM search_documents
-                    WHERE search_documents MATCH ?
-                    ORDER BY bm25(search_documents, 1.0, 0.3)
+                    SELECT
+                        entity_id,
+                        kind,
+                        slug,
+                        title,
+                        subtitle,
+                        NULLIF(image, '') AS image,
+                        href,
+                        metadata_json,
+                        score,
+                        COUNT(*) OVER () AS total_count
+                    FROM (
+                        SELECT
+                            entity_id,
+                            kind,
+                            slug,
+                            title,
+                            subtitle,
+                            image,
+                            href,
+                            metadata_json,
+                            CASE WHEN lower(title) = lower(?) OR lower(slug) = lower(?) THEN 1000.0 ELSE 0.0 END +
+                                CASE WHEN lower(title) LIKE lower(?) || '%' THEN 250.0 ELSE 0.0 END +
+                                (-bm25(search_documents, 8.0, 4.0, 1.0)) +
+                                rank_boost +
+                                (popularity * 0.02) AS score
+                        FROM search_documents
+                        WHERE search_documents MATCH ?
+                    )
+                    ORDER BY score DESC, title ASC
                     LIMIT ?
+                    OFFSET ?
                     "#,
                 )
+                .bind(&normalized_query)
+                .bind(&normalized_query)
+                .bind(&normalized_query)
                 .bind(&fts_query)
                 .bind(limit.max(1))
+                .bind(offset.max(0))
                 .fetch_all(pool)
                 .await?;
                 Ok(rows
@@ -1051,6 +1092,14 @@ impl Database {
                     .map(|row| CatalogSearchHit {
                         entity_id: row.get("entity_id"),
                         kind: row.get("kind"),
+                        slug: row.get("slug"),
+                        title: row.get("title"),
+                        subtitle: row.get("subtitle"),
+                        image: row.get("image"),
+                        href: row.get("href"),
+                        metadata_json: row.get("metadata_json"),
+                        score: row.get("score"),
+                        total_count: row.get("total_count"),
                     })
                     .collect())
             }
@@ -1059,22 +1108,78 @@ impl Database {
                 if tokens.is_empty() {
                     return Ok(Vec::new());
                 }
-                let pattern = format!("%{}%", tokens.join("%"));
+                let normalized_query = tokens.join(" ");
+                let prefix_query = build_postgres_prefix_query(&tokens).unwrap_or_default();
                 let rows = sqlx::query(
                     r#"
-                    SELECT entity_id, kind
-                    FROM search_documents
-                    WHERE title ILIKE $1
-                       OR body ILIKE $1
-                       OR slug ILIKE $1
+                    WITH input AS (
+                        SELECT
+                            websearch_to_tsquery('english', $1) AS web_query,
+                            NULLIF($2, '')::tsquery AS prefix_query,
+                            lower($1) AS raw_query
+                    ),
+                    ranked AS (
+                        SELECT
+                            d.entity_id,
+                            d.kind,
+                            d.slug,
+                            d.title,
+                            d.subtitle,
+                            d.image,
+                            d.href,
+                            d.metadata_json::TEXT AS metadata_json,
+                            (
+                                CASE WHEN lower(d.title) = input.raw_query OR lower(d.slug) = input.raw_query THEN 1000.0 ELSE 0.0 END +
+                                CASE WHEN lower(d.title) LIKE input.raw_query || '%' THEN 250.0 ELSE 0.0 END +
+                                CASE WHEN lower(d.slug) LIKE input.raw_query || '%' THEN 200.0 ELSE 0.0 END +
+                                CASE WHEN d.search_vector @@ input.web_query THEN ts_rank_cd(d.search_vector, input.web_query, 32) * 140.0 ELSE 0.0 END +
+                                CASE WHEN input.prefix_query IS NOT NULL AND d.search_vector @@ input.prefix_query THEN ts_rank_cd(d.search_vector, input.prefix_query, 32) * 90.0 ELSE 0.0 END +
+                                GREATEST(similarity(lower(d.title), input.raw_query), similarity(lower(d.slug), input.raw_query)) * 85.0 +
+                                d.rank_boost +
+                                LEAST(d.popularity, 300.0) * 0.2
+                            ) AS score
+                        FROM search_documents d
+                        CROSS JOIN input
+                        WHERE d.search_vector @@ input.web_query
+                           OR (input.prefix_query IS NOT NULL AND d.search_vector @@ input.prefix_query)
+                           OR lower(d.title) LIKE '%' || input.raw_query || '%'
+                           OR lower(d.slug) LIKE '%' || input.raw_query || '%'
+                           OR similarity(lower(d.title), input.raw_query) >= 0.18
+                           OR similarity(lower(d.slug), input.raw_query) >= 0.18
+                    )
+                    SELECT
+                        entity_id,
+                        kind,
+                        slug,
+                        title,
+                        subtitle,
+                        image,
+                        href,
+                        metadata_json,
+                        score,
+                        COUNT(*) OVER () AS total_count
+                    FROM ranked
                     ORDER BY
-                        CASE WHEN title ILIKE $1 THEN 0 ELSE 1 END,
+                        score DESC,
+                        CASE kind
+                            WHEN 'series' THEN 0
+                            WHEN 'film' THEN 1
+                            WHEN 'live' THEN 2
+                            WHEN 'episode' THEN 3
+                            WHEN 'creator' THEN 4
+                            WHEN 'profile' THEN 5
+                            WHEN 'category' THEN 6
+                            ELSE 7
+                        END,
                         title ASC
-                    LIMIT $2
+                    LIMIT $3
+                    OFFSET $4
                     "#,
                 )
-                .bind(&pattern)
+                .bind(&normalized_query)
+                .bind(&prefix_query)
                 .bind(limit.max(1))
+                .bind(offset.max(0))
                 .fetch_all(pool)
                 .await?;
                 Ok(rows
@@ -1082,6 +1187,14 @@ impl Database {
                     .map(|row| CatalogSearchHit {
                         entity_id: row.get("entity_id"),
                         kind: row.get("kind"),
+                        slug: row.get("slug"),
+                        title: row.get("title"),
+                        subtitle: row.get("subtitle"),
+                        image: row.get("image"),
+                        href: row.get("href"),
+                        metadata_json: row.get("metadata_json"),
+                        score: row.get("score"),
+                        total_count: row.get("total_count"),
                     })
                     .collect())
             }
@@ -2483,7 +2596,7 @@ fn search_tokens(input: &str) -> Vec<String> {
     input
         .chars()
         .map(|ch| {
-            if ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' {
+            if ch.is_ascii_alphanumeric() {
                 ch.to_ascii_lowercase()
             } else {
                 ' '
@@ -2506,6 +2619,19 @@ fn build_sqlite_fts_query(input: &str) -> Option<String> {
         None
     } else {
         Some(tokens.join(" "))
+    }
+}
+
+fn build_postgres_prefix_query(tokens: &[String]) -> Option<String> {
+    let parts = tokens
+        .iter()
+        .filter(|token| token.chars().all(|ch| ch.is_ascii_alphanumeric()))
+        .map(|token| format!("{token}:*"))
+        .collect::<Vec<_>>();
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(" & "))
     }
 }
 
@@ -3040,13 +3166,21 @@ mod tests {
                 kind UNINDEXED,
                 slug UNINDEXED,
                 title,
+                subtitle,
                 body,
+                image UNINDEXED,
+                href UNINDEXED,
+                metadata_json UNINDEXED,
+                rank_boost UNINDEXED,
+                popularity UNINDEXED,
                 tokenize = 'unicode61 remove_diacritics 2'
             );
-            INSERT INTO search_documents (entity_id, kind, slug, title, body)
+            INSERT INTO search_documents (
+                entity_id, kind, slug, title, subtitle, body, image, href, metadata_json, rank_boost, popularity
+            )
             VALUES
-                ('ser-halcyon', 'series', 'halcyon-drift', 'Halcyon Drift', 'salvage crew sci-fi'),
-                ('film-paper', 'film', 'paper-moon', 'Paper Moon', 'noir drama');
+                ('ser-halcyon', 'series', 'halcyon-drift', 'Halcyon Drift', 'Sci-Fi', 'salvage crew sci-fi', '', '/series/halcyon-drift', '{}', 20, 90),
+                ('film-paper', 'film', 'paper-moon', 'Paper Moon', 'Noir drama', 'noir drama', '', '/film/paper-moon', '{}', 10, 70);
             "#,
         )
         .execute(&pool)
@@ -3055,7 +3189,7 @@ mod tests {
 
         let database = Database::from_sqlite(pool);
         let hits = database
-            .search_catalog_documents("halcyon", 24)
+            .search_catalog_documents("halcyon", 24, 0)
             .await
             .expect("hits");
 
@@ -3064,7 +3198,7 @@ mod tests {
         assert_eq!(hits[0].kind, "series");
         assert!(
             database
-                .search_catalog_documents("   ", 24)
+                .search_catalog_documents("   ", 24, 0)
                 .await
                 .expect("empty")
                 .is_empty()

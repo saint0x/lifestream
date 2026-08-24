@@ -14,7 +14,7 @@ async fn public_search_uses_catalog_repository_response_shape() -> AppResult<()>
         search(
             State(state),
             Query(SearchQuery {
-                q: "Halcyon".to_string(),
+                q: "Northlight".to_string(),
                 limit: None,
                 offset: None,
             }),
@@ -27,10 +27,45 @@ async fn public_search_uses_catalog_repository_response_shape() -> AppResult<()>
     assert!(
         payload["series"]
             .as_array()
-            .is_some_and(|items| { items.iter().any(|item| item["title"] == "Halcyon Drift") })
+            .is_some_and(|items| { items.iter().any(|item| item["title"] == "Northlight") })
     );
+    assert!(payload["items"].as_array().is_some_and(|items| {
+        items.iter().any(|item| {
+            item["kind"] == "series"
+                && item["title"] == "Northlight"
+                && item["href"] == "/series/northlight"
+        })
+    }));
     assert!(payload["films"].as_array().is_some());
     assert!(payload["liveStreams"].as_array().is_some());
+    Ok(())
+}
+
+#[tokio::test]
+async fn public_search_uses_catalog_metadata_and_people_profiles() -> AppResult<()> {
+    let (state, _) = setup_test_state().await?;
+    let payload: serde_json::Value = response_json(
+        search(
+            State(state),
+            Query(SearchQuery {
+                q: "Mara Vale".to_string(),
+                limit: Some(8),
+                offset: Some(0),
+            }),
+        )
+        .await?
+        .into_response(),
+    )
+    .await?;
+
+    let items = payload["items"].as_array().expect("items");
+    assert!(items.iter().any(|item| {
+        item["kind"] == "profile" && item["title"] == "Mara Vale"
+    }));
+    assert!(items.iter().any(|item| {
+        item["kind"] == "series" && item["title"] == "Northlight"
+    }));
+    assert!(payload["total"].as_i64().is_some_and(|total| total >= 2));
     Ok(())
 }
 

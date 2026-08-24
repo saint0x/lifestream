@@ -404,10 +404,11 @@ impl<'a> CatalogRepository<'a> {
         let hits = self
             .state
             .db
-            .search_catalog_documents(query, limit + offset + 1)
+            .search_catalog_documents(query, limit + 1, offset)
             .await?;
         if hits.is_empty() {
             return Ok(serde_json::json!({
+                "items": [],
                 "series": [],
                 "films": [],
                 "liveStreams": [],
@@ -417,14 +418,33 @@ impl<'a> CatalogRepository<'a> {
                 "hasMore": false
             }));
         }
+        let total = hits.first().map(|hit| hit.total_count).unwrap_or(0);
+        let has_more = hits.len() as i64 > limit;
+        let page_hits = hits.into_iter().take(limit as usize).collect::<Vec<_>>();
+        let items = page_hits
+            .iter()
+            .map(|hit| {
+                let metadata = serde_json::from_str::<serde_json::Value>(&hit.metadata_json)
+                    .unwrap_or_else(|_| serde_json::json!({}));
+                serde_json::json!({
+                    "id": hit.entity_id,
+                    "kind": hit.kind,
+                    "slug": hit.slug,
+                    "title": hit.title,
+                    "subtitle": hit.subtitle,
+                    "image": hit.image,
+                    "href": hit.href,
+                    "metadata": metadata,
+                    "score": hit.score
+                })
+            })
+            .collect::<Vec<_>>();
         if self.is_postgres() {
             let pool = self.pg_pool()?;
             let mut series = Vec::new();
             let mut films = Vec::new();
             let mut live_streams = Vec::new();
-            let total = hits.len() as i64;
-            let has_more = total > offset + limit;
-            for hit in hits.into_iter().skip(offset as usize).take(limit as usize) {
+            for hit in &page_hits {
                 match hit.kind.as_str() {
                     "series" => {
                         if let Ok(item) =
@@ -451,10 +471,11 @@ impl<'a> CatalogRepository<'a> {
                 }
             }
             return Ok(serde_json::json!({
+                "items": items,
                 "series": series,
                 "films": films,
                 "liveStreams": live_streams,
-                "total": total.min(offset + limit),
+                "total": total,
                 "limit": limit,
                 "offset": offset,
                 "hasMore": has_more
@@ -465,9 +486,7 @@ impl<'a> CatalogRepository<'a> {
         let mut series = Vec::new();
         let mut films = Vec::new();
         let mut live_streams = Vec::new();
-        let total = hits.len() as i64;
-        let has_more = total > offset + limit;
-        for hit in hits.into_iter().skip(offset as usize).take(limit as usize) {
+        for hit in &page_hits {
             match hit.kind.as_str() {
                 "series" => {
                     if let Ok(item) = fetch_series_by_id(pool, &hit.entity_id, None).await {
@@ -489,10 +508,11 @@ impl<'a> CatalogRepository<'a> {
         }
 
         Ok(serde_json::json!({
+            "items": items,
             "series": series,
             "films": films,
             "liveStreams": live_streams,
-            "total": total.min(offset + limit),
+            "total": total,
             "limit": limit,
             "offset": offset,
             "hasMore": has_more

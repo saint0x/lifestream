@@ -43,6 +43,7 @@ pub(crate) trait CatalogDiscoveryRepository {
         &self,
         query: &str,
         limit: i64,
+        offset: i64,
     ) -> AppResult<Vec<CatalogSearchHit>>;
 }
 
@@ -176,8 +177,9 @@ impl CatalogDiscoveryRepository for Database {
         &self,
         query: &str,
         limit: i64,
+        offset: i64,
     ) -> AppResult<Vec<CatalogSearchHit>> {
-        Database::search_catalog_documents(self, query, limit).await
+        Database::search_catalog_documents(self, query, limit, offset).await
     }
 }
 

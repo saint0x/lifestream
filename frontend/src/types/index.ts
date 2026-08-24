@@ -5,6 +5,15 @@ export type ID = string;
 
 export type ContentKind = "series" | "film" | "live";
 
+export type SearchResultKind =
+  | "series"
+  | "film"
+  | "live"
+  | "episode"
+  | "creator"
+  | "profile"
+  | "category";
+
 export type MaturityRating = "G" | "PG" | "PG-13" | "TV-14" | "R" | "TV-MA";
 
 export type Genre =
@@ -143,6 +152,18 @@ export interface Category {
   readonly liveViewers: number;
   readonly liveChannels: number;
   readonly tags: ReadonlyArray<string>;
+}
+
+export interface SearchResult {
+  readonly id: ID;
+  readonly kind: SearchResultKind;
+  readonly slug: string;
+  readonly title: string;
+  readonly subtitle: string;
+  readonly image?: string | null;
+  readonly href: string;
+  readonly metadata: Record<string, unknown>;
+  readonly score: number;
 }
 
 export interface PersonCredit {

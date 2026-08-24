@@ -89,21 +89,73 @@
   letter-spacing: 0.12em;
 }
 
-.ls-search__live-grid {
+.ls-search__results {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 360px));
-  justify-content: start;
-  gap: 24px;
+  max-width: 920px;
+  border-top: 1px solid var(--c-border);
 }
 
-.ls-search__vod-grid {
+.ls-search__result {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 180px));
-  justify-content: start;
-  gap: 28px 16px;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  min-height: 112px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-text);
+  text-decoration: none;
 }
-.ls-search__vod-grid .ls-card {
-  width: 100%;
+.ls-search__result:hover .ls-search__result-title {
+  color: var(--c-accent);
+}
+
+.ls-search__result-image {
+  width: 96px;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  background: var(--c-bg-elevated);
+}
+.ls-search__result-image--empty {
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  color: var(--c-text-muted);
+  border: 1px solid var(--c-border);
+}
+
+.ls-search__result-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ls-search__result-title {
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 550;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 160ms var(--ease-out);
+}
+
+.ls-search__result-subtitle {
+  overflow: hidden;
+  color: var(--c-text-faint);
+  font-size: 13px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-search__result-kind {
+  color: var(--c-text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .ls-search__load-more {
@@ -122,11 +174,22 @@
 }
 
 @media (max-width: 560px) {
-  .ls-search__live-grid {
-    grid-template-columns: 1fr;
+  .ls-search {
+    padding: 40px 20px 64px;
   }
 
-  .ls-search__vod-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .ls-search__result {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 92px;
+  }
+
+  .ls-search__result-image {
+    width: 72px;
+  }
+
+  .ls-search__result-kind {
+    grid-column: 2;
+    justify-self: start;
   }
 }

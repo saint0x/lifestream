@@ -120,6 +120,13 @@
   border: 1px solid var(--c-border);
   flex-shrink: 0;
 }
+.ls-header__result-img--empty {
+  display: grid;
+  place-items: center;
+  color: var(--c-text-muted);
+  background: var(--c-bg-elevated);
+  font-size: 16px;
+}
 .ls-header__result-body {
   min-width: 0;
   flex: 1;

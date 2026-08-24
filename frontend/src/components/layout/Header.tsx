@@ -16,12 +16,10 @@ import {
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
 import { signInWithEmail, signUpWithEmail, startGoogleSignIn } from "@/lib/api";
-import type { ContentItem } from "@/types";
+import type { SearchResult } from "@/types";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { formatViewers } from "@/lib/format";
 import "./Header.css";
 
 export function Header() {
@@ -47,7 +45,7 @@ export function Header() {
   const markNotificationRead = useAppStore((s) => s.markNotificationRead);
   const isGuest =
     user.id.startsWith("guest-") || user.handle.startsWith("guest");
-  const [results, setResults] = useState<ReadonlyArray<ContentItem>>([]);
+  const [results, setResults] = useState<ReadonlyArray<SearchResult>>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
@@ -115,12 +113,31 @@ export function Header() {
     return () => window.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const goToResult = (item: ContentItem) => {
+  const goToResult = (item: SearchResult) => {
     setOpen(false);
     setQuery("");
-    if (item.kind === "series") navigate(`/series/${item.slug}`);
-    else if (item.kind === "film") navigate(`/film/${item.slug}`);
-    else navigate(`/live/${item.slug}`);
+    navigate(item.href);
+  };
+
+  const searchKindLabel = (kind: SearchResult["kind"]) => {
+    switch (kind) {
+      case "series":
+        return "Series";
+      case "film":
+        return "Film";
+      case "live":
+        return "Live";
+      case "episode":
+        return "Episode";
+      case "creator":
+        return "Creator";
+      case "profile":
+        return "Profile";
+      case "category":
+        return "Category";
+      default:
+        return "Result";
+    }
   };
 
   const submitSearch = () => {
@@ -212,38 +229,25 @@ export function Header() {
                       goToResult(item);
                     }}
                   >
-                    <img
-                      src={
-                        item.kind === "live"
-                          ? item.thumbnail
-                          : item.images.thumbnail
-                      }
-                      alt=""
-                      className="ls-header__result-img"
-                    />
+                    {item.image ? (
+                      <img src={item.image} alt="" className="ls-header__result-img" />
+                    ) : (
+                      <span className="ls-header__result-img ls-header__result-img--empty">
+                        {item.title.slice(0, 1)}
+                      </span>
+                    )}
                     <div className="ls-header__result-body">
                       <div className="ls-header__result-title">
                         {item.title}
                       </div>
                       <div className="ls-header__result-meta mono">
-                        {item.kind === "live" ? (
+                        <span>{searchKindLabel(item.kind)}</span>
+                        {item.subtitle ? (
                           <>
-                            <Badge tone="live">LIVE</Badge>
-                            <span>{item.streamer.displayName}</span>
                             <span>·</span>
-                            <span>{formatViewers(item.viewers)} watching</span>
+                            <span>{item.subtitle}</span>
                           </>
-                        ) : (
-                          <>
-                            <span>
-                              {item.kind === "series" ? "Series" : "Film"}
-                            </span>
-                            <span>·</span>
-                            <span>{item.year}</span>
-                            <span>·</span>
-                            <span>{item.genres.slice(0, 2).join(" / ")}</span>
-                          </>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </button>

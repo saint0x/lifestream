@@ -1,16 +1,14 @@
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Search as SearchIcon } from "lucide-react";
 import { repository } from "@/lib/repository";
-import { ContentCard } from "@/components/content/ContentCard";
-import { LiveCard } from "@/components/content/LiveCard";
-import type { ContentItem } from "@/types";
+import type { SearchResult } from "@/types";
 import "./SearchPage.css";
 
 export function SearchPage() {
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") ?? "");
-  const [results, setResults] = useState<ReadonlyArray<ContentItem>>([]);
+  const [results, setResults] = useState<ReadonlyArray<SearchResult>>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,7 +34,7 @@ export function SearchPage() {
     void repository
       .searchRemotePage(q, { limit: pageSize, offset: 0 }, controller.signal)
       .then((payload) => {
-        setResults([...payload.series, ...payload.films, ...payload.liveStreams]);
+        setResults(payload.items);
         setHasMore(payload.hasMore);
       })
       .catch((searchError) => {
@@ -64,12 +62,7 @@ export function SearchPage() {
     void repository
       .searchRemotePage(q, { limit: pageSize, offset: results.length })
       .then((payload) => {
-        setResults((current) => [
-          ...current,
-          ...payload.series,
-          ...payload.films,
-          ...payload.liveStreams,
-        ]);
+        setResults((current) => [...current, ...payload.items]);
         setHasMore(payload.hasMore);
       })
       .catch((searchError) => {
@@ -78,8 +71,26 @@ export function SearchPage() {
       .finally(() => setLoadingMore(false));
   };
 
-  const liveResults = results.filter((r): r is Extract<ContentItem, { kind: "live" }> => r.kind === "live");
-  const vodResults = results.filter((r) => r.kind !== "live");
+  const resultLabel = (kind: SearchResult["kind"]) => {
+    switch (kind) {
+      case "series":
+        return "Series";
+      case "film":
+        return "Film";
+      case "live":
+        return "Live";
+      case "episode":
+        return "Episode";
+      case "creator":
+        return "Creator";
+      case "profile":
+        return "Profile";
+      case "category":
+        return "Category";
+      default:
+        return "Result";
+    }
+  };
 
   return (
     <div className="ls-search">
@@ -124,25 +135,25 @@ export function SearchPage() {
         </div>
       )}
 
-      {liveResults.length > 0 && (
+      {results.length > 0 && (
         <section className="ls-search__section">
-          <div className="ls-search__label mono">Live ({liveResults.length})</div>
-          <div className="ls-search__live-grid">
-            {liveResults.map((s) => (
-              <LiveCard key={s.id} stream={s} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {vodResults.length > 0 && (
-        <section className="ls-search__section">
-          <div className="ls-search__label mono">
-            On-demand ({vodResults.length})
-          </div>
-          <div className="ls-search__vod-grid">
-            {vodResults.map((item) => (
-              <ContentCard key={item.id} item={item} layout="poster" />
+          <div className="ls-search__label mono">Top matches ({results.length})</div>
+          <div className="ls-search__results">
+            {results.map((item) => (
+              <Link key={`${item.kind}-${item.id}`} className="ls-search__result" to={item.href}>
+                {item.image ? (
+                  <img className="ls-search__result-image" src={item.image} alt="" />
+                ) : (
+                  <span className="ls-search__result-image ls-search__result-image--empty">
+                    {item.title.slice(0, 1)}
+                  </span>
+                )}
+                <span className="ls-search__result-copy">
+                  <span className="ls-search__result-title">{item.title}</span>
+                  <span className="ls-search__result-subtitle">{item.subtitle}</span>
+                </span>
+                <span className="ls-search__result-kind mono">{resultLabel(item.kind)}</span>
+              </Link>
             ))}
           </div>
         </section>
