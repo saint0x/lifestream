@@ -5,6 +5,7 @@ pub(super) fn router(state: SharedState) -> Router {
     Router::new()
         .merge(public::routes())
         .merge(me::routes())
+        .merge(advertiser::routes())
         .merge(creator::routes())
         .merge(collabs::routes())
         .merge(ingest::routes())

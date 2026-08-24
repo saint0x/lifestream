@@ -1,0 +1,30 @@
+.ls-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+  min-width: 0;
+}
+.ls-input:focus-within {
+  border-color: var(--c-border-strong);
+  background: var(--c-surface-hi);
+}
+.ls-input__icon {
+  display: inline-flex;
+  color: var(--c-text-faint);
+}
+.ls-input__icon svg { width: 16px; height: 16px; }
+
+.ls-input input {
+  flex: 1;
+  min-width: 0;
+  color: var(--c-text);
+  font-size: 13px;
+}
+
+.ls-input--full { width: 100%; display: flex; }

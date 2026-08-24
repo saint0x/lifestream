@@ -221,6 +221,88 @@ pub struct CreatorMembershipReconciliationReport {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct AdvertiserCompany {
+    pub id: Id,
+    pub name: String,
+    pub industry: String,
+    pub website_url: Option<String>,
+    pub status: String,
+    pub billing_name: String,
+    pub billing_email: String,
+    pub billing_status: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvertiserSeat {
+    pub user_id: Id,
+    pub email: String,
+    pub name: String,
+    pub role: String,
+    pub permissions: Vec<String>,
+    pub status: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvertiserInvite {
+    pub id: Id,
+    pub email: String,
+    pub role: String,
+    pub permissions: Vec<String>,
+    pub status: String,
+    pub invited_by_user_id: Id,
+    pub created_at: String,
+    pub expires_at: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvertiserPermissionPreset {
+    pub role: String,
+    pub label: String,
+    pub permissions: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvertiserAccountResponse {
+    pub company: AdvertiserCompany,
+    pub current_seat: AdvertiserSeat,
+    pub seats: Vec<AdvertiserSeat>,
+    pub invites: Vec<AdvertiserInvite>,
+    pub permission_presets: Vec<AdvertiserPermissionPreset>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAdvertiserCompanyRequest {
+    pub name: String,
+    pub industry: String,
+    pub website_url: Option<String>,
+    pub billing_name: String,
+    pub billing_email: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateAdvertiserInviteRequest {
+    pub email: String,
+    pub name: Option<String>,
+    pub role: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAdvertiserSeatRequest {
+    pub role: String,
+    pub status: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ContentPurchase {
     pub id: Id,
     pub creator_id: Id,

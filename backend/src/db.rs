@@ -5,8 +5,10 @@ use crate::auth::{RequestIdentity, hash_token};
 use crate::config::DatabaseKind;
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    AuthSession, ContinueWatchingEntry, PlaybackSession, ProgressInput, UpdateProfileRequest,
-    UpdateSettingsRequest, User, ViewerEventInput,
+    AdvertiserAccountResponse, AdvertiserCompany, AdvertiserInvite, AdvertiserPermissionPreset,
+    AdvertiserSeat, AuthSession, ContinueWatchingEntry, PlaybackSession, ProgressInput,
+    UpdateAdvertiserCompanyRequest, UpdateProfileRequest, UpdateSettingsRequest, User,
+    ViewerEventInput,
 };
 
 pub struct NewAuthSession<'a> {
@@ -2938,6 +2940,537 @@ fn postgres_playback_session_record_from_row(row: PgRow) -> PlaybackSessionRecor
         expires_at: row.get("expires_at"),
         last_used_at: row.get("last_used_at"),
     }
+}
+
+pub fn advertiser_permissions_for_role(role: &str) -> Option<Vec<String>> {
+    let permissions = match role {
+        "admin" => [
+            "manage_account",
+            "manage_team",
+            "manage_billing",
+            "buy_media",
+            "approve_work",
+            "view_reports",
+        ]
+        .as_slice(),
+        "buyer" => ["buy_media", "approve_work", "view_reports"].as_slice(),
+        "analyst" => ["view_reports"].as_slice(),
+        "reviewer" => ["approve_work"].as_slice(),
+        _ => return None,
+    };
+    Some(permissions.iter().map(|permission| permission.to_string()).collect())
+}
+
+pub fn advertiser_permission_presets() -> Vec<AdvertiserPermissionPreset> {
+    [
+        ("admin", "Admin"),
+        ("buyer", "Buyer"),
+        ("analyst", "Analyst"),
+        ("reviewer", "Reviewer"),
+    ]
+    .into_iter()
+    .filter_map(|(role, label)| {
+        advertiser_permissions_for_role(role).map(|permissions| AdvertiserPermissionPreset {
+            role: role.to_string(),
+            label: label.to_string(),
+            permissions,
+        })
+    })
+    .collect()
+}
+
+impl Database {
+    pub async fn fetch_advertiser_account_for_auth_user(
+        &self,
+        auth_user_id: &str,
+    ) -> AppResult<AdvertiserAccountResponse> {
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                fetch_sqlite_advertiser_account_for_auth_user(pool, auth_user_id).await
+            }
+            DatabaseProvider::Postgres(pool) => {
+                fetch_postgres_advertiser_account_for_auth_user(pool, auth_user_id).await
+            }
+        }
+    }
+
+    pub async fn update_advertiser_company_for_auth_user(
+        &self,
+        auth_user_id: &str,
+        input: &UpdateAdvertiserCompanyRequest,
+        now: &str,
+    ) -> AppResult<AdvertiserAccountResponse> {
+        let account = self.fetch_advertiser_account_for_auth_user(auth_user_id).await?;
+        require_advertiser_permission(&account.current_seat, "manage_account")?;
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                sqlx::query(
+                    r#"
+                    UPDATE ad_marketplace_advertisers
+                    SET name = ?, industry = ?, website_url = ?, updated_at = ?
+                    WHERE id = ?
+                    "#,
+                )
+                .bind(input.name.trim())
+                .bind(input.industry.trim())
+                .bind(input.website_url.as_deref().filter(|value| !value.trim().is_empty()))
+                .bind(now)
+                .bind(&account.company.id)
+                .execute(pool)
+                .await?;
+                sqlx::query(
+                    r#"
+                    INSERT INTO advertiser_billing_profiles (
+                        advertiser_id, billing_name, billing_email, status, created_at, updated_at
+                    ) VALUES (?, ?, ?, 'active', ?, ?)
+                    ON CONFLICT(advertiser_id) DO UPDATE SET
+                        billing_name = excluded.billing_name,
+                        billing_email = excluded.billing_email,
+                        updated_at = excluded.updated_at
+                    "#,
+                )
+                .bind(&account.company.id)
+                .bind(input.billing_name.trim())
+                .bind(input.billing_email.trim())
+                .bind(now)
+                .bind(now)
+                .execute(pool)
+                .await?;
+            }
+            DatabaseProvider::Postgres(pool) => {
+                sqlx::query(
+                    r#"
+                    UPDATE ad_marketplace_advertisers
+                    SET name = $1, industry = $2, website_url = $3, updated_at = $4
+                    WHERE id = $5
+                    "#,
+                )
+                .bind(input.name.trim())
+                .bind(input.industry.trim())
+                .bind(input.website_url.as_deref().filter(|value| !value.trim().is_empty()))
+                .bind(now)
+                .bind(&account.company.id)
+                .execute(pool)
+                .await?;
+                sqlx::query(
+                    r#"
+                    INSERT INTO advertiser_billing_profiles (
+                        advertiser_id, billing_name, billing_email, status, created_at, updated_at
+                    ) VALUES ($1, $2, $3, 'active', $4, $5)
+                    ON CONFLICT(advertiser_id) DO UPDATE SET
+                        billing_name = excluded.billing_name,
+                        billing_email = excluded.billing_email,
+                        updated_at = excluded.updated_at
+                    "#,
+                )
+                .bind(&account.company.id)
+                .bind(input.billing_name.trim())
+                .bind(input.billing_email.trim())
+                .bind(now)
+                .bind(now)
+                .execute(pool)
+                .await?;
+            }
+        }
+        self.fetch_advertiser_account_for_auth_user(auth_user_id).await
+    }
+
+    pub async fn create_advertiser_invite_for_auth_user(
+        &self,
+        auth_user_id: &str,
+        invite_id: &str,
+        email: &str,
+        role: &str,
+        token_hash: &str,
+        now: &str,
+        expires_at: &str,
+    ) -> AppResult<AdvertiserAccountResponse> {
+        let permissions = advertiser_permissions_for_role(role)
+            .ok_or_else(|| AppError::BadRequest(format!("unsupported advertiser role `{role}`")))?;
+        let permissions_json = serde_json::to_string(&permissions)?;
+        let account = self.fetch_advertiser_account_for_auth_user(auth_user_id).await?;
+        require_advertiser_permission(&account.current_seat, "manage_team")?;
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                sqlx::query(
+                    r#"
+                    INSERT INTO advertiser_invites (
+                        id, advertiser_id, email, role, permissions_json, status,
+                        invited_by_user_id, token_hash, created_at, expires_at
+                    ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+                    "#,
+                )
+                .bind(invite_id)
+                .bind(&account.company.id)
+                .bind(email.trim().to_lowercase())
+                .bind(role)
+                .bind(&permissions_json)
+                .bind(&account.current_seat.user_id)
+                .bind(token_hash)
+                .bind(now)
+                .bind(expires_at)
+                .execute(pool)
+                .await?;
+            }
+            DatabaseProvider::Postgres(pool) => {
+                sqlx::query(
+                    r#"
+                    INSERT INTO advertiser_invites (
+                        id, advertiser_id, email, role, permissions_json, status,
+                        invited_by_user_id, token_hash, created_at, expires_at
+                    ) VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)
+                    "#,
+                )
+                .bind(invite_id)
+                .bind(&account.company.id)
+                .bind(email.trim().to_lowercase())
+                .bind(role)
+                .bind(&permissions_json)
+                .bind(&account.current_seat.user_id)
+                .bind(token_hash)
+                .bind(now)
+                .bind(expires_at)
+                .execute(pool)
+                .await?;
+            }
+        }
+        self.fetch_advertiser_account_for_auth_user(auth_user_id).await
+    }
+
+    pub async fn update_advertiser_seat_for_auth_user(
+        &self,
+        auth_user_id: &str,
+        target_user_id: &str,
+        role: &str,
+        status: Option<&str>,
+        now: &str,
+    ) -> AppResult<AdvertiserAccountResponse> {
+        let permissions = advertiser_permissions_for_role(role)
+            .ok_or_else(|| AppError::BadRequest(format!("unsupported advertiser role `{role}`")))?;
+        let permissions_json = serde_json::to_string(&permissions)?;
+        let account = self.fetch_advertiser_account_for_auth_user(auth_user_id).await?;
+        require_advertiser_permission(&account.current_seat, "manage_team")?;
+        let status = status.unwrap_or("active");
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                let result = sqlx::query(
+                    r#"
+                    UPDATE advertiser_memberships
+                    SET role = ?, permissions_json = ?, status = ?, updated_at = ?
+                    WHERE advertiser_id = ? AND user_id = ?
+                    "#,
+                )
+                .bind(role)
+                .bind(&permissions_json)
+                .bind(status)
+                .bind(now)
+                .bind(&account.company.id)
+                .bind(target_user_id)
+                .execute(pool)
+                .await?;
+                if result.rows_affected() == 0 {
+                    return Err(AppError::NotFound);
+                }
+            }
+            DatabaseProvider::Postgres(pool) => {
+                let result = sqlx::query(
+                    r#"
+                    UPDATE advertiser_memberships
+                    SET role = $1, permissions_json = $2, status = $3, updated_at = $4
+                    WHERE advertiser_id = $5 AND user_id = $6
+                    "#,
+                )
+                .bind(role)
+                .bind(&permissions_json)
+                .bind(status)
+                .bind(now)
+                .bind(&account.company.id)
+                .bind(target_user_id)
+                .execute(pool)
+                .await?;
+                if result.rows_affected() == 0 {
+                    return Err(AppError::NotFound);
+                }
+            }
+        }
+        self.fetch_advertiser_account_for_auth_user(auth_user_id).await
+    }
+}
+
+fn require_advertiser_permission(seat: &AdvertiserSeat, permission: &str) -> AppResult<()> {
+    if seat.permissions.iter().any(|value| value == permission) {
+        Ok(())
+    } else {
+        Err(AppError::Forbidden)
+    }
+}
+
+async fn fetch_sqlite_advertiser_account_for_auth_user(
+    pool: &SqlitePool,
+    auth_user_id: &str,
+) -> AppResult<AdvertiserAccountResponse> {
+    let current = sqlx::query(
+        r#"
+        SELECT au.id AS user_id, au.email, au.name, am.role, am.permissions_json, am.status,
+               am.created_at, am.updated_at, adv.id AS advertiser_id
+        FROM advertiser_users au
+        JOIN advertiser_memberships am ON am.user_id = au.id
+        JOIN ad_marketplace_advertisers adv ON adv.id = am.advertiser_id
+        WHERE au.auth_user_id = ? AND au.status != 'disabled' AND am.status = 'active'
+        ORDER BY am.created_at ASC
+        LIMIT 1
+        "#,
+    )
+    .bind(auth_user_id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::Forbidden)?;
+    let advertiser_id: String = current.get("advertiser_id");
+    let current_seat = sqlite_advertiser_seat_from_row(&current)?;
+    let company = fetch_sqlite_advertiser_company(pool, &advertiser_id).await?;
+    let seats = fetch_sqlite_advertiser_seats(pool, &advertiser_id).await?;
+    let invites = fetch_sqlite_advertiser_invites(pool, &advertiser_id).await?;
+    Ok(AdvertiserAccountResponse {
+        company,
+        current_seat,
+        seats,
+        invites,
+        permission_presets: advertiser_permission_presets(),
+    })
+}
+
+async fn fetch_postgres_advertiser_account_for_auth_user(
+    pool: &PgPool,
+    auth_user_id: &str,
+) -> AppResult<AdvertiserAccountResponse> {
+    let current = sqlx::query(
+        r#"
+        SELECT au.id AS user_id, au.email, au.name, am.role, am.permissions_json, am.status,
+               am.created_at, am.updated_at, adv.id AS advertiser_id
+        FROM advertiser_users au
+        JOIN advertiser_memberships am ON am.user_id = au.id
+        JOIN ad_marketplace_advertisers adv ON adv.id = am.advertiser_id
+        WHERE au.auth_user_id = $1 AND au.status != 'disabled' AND am.status = 'active'
+        ORDER BY am.created_at ASC
+        LIMIT 1
+        "#,
+    )
+    .bind(auth_user_id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::Forbidden)?;
+    let advertiser_id: String = current.get("advertiser_id");
+    let current_seat = postgres_advertiser_seat_from_row(&current)?;
+    let company = fetch_postgres_advertiser_company(pool, &advertiser_id).await?;
+    let seats = fetch_postgres_advertiser_seats(pool, &advertiser_id).await?;
+    let invites = fetch_postgres_advertiser_invites(pool, &advertiser_id).await?;
+    Ok(AdvertiserAccountResponse {
+        company,
+        current_seat,
+        seats,
+        invites,
+        permission_presets: advertiser_permission_presets(),
+    })
+}
+
+async fn fetch_sqlite_advertiser_company(
+    pool: &SqlitePool,
+    advertiser_id: &str,
+) -> AppResult<AdvertiserCompany> {
+    let row = sqlx::query(
+        r#"
+        SELECT adv.id, adv.name, adv.industry, adv.website_url, adv.status,
+               COALESCE(bp.billing_name, adv.name) AS billing_name,
+               COALESCE(bp.billing_email, '') AS billing_email,
+               COALESCE(bp.status, 'missing') AS billing_status
+        FROM ad_marketplace_advertisers adv
+        LEFT JOIN advertiser_billing_profiles bp ON bp.advertiser_id = adv.id
+        WHERE adv.id = ?
+        "#,
+    )
+    .bind(advertiser_id)
+    .fetch_one(pool)
+    .await?;
+    Ok(sqlite_advertiser_company_from_row(&row))
+}
+
+async fn fetch_postgres_advertiser_company(
+    pool: &PgPool,
+    advertiser_id: &str,
+) -> AppResult<AdvertiserCompany> {
+    let row = sqlx::query(
+        r#"
+        SELECT adv.id, adv.name, adv.industry, adv.website_url, adv.status,
+               COALESCE(bp.billing_name, adv.name) AS billing_name,
+               COALESCE(bp.billing_email, '') AS billing_email,
+               COALESCE(bp.status, 'missing') AS billing_status
+        FROM ad_marketplace_advertisers adv
+        LEFT JOIN advertiser_billing_profiles bp ON bp.advertiser_id = adv.id
+        WHERE adv.id = $1
+        "#,
+    )
+    .bind(advertiser_id)
+    .fetch_one(pool)
+    .await?;
+    Ok(postgres_advertiser_company_from_row(&row))
+}
+
+async fn fetch_sqlite_advertiser_seats(
+    pool: &SqlitePool,
+    advertiser_id: &str,
+) -> AppResult<Vec<AdvertiserSeat>> {
+    let rows = sqlx::query(
+        r#"
+        SELECT au.id AS user_id, au.email, au.name, am.role, am.permissions_json, am.status,
+               am.created_at, am.updated_at
+        FROM advertiser_memberships am
+        JOIN advertiser_users au ON au.id = am.user_id
+        WHERE am.advertiser_id = ?
+        ORDER BY CASE am.role WHEN 'admin' THEN 0 WHEN 'buyer' THEN 1 WHEN 'analyst' THEN 2 ELSE 3 END, au.name ASC
+        "#,
+    )
+    .bind(advertiser_id)
+    .fetch_all(pool)
+    .await?;
+    rows.iter().map(sqlite_advertiser_seat_from_row).collect()
+}
+
+async fn fetch_postgres_advertiser_seats(
+    pool: &PgPool,
+    advertiser_id: &str,
+) -> AppResult<Vec<AdvertiserSeat>> {
+    let rows = sqlx::query(
+        r#"
+        SELECT au.id AS user_id, au.email, au.name, am.role, am.permissions_json, am.status,
+               am.created_at, am.updated_at
+        FROM advertiser_memberships am
+        JOIN advertiser_users au ON au.id = am.user_id
+        WHERE am.advertiser_id = $1
+        ORDER BY CASE am.role WHEN 'admin' THEN 0 WHEN 'buyer' THEN 1 WHEN 'analyst' THEN 2 ELSE 3 END, au.name ASC
+        "#,
+    )
+    .bind(advertiser_id)
+    .fetch_all(pool)
+    .await?;
+    rows.iter().map(postgres_advertiser_seat_from_row).collect()
+}
+
+async fn fetch_sqlite_advertiser_invites(
+    pool: &SqlitePool,
+    advertiser_id: &str,
+) -> AppResult<Vec<AdvertiserInvite>> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, email, role, permissions_json, status, invited_by_user_id, created_at, expires_at
+        FROM advertiser_invites
+        WHERE advertiser_id = ? AND status = 'pending'
+        ORDER BY created_at DESC
+        "#,
+    )
+    .bind(advertiser_id)
+    .fetch_all(pool)
+    .await?;
+    rows.iter().map(sqlite_advertiser_invite_from_row).collect()
+}
+
+async fn fetch_postgres_advertiser_invites(
+    pool: &PgPool,
+    advertiser_id: &str,
+) -> AppResult<Vec<AdvertiserInvite>> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, email, role, permissions_json, status, invited_by_user_id, created_at, expires_at
+        FROM advertiser_invites
+        WHERE advertiser_id = $1 AND status = 'pending'
+        ORDER BY created_at DESC
+        "#,
+    )
+    .bind(advertiser_id)
+    .fetch_all(pool)
+    .await?;
+    rows.iter().map(postgres_advertiser_invite_from_row).collect()
+}
+
+fn permissions_from_json(value: String) -> AppResult<Vec<String>> {
+    Ok(serde_json::from_str::<Vec<String>>(&value)?)
+}
+
+fn sqlite_advertiser_company_from_row(row: &SqliteRow) -> AdvertiserCompany {
+    AdvertiserCompany {
+        id: row.get("id"),
+        name: row.get("name"),
+        industry: row.get("industry"),
+        website_url: row.get("website_url"),
+        status: row.get("status"),
+        billing_name: row.get("billing_name"),
+        billing_email: row.get("billing_email"),
+        billing_status: row.get("billing_status"),
+    }
+}
+
+fn postgres_advertiser_company_from_row(row: &PgRow) -> AdvertiserCompany {
+    AdvertiserCompany {
+        id: row.get("id"),
+        name: row.get("name"),
+        industry: row.get("industry"),
+        website_url: row.get("website_url"),
+        status: row.get("status"),
+        billing_name: row.get("billing_name"),
+        billing_email: row.get("billing_email"),
+        billing_status: row.get("billing_status"),
+    }
+}
+
+fn sqlite_advertiser_seat_from_row(row: &SqliteRow) -> AppResult<AdvertiserSeat> {
+    Ok(AdvertiserSeat {
+        user_id: row.get("user_id"),
+        email: row.get("email"),
+        name: row.get("name"),
+        role: row.get("role"),
+        permissions: permissions_from_json(row.get("permissions_json"))?,
+        status: row.get("status"),
+        created_at: row.get("created_at"),
+        updated_at: row.get("updated_at"),
+    })
+}
+
+fn postgres_advertiser_seat_from_row(row: &PgRow) -> AppResult<AdvertiserSeat> {
+    Ok(AdvertiserSeat {
+        user_id: row.get("user_id"),
+        email: row.get("email"),
+        name: row.get("name"),
+        role: row.get("role"),
+        permissions: permissions_from_json(row.get("permissions_json"))?,
+        status: row.get("status"),
+        created_at: row.get("created_at"),
+        updated_at: row.get("updated_at"),
+    })
+}
+
+fn sqlite_advertiser_invite_from_row(row: &SqliteRow) -> AppResult<AdvertiserInvite> {
+    Ok(AdvertiserInvite {
+        id: row.get("id"),
+        email: row.get("email"),
+        role: row.get("role"),
+        permissions: permissions_from_json(row.get("permissions_json"))?,
+        status: row.get("status"),
+        invited_by_user_id: row.get("invited_by_user_id"),
+        created_at: row.get("created_at"),
+        expires_at: row.get("expires_at"),
+    })
+}
+
+fn postgres_advertiser_invite_from_row(row: &PgRow) -> AppResult<AdvertiserInvite> {
+    Ok(AdvertiserInvite {
+        id: row.get("id"),
+        email: row.get("email"),
+        role: row.get("role"),
+        permissions: permissions_from_json(row.get("permissions_json"))?,
+        status: row.get("status"),
+        invited_by_user_id: row.get("invited_by_user_id"),
+        created_at: row.get("created_at"),
+        expires_at: row.get("expires_at"),
+    })
 }
 
 #[cfg(test)]

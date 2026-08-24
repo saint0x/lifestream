@@ -102,6 +102,7 @@ use public::{SearchQuery, search};
 use public::{get_my_person_profile, get_person_profile, update_my_person_profile};
 
 mod admin_ops;
+mod advertiser;
 mod api_runtime;
 mod api_surface;
 mod app_request;

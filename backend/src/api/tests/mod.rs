@@ -4,6 +4,7 @@ mod support;
 use support::*;
 
 mod ad_marketplace;
+mod advertiser_account;
 mod catalog_public;
 mod collaboration_invites;
 mod collaboration_presence;

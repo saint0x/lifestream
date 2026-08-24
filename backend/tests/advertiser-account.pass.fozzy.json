@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "advertiser-account-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "advertiser_admin_can_manage_company_profile_and_invites",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "advertiser_admin_can_manage_company_profile_and_invites",
+        "--quiet"
+      ],
+      "expect_exit": 0
+    }
+  ]
+}
