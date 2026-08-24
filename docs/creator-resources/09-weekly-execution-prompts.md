@@ -211,3 +211,4 @@ If your AI tool can read linked files, ask it to review these before answering.
 - [Episode Quality Prompts](./03-episode-quality-prompts.md)
 - [Distribution And Growth Prompts](./05-distribution-and-growth-prompts.md)
 - [Return Viewer Prompts](./06-return-viewer-prompts.md)
+- [Advertiser Value Prompts](./10-advertiser-value-prompts.md)

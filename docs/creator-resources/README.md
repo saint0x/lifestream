@@ -110,6 +110,7 @@ The prompts are intentionally direct. They are designed to remove limiting belie
 - [Vanta Profile Prompts](./07-vanta-profile-prompts.md)
 - [AI Production Prompts](./08-ai-production-prompts.md)
 - [Weekly Execution Prompts](./09-weekly-execution-prompts.md)
+- [Advertiser Value Prompts](./10-advertiser-value-prompts.md)
 
 ## Non-Negotiable Standard
 
@@ -128,3 +129,4 @@ If your AI tool can read linked files, ask it to review these before answering.
 - [Advertising Marketplace](../business/advertising-marketplace.md)
 - [Vanta Taste Protocol](../taste-protocol/README.md)
 - [Creator Operating System Prompt](./01-creator-operating-system-prompt.md)
+- [Advertiser Value Prompts](./10-advertiser-value-prompts.md)
