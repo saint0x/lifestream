@@ -87,6 +87,15 @@ function nullableUrl(value: string): string | null {
   return trimmed ? trimmed : null;
 }
 
+function profileInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "V";
+}
+
 function payloadFromForm(form: PersonForm): UpdatePersonProfileRequest {
   return {
     slug: form.slug,
@@ -272,16 +281,25 @@ export function ProfilePage() {
   ];
   const profileUrlPath = profile.profileUrlPath || `/@${profile.slug}`;
   const profileUrl = new URL(profileUrlPath, window.location.origin).href;
+  const heroStyle = profile.heroImage || profile.avatar
+    ? { backgroundImage: `url(${profile.heroImage || profile.avatar})` }
+    : undefined;
 
   return (
     <div className="ls-profile">
       <section
         className="ls-profile__hero"
-        style={{ backgroundImage: `url(${profile.heroImage || profile.avatar})` }}
+        style={heroStyle}
       >
         <div className="ls-profile__hero-scrim" />
         <div className="ls-profile__identity">
-          <img className="ls-profile__avatar" src={profile.avatar} alt="" />
+          {profile.avatar ? (
+            <img className="ls-profile__avatar" src={profile.avatar} alt="" />
+          ) : (
+            <div className="ls-profile__avatar ls-profile__avatar--fallback">
+              {profileInitials(profile.displayName)}
+            </div>
+          )}
           <div className="ls-profile__intro">
             <div className="ls-profile__kicker mono">
               {isOwnProfile ? "your public profile" : "person profile"}

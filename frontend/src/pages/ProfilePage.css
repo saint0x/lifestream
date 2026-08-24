@@ -44,6 +44,16 @@
   background: var(--c-surface);
 }
 
+.ls-profile__avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text);
+  font-size: clamp(30px, 5vw, 54px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 .ls-profile__intro {
   min-width: 0;
 }
