@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Activity,
   BarChart3,
@@ -198,6 +199,7 @@ function TopContentRow({ item }: { readonly item: TopContent }) {
 }
 
 export function StudioPage() {
+  const navigate = useNavigate();
   const [view, setView] = useState<StudioView>("stream");
   const [broadcasts, setBroadcasts] = useState<ReadonlyArray<Broadcast>>([]);
   const [creatorUploads, setCreatorUploads] = useState<ReadonlyArray<Upload>>([]);
@@ -325,11 +327,6 @@ export function StudioPage() {
 
   const updatePublishField = (field: keyof PublishForm, value: string) => {
     setPublishForm((current) => ({ ...current, [field]: value }));
-  };
-
-  const openFutureTool = (toolName: string) => {
-    setStatus(`${toolName} is queued for the next studio module.`);
-    setError(null);
   };
 
   const createJob = async () => {
@@ -570,7 +567,7 @@ export function StudioPage() {
             ? "Scene layout, clips, show notes, and broadcast packaging."
             : "Episode cuts, seasons, credits, release windows, and metadata polish."}
           action="Open hub"
-          onClick={() => openFutureTool(view === "stream" ? "Streaming editing hub" : "Series editing hub")}
+          onClick={() => navigate(view === "stream" ? "/studio/tool/stream-editor" : "/studio/tool/series-editor")}
         />
         <ToolCard
           icon={view === "stream" ? <MessageSquare size={18} strokeWidth={1.75} /> : <FolderOpen size={18} strokeWidth={1.75} />}
@@ -579,7 +576,7 @@ export function StudioPage() {
             ? "Audience pulse, chat moderation, live tips, and stream health."
             : "Browse source files, processed media, thumbnails, captions, and delivery assets."}
           action="Open"
-          onClick={() => openFutureTool(view === "stream" ? "Live operations console" : "File manager")}
+          onClick={() => navigate(view === "stream" ? "/studio/tool/live-ops" : "/studio/tool/file-manager")}
         />
       </section>
 

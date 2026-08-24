@@ -16,6 +16,7 @@ import { FollowingPage } from "@/pages/FollowingPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StudioPage } from "@/pages/StudioPage";
+import { StudioToolPage } from "@/pages/StudioToolPage";
 import { AdHubPage } from "@/pages/AdHubPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { ViewerAnalytics } from "@/components/analytics/ViewerAnalytics";
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
         element: <CreatorRoute />,
         children: [
           { path: "/studio", element: <StudioPage /> },
+          { path: "/studio/tool/:tool", element: <StudioToolPage /> },
           { path: "/ad-hub", element: <AdHubPage /> },
         ],
       },
