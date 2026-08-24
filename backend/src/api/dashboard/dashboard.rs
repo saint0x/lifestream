@@ -721,21 +721,35 @@ async fn fetch_postgres_traffic_sources(
 ) -> AppResult<Vec<TrafficSource>> {
     let rows = sqlx::query(
         r#"
-        SELECT source, sessions::BIGINT AS sessions, share::DOUBLE PRECISION AS share
-        FROM traffic_sources
-        WHERE creator_id = $1
+        SELECT
+            COALESCE(lvs.attribution_source, 'direct') AS source,
+            COUNT(*)::BIGINT AS sessions
+        FROM live_viewer_sessions lvs
+        JOIN live_streams ls ON ls.id = lvs.stream_id
+        JOIN streamers s ON s.id = ls.streamer_id
+        JOIN creator_profiles cp ON cp.handle = s.handle
+        WHERE cp.id = $1
+        GROUP BY COALESCE(lvs.attribution_source, 'direct')
         ORDER BY sessions DESC
         "#,
     )
     .bind(creator_id)
     .fetch_all(pool)
     .await?;
+    let total_sessions = rows
+        .iter()
+        .map(|row| row.get::<i64, _>("sessions"))
+        .sum::<i64>()
+        .max(1);
     Ok(rows
         .into_iter()
-        .map(|row| TrafficSource {
-            source: row.get("source"),
-            sessions: row.get("sessions"),
-            share: row.get("share"),
+        .map(|row| {
+            let sessions = row.get::<i64, _>("sessions");
+            TrafficSource {
+                source: row.get("source"),
+                sessions,
+                share: sessions as f64 / total_sessions as f64,
+            }
         })
         .collect())
 }
