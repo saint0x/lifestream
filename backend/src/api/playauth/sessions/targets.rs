@@ -7,6 +7,23 @@ pub(crate) async fn fetch_upload_playback_target(
     pool: &SqlitePool,
     upload_id: &str,
 ) -> AppResult<UploadPlaybackTarget> {
+    fetch_sqlite_upload_playback_target(pool, upload_id).await
+}
+
+pub(crate) async fn fetch_upload_playback_target_for_database(
+    database: &crate::db::Database,
+    upload_id: &str,
+) -> AppResult<UploadPlaybackTarget> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        return fetch_postgres_upload_playback_target(pool, upload_id).await;
+    }
+    fetch_sqlite_upload_playback_target(database.try_sqlite_adapter()?, upload_id).await
+}
+
+async fn fetch_sqlite_upload_playback_target(
+    pool: &SqlitePool,
+    upload_id: &str,
+) -> AppResult<UploadPlaybackTarget> {
     let row = sqlx::query(
         r#"
         SELECT creator_id
@@ -30,6 +47,97 @@ pub(crate) async fn fetch_upload_playback_target(
         creator_id,
         upload,
         asset,
+    })
+}
+
+async fn fetch_postgres_upload_playback_target(
+    pool: &sqlx::PgPool,
+    upload_id: &str,
+) -> AppResult<UploadPlaybackTarget> {
+    let row = sqlx::query(
+        r#"
+        SELECT creator_id
+        FROM uploads
+        WHERE id = $1
+        "#,
+    )
+    .bind(upload_id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    let creator_id: String = row.get("creator_id");
+    let upload = fetch_postgres_upload_by_id(pool, &creator_id, upload_id).await?;
+    let asset = fetch_media_asset_by_upload_id_for_database(
+        &crate::db::Database::from_postgres(pool.clone()),
+        &creator_id,
+        upload_id,
+    )
+    .await?;
+    if asset.status != "ready" && asset.status != "published" {
+        return Err(AppError::BadRequest(
+            "asset is not ready for playback".to_string(),
+        ));
+    }
+    Ok(UploadPlaybackTarget {
+        creator_id,
+        upload,
+        asset,
+    })
+}
+
+async fn fetch_postgres_upload_by_id(
+    pool: &sqlx::PgPool,
+    creator_id: &str,
+    upload_id: &str,
+) -> AppResult<Upload> {
+    let row = sqlx::query(
+        r#"
+        SELECT id, slug, title, description, kind, duration_sec::BIGINT AS duration_sec,
+               uploaded_at, published_at, release_at, status, visibility, access_policy,
+               access_tier_id, price_cents::BIGINT AS price_cents, currency,
+               rental_window_hours::BIGINT AS rental_window_hours,
+               views::BIGINT AS views, likes::BIGINT AS likes, comments::BIGINT AS comments,
+               watch_hours::BIGINT AS watch_hours, thumbnail, series_title,
+               season_number::BIGINT AS season_number, episode_number::BIGINT AS episode_number,
+               size_bytes::BIGINT AS size_bytes, resolution,
+               transcode_progress::DOUBLE PRECISION AS transcode_progress
+        FROM uploads
+        WHERE creator_id = $1 AND id = $2
+        "#,
+    )
+    .bind(creator_id)
+    .bind(upload_id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    Ok(Upload {
+        id: row.get("id"),
+        slug: row.get("slug"),
+        title: row.get("title"),
+        description: row.get("description"),
+        kind: row.get("kind"),
+        duration_sec: row.get("duration_sec"),
+        uploaded_at: row.get("uploaded_at"),
+        published_at: row.get("published_at"),
+        release_at: row.get("release_at"),
+        status: row.get("status"),
+        visibility: row.get("visibility"),
+        access_policy: row.get("access_policy"),
+        access_tier_id: row.get("access_tier_id"),
+        price_cents: row.get("price_cents"),
+        currency: row.get("currency"),
+        rental_window_hours: row.get("rental_window_hours"),
+        views: row.get("views"),
+        likes: row.get("likes"),
+        comments: row.get("comments"),
+        watch_hours: row.get("watch_hours"),
+        thumbnail: row.get("thumbnail"),
+        series_title: row.get("series_title"),
+        season_number: row.get("season_number"),
+        episode_number: row.get("episode_number"),
+        size_bytes: row.get("size_bytes"),
+        resolution: row.get("resolution"),
+        transcode_progress: row.get("transcode_progress"),
     })
 }
 

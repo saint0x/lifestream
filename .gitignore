@@ -2,6 +2,7 @@
 
 .fozzy/
 .dev/
+.wrangler/
 /artifacts/
 
 node_modules/

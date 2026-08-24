@@ -11,7 +11,8 @@ pub(crate) use reconciliation::{
     reconcile_playback_sessions_for_user, reconcile_single_playback_session,
 };
 pub(crate) use targets::{
-    fetch_live_stream_playback_target, fetch_upload_playback_target, playback_session_from_record,
+    fetch_live_stream_playback_target, fetch_upload_playback_target,
+    fetch_upload_playback_target_for_database, playback_session_from_record,
 };
 pub(crate) use validation::{
     fetch_playback_session_record_by_id, validate_existing_playback_session_access,

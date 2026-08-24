@@ -184,6 +184,17 @@ pub(crate) async fn fetch_media_asset_by_upload_id(
     media_asset_from_row(pool, creator_id, row).await
 }
 
+pub(crate) async fn fetch_media_asset_by_upload_id_for_database(
+    database: &crate::db::Database,
+    creator_id: &str,
+    upload_id: &str,
+) -> AppResult<MediaAsset> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        return fetch_postgres_media_asset_by_upload_id(pool, creator_id, upload_id).await;
+    }
+    fetch_media_asset_by_upload_id(database.try_sqlite_adapter()?, creator_id, upload_id).await
+}
+
 pub(crate) async fn fetch_media_asset_by_id_any_creator(
     pool: &SqlitePool,
     asset_id: &str,
@@ -365,6 +376,22 @@ async fn fetch_postgres_media_asset_by_upload_job(
     let row = sqlx::query(&query)
         .bind(creator_id)
         .bind(job_id)
+        .fetch_optional(pool)
+        .await?
+        .ok_or(AppError::NotFound)?;
+
+    postgres_media_asset_from_row(pool, creator_id, row).await
+}
+
+async fn fetch_postgres_media_asset_by_upload_id(
+    pool: &sqlx::PgPool,
+    creator_id: &str,
+    upload_id: &str,
+) -> AppResult<MediaAsset> {
+    let query = postgres_media_asset_select("WHERE creator_id = $1 AND upload_id = $2");
+    let row = sqlx::query(&query)
+        .bind(creator_id)
+        .bind(upload_id)
         .fetch_optional(pool)
         .await?
         .ok_or(AppError::NotFound)?;

@@ -12,7 +12,7 @@ pub(crate) async fn get_playback_manifest(
             .await?
             .playback_relative_path
     } else {
-        fetch_upload_playback_target(state.db.try_sqlite_adapter()?, &session.content_id)
+        fetch_upload_playback_target_for_database(&state.db, &session.content_id)
             .await?
             .asset
             .playback_path

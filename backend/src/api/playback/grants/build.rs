@@ -34,8 +34,7 @@ pub(crate) async fn build_playback_grant_from_session_record(
         .await;
     }
 
-    let target =
-        fetch_upload_playback_target(state.db.try_sqlite_adapter()?, &session.content_id).await?;
+    let target = fetch_upload_playback_target_for_database(&state.db, &session.content_id).await?;
     build_upload_playback_grant(
         state,
         &target,
@@ -199,8 +198,8 @@ async fn build_playback_grant_tracks(
 ) -> AppResult<PlaybackGrantTracks> {
     let user_id = maybe_identity.map(|identity| identity.user_id.as_str());
     let (preferences, preview_track_rows) = tokio::try_join!(
-        fetch_user_playback_preferences(state.db.try_sqlite_adapter()?, user_id),
-        fetch_media_preview_track_rows(state.db.try_sqlite_adapter()?, asset_id),
+        fetch_user_playback_preferences_for_database(&state.db, user_id),
+        fetch_media_preview_track_rows_for_database(&state.db, asset_id),
     )?;
     let playback_media_url = |relative_path: &str| {
         state

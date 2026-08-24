@@ -262,13 +262,14 @@ use media::pipeline::{
     HlsVariantPlan, ProbedAudioStream, ProbedMedia, StoredMediaPreviewTrack,
     ensure_media_asset_shell_for_database, fetch_admin_media_job_record, fetch_admin_media_jobs,
     fetch_media_asset_by_id_any_creator, fetch_media_asset_by_upload_id,
-    fetch_media_asset_by_upload_job_for_database, fetch_media_asset_variants, fetch_media_assets,
-    fetch_media_assets_for_database, fetch_media_preview_track_rows, fetch_pending_media_jobs,
-    fetch_upload_ingest_session, fetch_upload_ingest_sessions, fetch_upload_job_by_id,
-    fetch_upload_job_by_id_global, fetch_upload_job_creator_id, fetch_upload_jobs,
-    plan_hls_variants, publish_due_scheduled_upload_releases, reconcile_single_media_job,
-    reconcile_stale_media_processing_jobs, requeue_media_job_for_processing,
-    schedule_media_processing,
+    fetch_media_asset_by_upload_id_for_database, fetch_media_asset_by_upload_job_for_database,
+    fetch_media_asset_variants, fetch_media_assets, fetch_media_assets_for_database,
+    fetch_media_preview_track_rows, fetch_media_preview_track_rows_for_database,
+    fetch_pending_media_jobs, fetch_upload_ingest_session, fetch_upload_ingest_sessions,
+    fetch_upload_job_by_id, fetch_upload_job_by_id_global, fetch_upload_job_creator_id,
+    fetch_upload_jobs, plan_hls_variants, publish_due_scheduled_upload_releases,
+    reconcile_single_media_job, reconcile_stale_media_processing_jobs,
+    requeue_media_job_for_processing, schedule_media_processing,
 };
 #[cfg(test)]
 use mirror::fetch_collaboration_mirror_grant_by_id;
@@ -299,13 +300,15 @@ use notifications::{
     fetch_notifications_rows, reconcile_single_notification_delivery,
 };
 pub(crate) use playauth::PlaybackSessionRecord;
+#[cfg(test)]
+use playauth::fetch_upload_playback_target;
 use playauth::{
     build_media_audio_tracks, build_media_caption_tracks, build_media_preview_tracks,
     default_audio_track_id, default_caption_track_id, default_preview_track_id,
     expire_playback_session_by_id, expire_playback_sessions_for_upload,
     fetch_active_creator_membership, fetch_live_stream_playback_target,
-    fetch_playback_session_record_by_id, fetch_upload_playback_target,
-    fetch_user_playback_preferences, playback_session_from_record,
+    fetch_playback_session_record_by_id, fetch_upload_playback_target_for_database,
+    fetch_user_playback_preferences_for_database, playback_session_from_record,
     reconcile_invalid_playback_sessions, reconcile_playback_sessions_for_read,
     reconcile_playback_sessions_for_user, reconcile_single_playback_session,
     resolve_upload_access_terms, resolve_upload_playback_access,

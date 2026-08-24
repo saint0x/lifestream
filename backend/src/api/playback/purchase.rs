@@ -29,7 +29,7 @@ async fn purchase_content_access_for_id(
         Duration::from_secs(60),
     )
     .await?;
-    let target = fetch_upload_playback_target(state.db.try_sqlite_adapter()?, &content_id).await?;
+    let target = fetch_upload_playback_target_for_database(&state.db, &content_id).await?;
     let terms = resolve_upload_access_terms(
         Some(target.upload.access_policy.clone()),
         target.upload.access_tier_id.clone(),

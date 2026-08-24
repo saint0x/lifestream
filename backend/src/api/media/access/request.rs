@@ -529,8 +529,7 @@ pub(crate) async fn authorize_media_request(
         return Ok(());
     }
 
-    let target =
-        fetch_upload_playback_target(state.db.try_sqlite_adapter()?, &session.content_id).await?;
+    let target = fetch_upload_playback_target_for_database(&state.db, &session.content_id).await?;
     if playback_path_allowed_for_asset(&target.asset, relative_path) {
         Ok(())
     } else {

@@ -139,6 +139,54 @@ pub(crate) async fn fetch_media_preview_track_rows(
         .collect())
 }
 
+pub(crate) async fn fetch_media_preview_track_rows_for_database(
+    database: &crate::db::Database,
+    asset_id: &str,
+) -> AppResult<Vec<StoredMediaPreviewTrack>> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        return fetch_postgres_media_preview_track_rows(pool, asset_id).await;
+    }
+    fetch_media_preview_track_rows(database.try_sqlite_adapter()?, asset_id).await
+}
+
+async fn fetch_postgres_media_preview_track_rows(
+    pool: &sqlx::PgPool,
+    asset_id: &str,
+) -> AppResult<Vec<StoredMediaPreviewTrack>> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, label, image_relative_path, vtt_relative_path,
+               tile_width::BIGINT AS tile_width, tile_height::BIGINT AS tile_height,
+               columns_count::BIGINT AS columns_count, rows_count::BIGINT AS rows_count,
+               interval_sec::DOUBLE PRECISION AS interval_sec,
+               frame_count::BIGINT AS frame_count, is_default, created_at
+        FROM media_timeline_previews
+        WHERE asset_id = $1
+        ORDER BY created_at ASC
+        "#,
+    )
+    .bind(asset_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| StoredMediaPreviewTrack {
+            id: row.get("id"),
+            label: row.get("label"),
+            image_relative_path: row.get("image_relative_path"),
+            vtt_relative_path: row.get("vtt_relative_path"),
+            tile_width: row.get("tile_width"),
+            tile_height: row.get("tile_height"),
+            columns_count: row.get("columns_count"),
+            rows_count: row.get("rows_count"),
+            interval_sec: row.get("interval_sec"),
+            frame_count: row.get("frame_count"),
+            is_default: row.get::<i32, _>("is_default") == 1,
+        })
+        .collect())
+}
+
 pub(crate) struct NewMediaVariant {
     pub(crate) variant_type: &'static str,
     pub(crate) label: String,

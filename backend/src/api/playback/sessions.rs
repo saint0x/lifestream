@@ -285,13 +285,9 @@ async fn create_playback_session_for_content_id(
         .as_ref()
         .map(serde_json::to_string)
         .transpose()?;
-    let target = fetch_upload_playback_target(state.db.try_sqlite_adapter()?, &content_id).await?;
-    let access = resolve_upload_playback_access(
-        state.db.try_sqlite_adapter()?,
-        maybe_identity.as_ref(),
-        &target,
-    )
-    .await?;
+    let target = fetch_upload_playback_target_for_database(&state.db, &content_id).await?;
+    let access =
+        resolve_upload_playback_access(&state.db, maybe_identity.as_ref(), &target).await?;
     let access_scope = access.access_scope.clone();
     let now = Utc::now();
     let session_id = format!("pbs-{}", Uuid::new_v4().simple());

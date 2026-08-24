@@ -49,10 +49,12 @@ mod tracks;
 pub(super) use access::{
     fetch_active_creator_membership, resolve_upload_access_terms, resolve_upload_playback_access,
 };
+#[cfg(test)]
+pub(super) use sessions::fetch_upload_playback_target;
 pub(super) use sessions::{
     expire_playback_session_by_id, expire_playback_sessions_for_upload,
     fetch_live_stream_playback_target, fetch_playback_session_record_by_id,
-    fetch_upload_playback_target, playback_session_from_record,
+    fetch_upload_playback_target_for_database, playback_session_from_record,
     reconcile_invalid_playback_sessions, reconcile_playback_sessions_for_read,
     reconcile_playback_sessions_for_user, reconcile_single_playback_session,
     validate_existing_playback_session_access, validate_playback_session_record,
@@ -61,5 +63,5 @@ pub(super) use sessions::{
 pub(super) use tracks::{
     build_media_audio_tracks, build_media_caption_tracks, build_media_preview_tracks,
     default_audio_track_id, default_caption_track_id, default_preview_track_id,
-    fetch_user_playback_preferences,
+    fetch_user_playback_preferences_for_database,
 };

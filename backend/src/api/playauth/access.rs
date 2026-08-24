@@ -1,6 +1,17 @@
 use super::*;
 
 pub(crate) async fn resolve_upload_playback_access(
+    database: &crate::db::Database,
+    identity: Option<&RequestIdentity>,
+    target: &UploadPlaybackTarget,
+) -> AppResult<PlaybackAccessDecision> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        return resolve_postgres_upload_playback_access(pool, identity, target).await;
+    }
+    resolve_sqlite_upload_playback_access(database.try_sqlite_adapter()?, identity, target).await
+}
+
+async fn resolve_sqlite_upload_playback_access(
     pool: &SqlitePool,
     identity: Option<&RequestIdentity>,
     target: &UploadPlaybackTarget,
@@ -97,6 +108,121 @@ pub(crate) async fn resolve_upload_playback_access(
             }
             let has_purchase =
                 fetch_valid_content_purchase(pool, &identity.user_id, &target.upload.id).await?;
+            if has_purchase {
+                Ok(PlaybackAccessDecision {
+                    access_scope: "purchase".to_string(),
+                })
+            } else {
+                Err(AppError::PaymentRequired(
+                    "subscription or purchase required before playback".to_string(),
+                ))
+            }
+        }
+        other => Err(AppError::BadRequest(format!(
+            "unsupported access policy for playback: {other}"
+        ))),
+    }
+}
+
+async fn resolve_postgres_upload_playback_access(
+    pool: &sqlx::PgPool,
+    identity: Option<&RequestIdentity>,
+    target: &UploadPlaybackTarget,
+) -> AppResult<PlaybackAccessDecision> {
+    let now = Utc::now().to_rfc3339();
+    let is_creator_owner = identity
+        .and_then(|identity| identity.creator_id.as_deref())
+        .map(|creator_id| creator_id == target.creator_id)
+        .unwrap_or(false);
+
+    if target.upload.status != "published" && !is_creator_owner {
+        return Err(AppError::Forbidden);
+    }
+    if target
+        .upload
+        .release_at
+        .as_ref()
+        .is_some_and(|release_at| release_at > &now)
+        && !is_creator_owner
+    {
+        return Err(AppError::Forbidden);
+    }
+
+    match target.upload.visibility.as_str() {
+        "public" | "unlisted" => {}
+        "private" => {
+            if !is_creator_owner {
+                return Err(AppError::Forbidden);
+            }
+        }
+        other => {
+            return Err(AppError::BadRequest(format!(
+                "unsupported visibility for playback: {other}"
+            )));
+        }
+    }
+
+    if is_creator_owner {
+        return Ok(PlaybackAccessDecision {
+            access_scope: "owner".to_string(),
+        });
+    }
+
+    match target.upload.access_policy.as_str() {
+        "free" => Ok(PlaybackAccessDecision {
+            access_scope: "free".to_string(),
+        }),
+        "subscription" => {
+            let identity = identity.ok_or(AppError::Unauthorized)?;
+            let membership = fetch_postgres_active_creator_membership(
+                pool,
+                &identity.user_id,
+                &target.creator_id,
+                target.upload.access_tier_id.as_deref(),
+            )
+            .await?;
+            if membership {
+                Ok(PlaybackAccessDecision {
+                    access_scope: "subscription".to_string(),
+                })
+            } else {
+                Err(AppError::PaymentRequired(
+                    "active creator subscription required".to_string(),
+                ))
+            }
+        }
+        "purchase" => {
+            let identity = identity.ok_or(AppError::Unauthorized)?;
+            let has_purchase =
+                fetch_postgres_valid_content_purchase(pool, &identity.user_id, &target.upload.id)
+                    .await?;
+            if has_purchase {
+                Ok(PlaybackAccessDecision {
+                    access_scope: "purchase".to_string(),
+                })
+            } else {
+                Err(AppError::PaymentRequired(
+                    "purchase required before playback".to_string(),
+                ))
+            }
+        }
+        "subscription_or_purchase" => {
+            let identity = identity.ok_or(AppError::Unauthorized)?;
+            let membership = fetch_postgres_active_creator_membership(
+                pool,
+                &identity.user_id,
+                &target.creator_id,
+                target.upload.access_tier_id.as_deref(),
+            )
+            .await?;
+            if membership {
+                return Ok(PlaybackAccessDecision {
+                    access_scope: "subscription".to_string(),
+                });
+            }
+            let has_purchase =
+                fetch_postgres_valid_content_purchase(pool, &identity.user_id, &target.upload.id)
+                    .await?;
             if has_purchase {
                 Ok(PlaybackAccessDecision {
                     access_scope: "purchase".to_string(),
@@ -239,6 +365,70 @@ async fn fetch_valid_content_purchase(
           AND upload_id = ?
           AND status = 'active'
           AND (expires_at IS NULL OR expires_at > ?)
+        "#,
+    )
+    .bind(user_id)
+    .bind(upload_id)
+    .bind(&now)
+    .fetch_one(pool)
+    .await?
+    .get(0);
+    Ok(count > 0)
+}
+
+async fn fetch_postgres_active_creator_membership(
+    pool: &sqlx::PgPool,
+    user_id: &str,
+    creator_id: &str,
+    required_tier_id: Option<&str>,
+) -> AppResult<bool> {
+    let now = Utc::now().to_rfc3339();
+    let row = sqlx::query(
+        r#"
+        SELECT cms.tier_id, req.rank::BIGINT AS required_rank, actual.rank::BIGINT AS actual_rank
+        FROM creator_memberships cms
+        JOIN creator_subscriber_tiers actual ON actual.id = cms.tier_id
+        LEFT JOIN creator_subscriber_tiers req ON req.id = $1
+        WHERE cms.user_id = $2
+          AND cms.creator_id = $3
+          AND cms.status IN ('active', 'canceling')
+          AND (
+                COALESCE(cms.ends_at, cms.renews_at) IS NULL
+                OR COALESCE(cms.ends_at, cms.renews_at) > $4
+              )
+        "#,
+    )
+    .bind(required_tier_id)
+    .bind(user_id)
+    .bind(creator_id)
+    .bind(&now)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(match row {
+        Some(row) => {
+            let required_rank = row.get::<Option<i64>, _>("required_rank").unwrap_or(1);
+            let actual_rank: i64 = row.get("actual_rank");
+            actual_rank >= required_rank
+        }
+        None => false,
+    })
+}
+
+async fn fetch_postgres_valid_content_purchase(
+    pool: &sqlx::PgPool,
+    user_id: &str,
+    upload_id: &str,
+) -> AppResult<bool> {
+    let now = Utc::now().to_rfc3339();
+    let count: i64 = sqlx::query(
+        r#"
+        SELECT COUNT(*)::BIGINT
+        FROM content_purchases
+        WHERE user_id = $1
+          AND upload_id = $2
+          AND status = 'active'
+          AND (expires_at IS NULL OR expires_at > $3)
         "#,
     )
     .bind(user_id)
