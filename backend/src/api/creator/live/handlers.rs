@@ -38,9 +38,8 @@ pub(crate) async fn get_creator_live(
     headers: HeaderMap,
 ) -> AppResult<Json<CreatorLiveSnapshot>> {
     let identity = require_identity(&state.db, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        build_creator_live_snapshot(state.db.try_sqlite_adapter()?, creator_id).await?,
+        fetch_creator_live_snapshot_for_database(&state, &identity).await?,
     ))
 }
 
@@ -49,9 +48,8 @@ async fn get_creator_live_control(
     headers: HeaderMap,
 ) -> AppResult<Json<CreatorLiveControlResponse>> {
     let identity = require_identity(&state.db, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_authoritative_creator_live_control_response(&state, creator_id).await?,
+        fetch_authoritative_creator_live_control_response_for_database(&state, &identity).await?,
     ))
 }
 
@@ -60,9 +58,8 @@ async fn get_creator_live_runtime(
     headers: HeaderMap,
 ) -> AppResult<Json<CreatorLiveRuntimeResponse>> {
     let identity = require_identity(&state.db, &headers).await?;
-    let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_authoritative_creator_live_runtime_response(&state, creator_id).await?,
+        fetch_authoritative_creator_live_runtime_response_for_database(&state, &identity).await?,
     ))
 }
 
