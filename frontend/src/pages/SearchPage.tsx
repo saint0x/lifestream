@@ -85,6 +85,7 @@ export function SearchPage() {
     <div className="ls-search">
       <header className="ls-search__head">
         <div className="ls-search__kicker mono">/ search</div>
+        <h1 className="ls-search__title">Search</h1>
         <form
           className="ls-search__form"
           onSubmit={(e) => {

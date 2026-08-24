@@ -15,6 +15,14 @@ import { shareCurrentPage } from "@/lib/share";
 import type { LiveStream, PlaybackGrant } from "@/types";
 import "./LiveWatchPage.css";
 
+function categorySlug(category: string): string {
+  return category
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function LiveWatchPage() {
   const { slug } = useParams<{ slug: string }>();
   const [stream, setStream] = useState(slug && repository.hasState() ? repository.getLiveStreamBySlug(slug) : undefined);
@@ -141,7 +149,7 @@ export function LiveWatchPage() {
               </div>
               <div className="ls-live-watch__title">{stream.title}</div>
               <div className="ls-live-watch__tags mono">
-                <Link to={`/category/${stream.category.toLowerCase()}`} className="ls-live-watch__cat">
+                <Link to={`/category/${categorySlug(stream.category)}`} className="ls-live-watch__cat">
                   {stream.category}
                 </Link>
                 {stream.tags.map((t) => (
