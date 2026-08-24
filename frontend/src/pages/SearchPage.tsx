@@ -125,7 +125,7 @@ export function SearchPage() {
 
       {error && <div className="ls-search__empty">{error}</div>}
 
-      {loading && !error && (
+      {loading && !error && results.length === 0 && (
         <div className="ls-search__empty">Searching the catalog…</div>
       )}
 
@@ -136,7 +136,7 @@ export function SearchPage() {
       )}
 
       {results.length > 0 && (
-        <section className="ls-search__section">
+        <section className={`ls-search__section ${loading ? "is-refreshing" : ""}`}>
           <div className="ls-search__label mono">Top matches ({results.length})</div>
           <div className="ls-search__results">
             {results.map((item) => (

@@ -209,8 +209,8 @@ export function Header() {
             </span>
           </label>
           {open && query && (
-            <div className="ls-header__results">
-              {searchLoading ? (
+            <div className={`ls-header__results ${searchLoading && results.length > 0 ? "is-refreshing" : ""}`}>
+              {searchLoading && results.length === 0 ? (
                 <div className="ls-header__results-empty">Searching…</div>
               ) : searchError ? (
                 <div className="ls-header__results-empty">{searchError}</div>
@@ -219,39 +219,41 @@ export function Header() {
                   No results for <span className="mono">{query}</span>
                 </div>
               ) : (
-                results.map((item) => (
-                  <button
-                    key={item.id}
-                    className="ls-header__result"
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      goToResult(item);
-                    }}
-                  >
-                    {item.image ? (
-                      <img src={item.image} alt="" className="ls-header__result-img" />
-                    ) : (
-                      <span className="ls-header__result-img ls-header__result-img--empty">
-                        {item.title.slice(0, 1)}
-                      </span>
-                    )}
-                    <div className="ls-header__result-body">
-                      <div className="ls-header__result-title">
-                        {item.title}
+                <div className="ls-header__results-list">
+                  {results.map((item) => (
+                    <button
+                      key={`${item.kind}-${item.id}`}
+                      className="ls-header__result"
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        goToResult(item);
+                      }}
+                    >
+                      {item.image ? (
+                        <img src={item.image} alt="" className="ls-header__result-img" />
+                      ) : (
+                        <span className="ls-header__result-img ls-header__result-img--empty">
+                          {item.title.slice(0, 1)}
+                        </span>
+                      )}
+                      <div className="ls-header__result-body">
+                        <div className="ls-header__result-title">
+                          {item.title}
+                        </div>
+                        <div className="ls-header__result-meta mono">
+                          <span>{searchKindLabel(item.kind)}</span>
+                          {item.subtitle ? (
+                            <>
+                              <span>·</span>
+                              <span>{item.subtitle}</span>
+                            </>
+                          ) : null}
+                        </div>
                       </div>
-                      <div className="ls-header__result-meta mono">
-                        <span>{searchKindLabel(item.kind)}</span>
-                        {item.subtitle ? (
-                          <>
-                            <span>·</span>
-                            <span>{item.subtitle}</span>
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           )}
