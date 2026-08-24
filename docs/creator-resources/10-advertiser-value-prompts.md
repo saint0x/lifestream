@@ -23,11 +23,23 @@ They are also buying video advertising inventory.
 
 That matters because digital video is one of the most valuable and fastest-moving parts of advertising. IAB reported that U.S. digital video ad spend is projected to surpass $80B in 2026, with digital video expected to exceed 60% of total TV/video ad spend for the first time. IAB also reported that U.S. creator ad spend is projected to reach $37B in 2025 and $44B in 2026.
 
-The Vanta opportunity sits at the intersection of those two markets.
+The creator-facing lesson is not "memorize the ad market."
+
+The lesson is:
+
+> Vanta gives creators a place to create the kind of high-value video inventory advertisers already want to buy.
 
 Vanta is not asking creators to be only short-form influencers. It gives creators a place to build premium 30-40 minute episodic programming: closer to an HBO, Netflix, or streaming-series environment than a disposable feed post.
 
-That makes the advertiser value different.
+That is the Vanta-specific advantage. A creator can turn their trust, taste, audience, collaborators, and consistency into a premium video property with real ad inventory around it.
+
+The Vanta opportunity sits at the intersection of two valuable markets:
+
+```text
+creator trust and audience movement
++ premium digital video inventory
+= high-value creator media property
+```
 
 A 30-40 minute Vanta episode can create:
 
@@ -42,6 +54,8 @@ A 30-40 minute Vanta episode can create:
 - and measurable Qualified Attention around the creator's media property.
 
 In IAB's 2026 digital video framing, marketers increasingly expect creator and Hollywood-style economies to work together to deliver business results. Vanta is built directly around that idea: creator trust plus premium episodic video plus measurable attention.
+
+So the creator should understand the opportunity clearly: Vanta is not just another place to post. It is a place to create higher-value advertising inventory from work that already deserves to be treated like premium media.
 
 The thermal-energy model still applies:
 
@@ -289,6 +303,7 @@ Cover:
 - why long-form Vanta episodes create deeper attention than short feed posts;
 - why 30-40 minute premium episodes can support stronger sponsor context;
 - why recurring episodes or seasons are more valuable than one-off uploads;
+- how Vanta gives me a place to create this higher-value style of inventory;
 - why my Vanta profile adds portfolio and discovery value;
 - why clips should act as marketing for the full inventory;
 - how collaborator credits can cross-pollinate audiences;
