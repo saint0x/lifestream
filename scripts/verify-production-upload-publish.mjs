@@ -64,10 +64,18 @@ function sqlLiteral(value) {
 }
 
 function psql(sql) {
-  return execFileSync("psql", [DATABASE_URL, "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-c", sql], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  }).trim();
+  try {
+    return execFileSync("psql", [DATABASE_URL, "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-c", sql], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  } catch (error) {
+    const stderr = String(error.stderr || "")
+      .replaceAll(DATABASE_URL, "[redacted-database-url]")
+      .replace(/postgres(?:ql)?:\/\/[^\s]+/g, "[redacted-database-url]")
+      .trim();
+    throw new Error(`psql command failed${stderr ? `: ${stderr}` : ""}`);
+  }
 }
 
 async function main() {
@@ -210,7 +218,8 @@ async function main() {
 
       DELETE FROM uploads WHERE id = ${sqlLiteral(uploadId)};
       DELETE FROM upload_jobs WHERE id = ${sqlLiteral(uploadJobId)};
-      DELETE FROM users WHERE email = ${sqlLiteral(email)};
+      DELETE FROM users
+      WHERE id IN (SELECT user_id FROM user_profiles WHERE email = ${sqlLiteral(email)});
     `);
   }
 }
