@@ -64,6 +64,8 @@ const emptyForm: SubmissionForm = {
   notes: "",
 };
 
+const emptyOffers: ReadonlyArray<AdMarketplaceOffer> = [];
+
 export function AdHubPage() {
   const [hub, setHub] = useState<CreatorAdHubResponse | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -73,7 +75,7 @@ export function AdHubPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const offers = hub?.offers ?? [];
+  const offers = hub?.offers ?? emptyOffers;
   const selectedOffer = useMemo(
     () => offers.find((offer) => offer.id === selectedId) ?? offers[0] ?? null,
     [offers, selectedId],

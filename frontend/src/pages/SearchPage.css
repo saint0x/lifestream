@@ -42,17 +42,31 @@
   background: var(--c-bg-elevated);
   color: var(--c-text-faint);
   transition: all 180ms var(--ease-out);
+  outline: none;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .ls-search__input:focus-within {
-  border-color: var(--c-text);
+  border-color: var(--c-border-hi);
   background: var(--c-surface);
   color: var(--c-text);
+  outline: none;
+  box-shadow: none;
 }
 .ls-search__input input {
   flex: 1;
   font-size: 20px;
   color: var(--c-text);
   letter-spacing: -0.01em;
+  outline: none;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.ls-search__input input:focus,
+.ls-search__input input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .ls-search__stats {

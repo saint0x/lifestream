@@ -54,17 +54,35 @@
   border: 1px solid var(--c-border);
   color: var(--c-text-faint);
   transition: all 180ms var(--ease-out);
+  outline: none;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .ls-header__search:hover,
 .ls-header__search.is-open {
   border-color: var(--c-border-hi);
   background: var(--c-surface-hi);
 }
+.ls-header__search:focus-within {
+  border-color: var(--c-border-hi);
+  background: var(--c-surface-hi);
+  outline: none;
+  box-shadow: none;
+}
 .ls-header__search input {
   flex: 1;
   color: var(--c-text);
   font-size: 13px;
   min-width: 0;
+  outline: none;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.ls-header__search input:focus,
+.ls-header__search input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 .ls-header__kbd {
   display: inline-flex;
