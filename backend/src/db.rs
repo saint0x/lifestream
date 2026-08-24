@@ -700,7 +700,10 @@ impl Database {
         );
         let mut postgres_query = String::from(
             r#"
-            SELECT content_id, kind, episode_id, progress_sec, duration_sec, last_watched_at
+            SELECT content_id, kind, episode_id,
+                   progress_sec::BIGINT AS progress_sec,
+                   duration_sec::BIGINT AS duration_sec,
+                   last_watched_at
             FROM continue_watching
             WHERE user_id = $1
             ORDER BY last_watched_at DESC
@@ -2291,7 +2294,7 @@ impl Database {
                             .get("duration_sec")
                     }
                     DatabaseProvider::Postgres(pool) => {
-                        sqlx::query("SELECT duration_sec FROM films WHERE id = $1")
+                        sqlx::query("SELECT duration_sec::BIGINT AS duration_sec FROM films WHERE id = $1")
                             .bind(&input.content_id)
                             .fetch_optional(pool)
                             .await?
@@ -2338,7 +2341,7 @@ impl Database {
                         )
                         .await?;
                         let row = sqlx::query(
-                            "SELECT series_id, duration_sec FROM episodes WHERE id = $1",
+                            "SELECT series_id, duration_sec::BIGINT AS duration_sec FROM episodes WHERE id = $1",
                         )
                         .bind(&episode_id)
                         .fetch_optional(pool)
