@@ -19,6 +19,30 @@ Advertisers are not only buying exposure.
 
 They are buying access to a creator-audience relationship that can move real people.
 
+They are also buying video advertising inventory.
+
+That matters because digital video is one of the most valuable and fastest-moving parts of advertising. IAB reported that U.S. digital video ad spend is projected to surpass $80B in 2026, with digital video expected to exceed 60% of total TV/video ad spend for the first time. IAB also reported that U.S. creator ad spend is projected to reach $37B in 2025 and $44B in 2026.
+
+The Vanta opportunity sits at the intersection of those two markets.
+
+Vanta is not asking creators to be only short-form influencers. It gives creators a place to build premium 30-40 minute episodic programming: closer to an HBO, Netflix, or streaming-series environment than a disposable feed post.
+
+That makes the advertiser value different.
+
+A 30-40 minute Vanta episode can create:
+
+- deeper watch time;
+- richer audience intent;
+- more natural sponsor surfaces;
+- episode and season-level context;
+- recurring release inventory;
+- creator profile inventory;
+- collaborator and credit-network discovery;
+- clips that promote the full property;
+- and measurable Qualified Attention around the creator's media property.
+
+In IAB's 2026 digital video framing, marketers increasingly expect creator and Hollywood-style economies to work together to deliver business results. Vanta is built directly around that idea: creator trust plus premium episodic video plus measurable attention.
+
 The thermal-energy model still applies:
 
 ```text
@@ -76,6 +100,7 @@ Score me from 1-10 across:
 - repeat-viewer behavior;
 - category clarity;
 - advertiser fit;
+- premium video inventory value;
 - trust with my audience;
 - ability to move viewers to Vanta;
 - Qualified Attention potential;
@@ -95,6 +120,7 @@ Then tell me:
 - what promotion habits would increase my value;
 - what collaborations could make me more valuable;
 - what categories of brands should care most;
+- how my Vanta episodes create stronger ad inventory than a normal feed post;
 - what I should stop doing because it weakens advertiser trust;
 - what I should do for the next 30 days to become more sponsor-ready.
 
@@ -172,6 +198,7 @@ For each advertiser category, explain:
 
 - why the audience match is real;
 - why my content environment makes sense;
+- why my Vanta episode or season is valuable video inventory;
 - what the brand would be buying;
 - what proof I need before pitching;
 - what kind of integration would feel organic;
@@ -219,6 +246,8 @@ Give me upgrades for:
 - category clarity;
 - episode structure;
 - moments where a sponsor could fit naturally;
+- episode, season, and profile inventory a sponsor could buy;
+- why the 30-40 minute format creates more valuable attention than a short post;
 - clips that prove audience interest;
 - collaborations that could expand advertiser value;
 - credit strategy for contributors;
@@ -230,7 +259,52 @@ Important: do not turn the series into brand copy.
 The advertiser value should come from stronger programming, stronger audience trust, and clearer Qualified Attention.
 ```
 
-## Prompt 5: 90-Day Advertiser Value Plan
+## Prompt 5: Vanta Inventory Explanation
+
+```text
+Explain why my Vanta series is valuable advertising inventory.
+
+Series:
+[describe]
+
+Episode length:
+[minutes]
+
+Release cadence:
+[describe]
+
+Audience:
+[describe]
+
+Audience devotion proof:
+[describe]
+
+Sponsor categories:
+[list]
+
+Help me explain this in creator-friendly business language.
+
+Cover:
+
+- why long-form Vanta episodes create deeper attention than short feed posts;
+- why 30-40 minute premium episodes can support stronger sponsor context;
+- why recurring episodes or seasons are more valuable than one-off uploads;
+- why my Vanta profile adds portfolio and discovery value;
+- why clips should act as marketing for the full inventory;
+- how collaborator credits can cross-pollinate audiences;
+- what Qualified Attention proves;
+- what an advertiser is actually buying;
+- why this should still protect my audience trust;
+- why Vanta is the right home for this kind of creator media property.
+
+Keep the tone clear and confident.
+
+Do not make me sound like I am begging for a sponsor.
+
+Make me sound like a creator who understands the value of premium video inventory and a devout audience.
+```
+
+## Prompt 6: 90-Day Advertiser Value Plan
 
 ```text
 Build me a 90-day plan to become more valuable to advertisers on Vanta.
@@ -265,6 +339,7 @@ Create a 90-day operating plan that improves:
 - financial self-investment;
 - collaboration and credit-network effects;
 - Qualified Attention proof;
+- premium video inventory value;
 - brand category clarity;
 - sponsor readiness.
 
@@ -284,6 +359,7 @@ For each phase include:
 - who to collaborate with;
 - what proof to collect;
 - what would make me more valuable to advertisers;
+- how to make my Vanta inventory easier to understand and buy;
 - what would make me less valuable if I keep doing it.
 
 The goal is not to beg for sponsors.
@@ -302,3 +378,5 @@ If your AI tool can read linked files, ask it to review these before answering.
 - [Vanta Profile Prompts](./07-vanta-profile-prompts.md)
 - [Qualified Attention](../business/qualified-attention.md)
 - [Advertising Marketplace](../business/advertising-marketplace.md)
+- [IAB Digital Video Ad Spend 2026](https://www.iab.com/news/u-s-digital-video-ad-spend-to-surpass-80b-in-2026/)
+- [IAB Creator Economy Ad Spend 2025](https://www.iab.com/insights/2025-creator-economy-ad-spend-strategy-report/)
