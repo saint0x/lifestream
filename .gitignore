@@ -1,6 +1,7 @@
 .DS_Store
 
 .fozzy/
+.dev/
 /artifacts/
 
 node_modules/
