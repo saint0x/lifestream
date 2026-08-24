@@ -159,7 +159,7 @@ export function WatchPage({ kind }: WatchPageProps) {
           <VideoPlayer
             poster={playbackGrant?.posterUrl ? resolveApiUrl(playbackGrant.posterUrl) : series.images.backdrop}
             title={`${series.title} — ${episode.title}`}
-            subtitle="[ they don't know the signal is a song ]"
+            subtitle={episode.synopsis}
             durationSec={episode.durationSec}
             initialProgressSec={savedProgress?.progressSec ?? episode.progressSec ?? 0}
             sourceUrl={playbackGrant ? resolveApiUrl(playbackGrant.manifestUrl) : null}

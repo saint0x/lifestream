@@ -19,6 +19,7 @@ import { StudioPage } from "@/pages/StudioPage";
 import { AdHubPage } from "@/pages/AdHubPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { ViewerAnalytics } from "@/components/analytics/ViewerAnalytics";
+import { isSignedInUser } from "@/lib/authState";
 
 function Shell() {
   return (
@@ -31,8 +32,7 @@ function Shell() {
 
 function CreatorRoute() {
   const user = useAppStore((state) => state.user);
-  const isGuest = user.id.startsWith("guest-") || user.handle.startsWith("guest");
-  return isGuest ? <Navigate to="/" replace /> : <Outlet />;
+  return isSignedInUser(user) ? <Outlet /> : <Navigate to="/" replace />;
 }
 
 export const router = createBrowserRouter([

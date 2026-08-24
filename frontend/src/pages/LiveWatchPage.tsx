@@ -24,6 +24,12 @@ function categorySlug(category: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+function liveUptimeSeconds(startedAt: string): number {
+  const started = new Date(startedAt).getTime();
+  if (!Number.isFinite(started)) return 1;
+  return Math.max(Math.floor((Date.now() - started) / 1000), 1);
+}
+
 export function LiveWatchPage() {
   const { slug } = useParams<{ slug: string }>();
   const [stream, setStream] = useState(slug && repository.hasState() ? repository.getLiveStreamBySlug(slug) : undefined);
@@ -136,10 +142,8 @@ export function LiveWatchPage() {
           <VideoPlayer
             poster={playbackGrant?.posterUrl ? resolveApiUrl(playbackGrant.posterUrl) : stream.thumbnail}
             title={stream.title}
-            durationSec={72000}
-            initialProgressSec={Math.floor(
-              (Date.now() - new Date(stream.startedAt).getTime()) / 1000,
-            )}
+            durationSec={liveUptimeSeconds(stream.startedAt)}
+            initialProgressSec={liveUptimeSeconds(stream.startedAt)}
             sourceUrl={playbackGrant ? resolveApiUrl(playbackGrant.manifestUrl) : null}
             allowPreviewTransport={false}
           />

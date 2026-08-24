@@ -15,6 +15,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { isSignedInUser } from "@/lib/authState";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatViewers } from "@/lib/format";
 import "./Sidebar.css";
@@ -46,8 +47,7 @@ const utility = [
 export function Sidebar() {
   const followedLive = useAppStore((s) => s.followingFeed.liveStreams);
   const user = useAppStore((s) => s.user);
-  const isGuest = user.id.startsWith("guest-") || user.handle.startsWith("guest");
-  const showCreatorTools = !isGuest;
+  const showCreatorTools = isSignedInUser(user);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";

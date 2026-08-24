@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
+import { isSignedInUser } from "@/lib/authState";
 import { signInWithEmail, signUpWithEmail, startGoogleSignIn } from "@/lib/api";
 import type { SearchResult } from "@/types";
 import { Avatar } from "@/components/ui/Avatar";
@@ -43,8 +44,7 @@ export function Header() {
   const signOut = useAppStore((s) => s.signOut);
   const hydrate = useAppStore((s) => s.hydrate);
   const markNotificationRead = useAppStore((s) => s.markNotificationRead);
-  const isGuest =
-    user.id.startsWith("guest-") || user.handle.startsWith("guest");
+  const signedIn = isSignedInUser(user);
   const [results, setResults] = useState<ReadonlyArray<SearchResult>>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -327,7 +327,7 @@ export function Header() {
           >
             <Settings size={16} strokeWidth={1.75} />
           </button>
-          {isGuest ? (
+          {!signedIn ? (
             <div className="ls-header__auth-actions">
               <button
                 type="button"
