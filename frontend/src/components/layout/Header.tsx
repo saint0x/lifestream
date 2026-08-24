@@ -3,7 +3,13 @@ import { useNavigate } from "react-router-dom";
 import {
   Search,
   Bell,
-  Settings,
+  Plus,
+  UploadCloud,
+  Radio,
+  Clapperboard,
+  BriefcaseBusiness,
+  Library,
+  Bookmark,
   Command,
   Mail,
   LockKeyhole,
@@ -27,6 +33,7 @@ export function Header() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -58,6 +65,7 @@ export function Header() {
       }
       if (e.key === "Escape") {
         setOpen(false);
+        setQuickOpen(false);
         setNotifOpen(false);
         setUserOpen(false);
         setAuthOpen(false);
@@ -105,6 +113,7 @@ export function Header() {
     const handleClick = (e: MouseEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) {
         setOpen(false);
+        setQuickOpen(false);
         setNotifOpen(false);
         setUserOpen(false);
       }
@@ -152,6 +161,21 @@ export function Header() {
     setAuthError(null);
     setAuthOpen(true);
     setUserOpen(false);
+  };
+
+  const runQuickAction = (action: () => void) => {
+    setQuickOpen(false);
+    setNotifOpen(false);
+    setUserOpen(false);
+    action();
+  };
+
+  const creatorAction = (path: string) => {
+    if (signedIn) {
+      navigate(path);
+      return;
+    }
+    openAuth("sign-in");
   };
 
   const submitAuth = async () => {
@@ -264,7 +288,11 @@ export function Header() {
             className="ls-header__icon-btn"
             aria-label="Notifications"
             type="button"
-            onClick={() => setNotifOpen((v) => !v)}
+            onClick={() => {
+              setQuickOpen(false);
+              setUserOpen(false);
+              setNotifOpen((v) => !v);
+            }}
           >
             <Bell size={16} strokeWidth={1.75} />
             {notifications.some(
@@ -321,12 +349,92 @@ export function Header() {
           )}
           <button
             className="ls-header__icon-btn"
-            aria-label="Settings"
+            aria-label="Quick actions"
             type="button"
-            onClick={() => navigate("/settings?section=account")}
+            aria-haspopup="menu"
+            aria-expanded={quickOpen}
+            onClick={() => {
+              setNotifOpen(false);
+              setUserOpen(false);
+              setQuickOpen((v) => !v);
+            }}
           >
-            <Settings size={16} strokeWidth={1.75} />
+            <Plus size={17} strokeWidth={1.9} />
           </button>
+          {quickOpen && (
+            <div className="ls-header__popover ls-header__popover--quick" role="menu">
+              <div className="ls-header__popover-title mono">Quick actions</div>
+              <button
+                type="button"
+                className="ls-header__menu-item ls-header__menu-item--with-icon"
+                role="menuitem"
+                onClick={() =>
+                  runQuickAction(() => {
+                    inputRef.current?.focus();
+                    setOpen(true);
+                  })
+                }
+              >
+                <Search size={14} strokeWidth={1.8} />
+                <span>Search</span>
+              </button>
+              <button
+                type="button"
+                className="ls-header__menu-item ls-header__menu-item--with-icon"
+                role="menuitem"
+                onClick={() => runQuickAction(() => creatorAction("/studio/tool/file-manager"))}
+              >
+                <UploadCloud size={14} strokeWidth={1.8} />
+                <span>Upload episode</span>
+              </button>
+              <button
+                type="button"
+                className="ls-header__menu-item ls-header__menu-item--with-icon"
+                role="menuitem"
+                onClick={() => runQuickAction(() => creatorAction("/studio/tool/stream-editor"))}
+              >
+                <Radio size={14} strokeWidth={1.8} />
+                <span>Start stream</span>
+              </button>
+              <button
+                type="button"
+                className="ls-header__menu-item ls-header__menu-item--with-icon"
+                role="menuitem"
+                onClick={() => runQuickAction(() => creatorAction("/studio/tool/series-editor"))}
+              >
+                <Clapperboard size={14} strokeWidth={1.8} />
+                <span>Manage series</span>
+              </button>
+              <button
+                type="button"
+                className="ls-header__menu-item ls-header__menu-item--with-icon"
+                role="menuitem"
+                onClick={() => runQuickAction(() => creatorAction("/ad-hub"))}
+              >
+                <BriefcaseBusiness size={14} strokeWidth={1.8} />
+                <span>Review ad offers</span>
+              </button>
+              <div className="ls-header__menu-sep" />
+              <button
+                type="button"
+                className="ls-header__menu-item ls-header__menu-item--with-icon"
+                role="menuitem"
+                onClick={() => runQuickAction(() => navigate("/library"))}
+              >
+                <Library size={14} strokeWidth={1.8} />
+                <span>Open library</span>
+              </button>
+              <button
+                type="button"
+                className="ls-header__menu-item ls-header__menu-item--with-icon"
+                role="menuitem"
+                onClick={() => runQuickAction(() => navigate("/watchlist"))}
+              >
+                <Bookmark size={14} strokeWidth={1.8} />
+                <span>Open watchlist</span>
+              </button>
+            </div>
+          )}
           {!signedIn ? (
             <div className="ls-header__auth-actions">
               <button
@@ -352,7 +460,11 @@ export function Header() {
             <button
               className="ls-header__user"
               type="button"
-              onClick={() => setUserOpen((v) => !v)}
+              onClick={() => {
+                setQuickOpen(false);
+                setNotifOpen(false);
+                setUserOpen((v) => !v);
+              }}
             >
               <Avatar src={user.avatar} alt={user.displayName} size={28} />
               <div className="ls-header__user-meta">
@@ -395,15 +507,16 @@ export function Header() {
                 Watchlist
               </button>
               <div className="ls-header__menu-sep" />
+              <div className="ls-header__popover-title mono">Preferences</div>
               <button
                 type="button"
                 className="ls-header__menu-item"
                 onClick={() => {
                   setUserOpen(false);
-                  navigate("/settings?section=playback");
+                  navigate("/settings?section=account");
                 }}
               >
-                Preferences
+                Settings
               </button>
               <button
                 type="button"

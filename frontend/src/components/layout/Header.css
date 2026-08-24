@@ -340,6 +340,10 @@
   min-width: 320px;
 }
 
+.ls-header__popover--quick {
+  min-width: 250px;
+}
+
 .ls-header__popover-title {
   font-size: 10px;
   text-transform: uppercase;
@@ -379,6 +383,8 @@
 
 .ls-header__menu-item {
   display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 10px;
   border-radius: var(--r-md);
   font-size: 13px;
@@ -392,6 +398,23 @@
 .ls-header__menu-item:hover {
   background: var(--c-surface);
   color: var(--c-text);
+}
+
+.ls-header__menu-item svg {
+  flex: 0 0 auto;
+  color: var(--c-text-faint);
+  transition: color 160ms var(--ease-out);
+}
+
+.ls-header__menu-item:hover svg {
+  color: var(--c-text);
+}
+
+.ls-header__menu-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ls-header__menu-sep {
