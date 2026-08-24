@@ -131,6 +131,10 @@ const checks = [
   ["GET", "/api/v1/creator/me/revenue", readOnlyOk, null, true],
   ["GET", "/api/v1/creator/me/notifications", readOnlyOk, null, true],
   ["POST", `/api/v1/creator/me/notifications/${DUMMY.notificationId}/read`, mutationOk, json(), true],
+  ["GET", "/api/v1/creator/me/ad-hub", ok(200), null, true],
+  ["POST", `/api/v1/creator/me/ad-offers/${DUMMY.id}/accept`, mutationOk, json(), true],
+  ["POST", `/api/v1/creator/me/ad-offers/${DUMMY.id}/decline`, mutationOk, json(), true],
+  ["POST", `/api/v1/creator/me/ad-offers/${DUMMY.id}/submissions`, mutationOk, json({ submissionUrl: "https://example.com/smoke" }), true],
 
   ["GET", "/api/v1/creator/me/uploads", readOnlyOk, null, true],
   ["GET", "/api/v1/creator/me/content", readOnlyOk, null, true],

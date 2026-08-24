@@ -35,6 +35,8 @@ use crate::{
     auth::{RequestIdentity, hash_token, lookup_identity, optional_identity, require_identity},
     error::{AppError, AppResult},
     models::{
+        AdMarketplaceAdvertiser, AdMarketplaceCampaign, AdMarketplaceOffer, AdMarketplacePackage,
+        AdMarketplacePaymentProvider, AdMarketplaceSubmission, AdMarketplaceSummary,
         AdminLiveIngestQuery, AdminLiveIngestSessionRecord, AdminMediaJobQuery,
         AdminMediaJobRecord, AdminPlaybackSessionQuery, AdminPlaybackSessionRecord, AnalyticsPoint,
         AppendUploadChunkQuery, AuthSession, BillingPlan, Broadcast, BulkUploadRequest, Category,
@@ -50,14 +52,15 @@ use crate::{
         CreateCreatorEnforcementActionRequest, CreateCreatorModeratorRequest,
         CreateCreatorSeriesRequest, CreateCreatorSubscriberTierRequest,
         CreateLiveModerationActionRequest, CreateSessionRequest, CreateUploadJobRequest,
-        CreatorAnalyticsSummary, CreatorAppState, CreatorCatalogEpisode, CreatorCatalogFilm,
-        CreatorCatalogSeason, CreatorCatalogSeries, CreatorCollaborationControlResponse,
-        CreatorContentQuery, CreatorContentResponse, CreatorContentSummary, CreatorDashboard,
-        CreatorEnforcementAction, CreatorEnforcementReconciliationAction,
-        CreatorEnforcementReconciliationReport, CreatorEnforcementState, CreatorHealthSample,
-        CreatorLiveCollaborationSummary, CreatorLiveControlResponse, CreatorLiveHealth,
-        CreatorLiveRuntimeResponse, CreatorLiveSettings, CreatorLiveSnapshot,
-        CreatorLiveSocketPresence, CreatorLiveSocketPresenceReconciliationAction,
+        CreatorAdHubResponse, CreatorAnalyticsSummary, CreatorAppState, CreatorCatalogEpisode,
+        CreatorCatalogFilm, CreatorCatalogSeason, CreatorCatalogSeries,
+        CreatorCollaborationControlResponse, CreatorContentQuery, CreatorContentResponse,
+        CreatorContentSummary, CreatorDashboard, CreatorEnforcementAction,
+        CreatorEnforcementReconciliationAction, CreatorEnforcementReconciliationReport,
+        CreatorEnforcementState, CreatorHealthSample, CreatorLiveCollaborationSummary,
+        CreatorLiveControlResponse, CreatorLiveHealth, CreatorLiveRuntimeResponse,
+        CreatorLiveSettings, CreatorLiveSnapshot, CreatorLiveSocketPresence,
+        CreatorLiveSocketPresenceReconciliationAction,
         CreatorLiveSocketPresenceReconciliationReport, CreatorMembership,
         CreatorMembershipReconciliationReport, CreatorModerator, CreatorNotification,
         CreatorOperationalChecklistItem, CreatorOperationalState, CreatorProfile,
@@ -80,13 +83,13 @@ use crate::{
         PlaybackSettings, PrivacySettings, ProgressInput, ProjectCreditInput,
         PublishUploadJobRequest, ReleaseCreatorEnforcementActionRequest,
         ResolveLiveStreamReportRequest, RevenueEntry, Season, Series, SessionTokenResponse,
-        StartBroadcastRequest, Streamer, TerminateLiveIngestRequest, TopContent, TrafficSource,
-        UpdateCollaborationParticipantRequest, UpdateCreatorLiveSettingsRequest,
-        UpdateCreatorOperationalStateRequest, UpdateCreatorSeriesRequest,
-        UpdateCreatorSubscriberTierRequest, UpdateLiveRequest, UpdateLiveRuntimeStateRequest,
-        UpdateProfileRequest, UpdateProjectCreditsRequest, UpdateSettingsRequest,
-        UpdateUploadJobRequest, UpdateUploadLifecycleRequest, UpdateUploadRequest, Upload,
-        UploadIngestSession, UploadIngestTicket, UploadJob, User,
+        StartBroadcastRequest, Streamer, SubmitAdOfferReviewRequest, TerminateLiveIngestRequest,
+        TopContent, TrafficSource, UpdateCollaborationParticipantRequest,
+        UpdateCreatorLiveSettingsRequest, UpdateCreatorOperationalStateRequest,
+        UpdateCreatorSeriesRequest, UpdateCreatorSubscriberTierRequest, UpdateLiveRequest,
+        UpdateLiveRuntimeStateRequest, UpdateProfileRequest, UpdateProjectCreditsRequest,
+        UpdateSettingsRequest, UpdateUploadJobRequest, UpdateUploadLifecycleRequest,
+        UpdateUploadRequest, Upload, UploadIngestSession, UploadIngestTicket, UploadJob, User,
         UserEntitlementReconciliationAction, UserEntitlements, UserLibrary, UserNotification,
         UserProfileDetails, UserSettingsBundle, ViewerAppState, ViewerPreview, WatchHistoryEntry,
         WatchlistResponse, WsEvent,
@@ -95,6 +98,8 @@ use crate::{
 };
 #[cfg(test)]
 use public::{SearchQuery, search};
+#[cfg(test)]
+use public::{get_my_person_profile, get_person_profile, update_my_person_profile};
 
 mod admin_ops;
 mod api_runtime;

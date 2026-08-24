@@ -172,9 +172,20 @@ export interface PersonProfile {
   readonly instagramUrl?: string | null;
   readonly xUrl?: string | null;
   readonly imdbUrl?: string | null;
+  readonly linkedinUrl?: string | null;
+  readonly facebookUrl?: string | null;
+  readonly publicLinks: ReadonlyArray<PersonProfileLink>;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly credits: ReadonlyArray<PersonCredit>;
+}
+
+export interface PersonProfileLink {
+  readonly id?: ID;
+  readonly platform: string;
+  readonly label: string;
+  readonly url: string;
+  readonly position?: number;
 }
 
 export interface UpdatePersonProfileRequest {
@@ -190,6 +201,9 @@ export interface UpdatePersonProfileRequest {
   readonly instagramUrl?: string | null;
   readonly xUrl?: string | null;
   readonly imdbUrl?: string | null;
+  readonly linkedinUrl?: string | null;
+  readonly facebookUrl?: string | null;
+  readonly publicLinks?: ReadonlyArray<PersonProfileLink>;
 }
 
 export interface User {
@@ -816,6 +830,97 @@ export interface CreatorDashboardPayload {
   readonly subscriberTiers: ReadonlyArray<CreatorSubscriberTier>;
   readonly notifications: ReadonlyArray<CreatorNotification>;
   readonly uploads: ReadonlyArray<Upload>;
+}
+
+export interface AdMarketplacePackage {
+  readonly id: ID;
+  readonly code: string;
+  readonly title: string;
+  readonly description: string;
+  readonly placementKind: string;
+  readonly spotLengthSeconds?: number | null;
+  readonly deliverables: ReadonlyArray<string>;
+  readonly basePriceCents: number;
+  readonly currency: string;
+  readonly status: string;
+}
+
+export interface AdMarketplaceAdvertiser {
+  readonly id: ID;
+  readonly name: string;
+  readonly industry: string;
+  readonly websiteUrl?: string | null;
+}
+
+export interface AdMarketplaceCampaign {
+  readonly id: ID;
+  readonly name: string;
+  readonly objective: string;
+  readonly startsAt?: string | null;
+  readonly endsAt?: string | null;
+  readonly budgetCents: number;
+  readonly currency: string;
+  readonly status: string;
+}
+
+export interface AdMarketplaceSubmission {
+  readonly id: ID;
+  readonly offerId: ID;
+  readonly submissionUrl: string;
+  readonly notes: string;
+  readonly status: string;
+  readonly submittedAt: string;
+  readonly reviewedAt?: string | null;
+  readonly advertiserFeedback?: string | null;
+  readonly revisionDueAt?: string | null;
+}
+
+export interface AdMarketplaceOffer {
+  readonly id: ID;
+  readonly title: string;
+  readonly brief: string;
+  readonly requirements: ReadonlyArray<string>;
+  readonly offerAmountCents: number;
+  readonly creatorPayoutCents: number;
+  readonly platformFeeCents: number;
+  readonly currency: string;
+  readonly status: string;
+  readonly advertiserReviewStatus: string;
+  readonly dueAt?: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly acceptedAt?: string | null;
+  readonly declinedAt?: string | null;
+  readonly package: AdMarketplacePackage;
+  readonly advertiser: AdMarketplaceAdvertiser;
+  readonly campaign: AdMarketplaceCampaign;
+  readonly submissions: ReadonlyArray<AdMarketplaceSubmission>;
+}
+
+export interface AdMarketplaceSummary {
+  readonly pendingOffers: number;
+  readonly activeOffers: number;
+  readonly inReviewOffers: number;
+  readonly approvedOffers: number;
+  readonly declinedOffers: number;
+  readonly totalOfferAmountCents: number;
+  readonly totalCreatorPayoutCents: number;
+  readonly currency: string;
+}
+
+export interface AdMarketplacePaymentProvider {
+  readonly providerKey: string;
+  readonly displayName: string;
+  readonly enabled: boolean;
+  readonly mode: string;
+  readonly status: string;
+}
+
+export interface CreatorAdHubResponse {
+  readonly summary: AdMarketplaceSummary;
+  readonly offers: ReadonlyArray<AdMarketplaceOffer>;
+  readonly packages: ReadonlyArray<AdMarketplacePackage>;
+  readonly paymentProvider: AdMarketplacePaymentProvider;
 }
 
 export interface CreatorScene {

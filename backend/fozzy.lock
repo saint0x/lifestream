@@ -1,9 +1,9 @@
 {
-  "dependencyGraphHash": "dcf86c7d72334f7a1e3ab554d41dab1f98d972dc03d9404c8f634faff9120ba9",
+  "dependencyGraphHash": "f18ba37cf5da0cd23bb4f572083d4fe7cc88b8d1bbb0aec406cd07871c022c8b",
   "graph": {
     "deps": [],
     "package": {
-      "manifestHash": "62b085d9e7d674c6d4d0da93e6d2772405785b41c41eac8eb33d44de88a94d2c",
+      "manifestHash": "8008b52dea3466244b917f0dc16cf22cdbfca41c0672c13def2a30cca52fe8f6",
       "name": "vanta-backend",
       "version": "0.1.0"
     }

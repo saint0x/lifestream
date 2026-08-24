@@ -8,6 +8,9 @@ mod core;
 mod data;
 mod live;
 
+#[cfg(test)]
+pub(crate) use business::{accept_ad_offer, get_ad_hub, submit_ad_offer_review};
+
 pub(super) fn routes() -> Router<SharedState> {
     Router::new()
         .merge(business::routes())

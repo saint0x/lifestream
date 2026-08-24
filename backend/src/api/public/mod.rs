@@ -33,6 +33,8 @@ pub(crate) use live::{
     reconcile_live_moderation_action, remove_live_stream_moderator, resolve_live_stream_report,
     revoke_live_moderation_action,
 };
+#[cfg(test)]
+pub(crate) use people::{get_my_person_profile, get_person_profile, update_my_person_profile};
 
 pub(super) fn routes() -> Router<SharedState> {
     Router::new()

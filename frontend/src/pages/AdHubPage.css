@@ -1,0 +1,344 @@
+.ls-ad-hub {
+  padding: 48px 40px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.ls-ad-hub__head {
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.ls-ad-hub__kicker {
+  font-size: 11px;
+  color: var(--c-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  margin-bottom: 12px;
+}
+
+.ls-ad-hub__title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.ls-ad-hub__title {
+  font-size: clamp(40px, 5vw, 56px);
+  font-weight: 500;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.ls-ad-hub__sub {
+  font-size: 13px;
+  color: var(--c-text-dim);
+  max-width: 560px;
+}
+
+.ls-ad-hub__notice,
+.ls-ad-hub__error {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-elevated);
+  font-size: 13px;
+}
+
+.ls-ad-hub__error {
+  color: var(--c-live);
+}
+
+.ls-ad-hub__metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ls-ad-hub__metric,
+.ls-ad-hub__panel {
+  min-width: 0;
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-elevated);
+  border-radius: var(--r-md);
+}
+
+.ls-ad-hub__metric {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.ls-ad-hub__metric span,
+.ls-ad-hub__field > span {
+  font-size: 10px;
+  color: var(--c-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.ls-ad-hub__metric strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.ls-ad-hub__metric em {
+  color: var(--c-text-dim);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.ls-ad-hub__layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(360px, 1.1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.ls-ad-hub__panel {
+  padding: 18px;
+}
+
+.ls-ad-hub__panel--submit,
+.ls-ad-hub__panel--packages {
+  grid-column: span 1;
+}
+
+.ls-ad-hub__panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.ls-ad-hub__panel-head h2 {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.ls-ad-hub__panel-head p {
+  font-size: 12px;
+  color: var(--c-text-dim);
+}
+
+.ls-ad-hub__offers,
+.ls-ad-hub__form,
+.ls-ad-hub__detail,
+.ls-ad-hub__packages,
+.ls-ad-hub__submissions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ls-ad-hub__offers {
+  max-height: 560px;
+  overflow: auto;
+}
+
+.ls-ad-hub__offer,
+.ls-ad-hub__submission,
+.ls-ad-hub__package {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-border);
+  color: var(--c-text);
+  background: var(--c-surface);
+}
+
+.ls-ad-hub__offer {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out);
+}
+
+.ls-ad-hub__offer:hover,
+.ls-ad-hub__offer.is-active {
+  border-color: var(--c-border-hi);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ls-ad-hub__offer-top,
+.ls-ad-hub__detail-title,
+.ls-ad-hub__package {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ls-ad-hub__offer-title,
+.ls-ad-hub__detail h3,
+.ls-ad-hub__package strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.ls-ad-hub__offer-meta,
+.ls-ad-hub__submission .mono,
+.ls-ad-hub__package .mono {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--c-text-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ls-ad-hub__offer-price {
+  color: var(--c-text-dim);
+  font-size: 13px;
+}
+
+.ls-ad-hub__detail p {
+  color: var(--c-text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ls-ad-hub__facts {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+}
+
+.ls-ad-hub__facts div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  color: var(--c-text-dim);
+}
+
+.ls-ad-hub__facts span {
+  color: var(--c-text-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.ls-ad-hub__requirements {
+  display: grid;
+  gap: 8px;
+}
+
+.ls-ad-hub__requirements h4 {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ls-ad-hub__requirements div {
+  display: flex;
+  gap: 8px;
+  color: var(--c-text-dim);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ls-ad-hub__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ls-ad-hub__field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ls-ad-hub__textarea {
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ls-ad-hub__textarea:focus {
+  outline: 1px solid var(--c-border-hi);
+  outline-offset: 0;
+}
+
+.ls-ad-hub__submission {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--c-text-dim);
+  overflow-wrap: anywhere;
+}
+
+.ls-ad-hub__package div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ls-ad-hub__empty {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--c-border);
+  border-radius: var(--r-sm);
+  color: var(--c-text-faint);
+  font-size: 13px;
+}
+
+@media (max-width: 1100px) {
+  .ls-ad-hub__metrics,
+  .ls-ad-hub__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .ls-ad-hub {
+    padding: 28px 16px 56px;
+  }
+
+  .ls-ad-hub__title-row,
+  .ls-ad-hub__panel-head,
+  .ls-ad-hub__offer-top,
+  .ls-ad-hub__detail-title,
+  .ls-ad-hub__package {
+    flex-direction: column;
+  }
+
+  .ls-ad-hub__facts div {
+    grid-template-columns: 1fr;
+  }
+}

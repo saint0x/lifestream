@@ -1,5 +1,6 @@
-import { createBrowserRouter, Outlet } from "react-router-dom";
+import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
+import { useAppStore } from "@/lib/store";
 import { HomePage } from "@/pages/HomePage";
 import { BrowseLivePage } from "@/pages/BrowseLivePage";
 import { SeriesPage } from "@/pages/SeriesPage";
@@ -15,6 +16,7 @@ import { FollowingPage } from "@/pages/FollowingPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StudioPage } from "@/pages/StudioPage";
+import { AdHubPage } from "@/pages/AdHubPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 
 function Shell() {
@@ -23,6 +25,12 @@ function Shell() {
       <Outlet />
     </Layout>
   );
+}
+
+function CreatorRoute() {
+  const user = useAppStore((state) => state.user);
+  const isGuest = user.id.startsWith("guest-") || user.handle.startsWith("guest");
+  return isGuest ? <Navigate to="/" replace /> : <Outlet />;
 }
 
 export const router = createBrowserRouter([
@@ -44,7 +52,13 @@ export const router = createBrowserRouter([
       { path: "/watchlist", element: <WatchlistPage /> },
       { path: "/library", element: <LibraryPage /> },
       { path: "/following", element: <FollowingPage /> },
-      { path: "/studio", element: <StudioPage /> },
+      {
+        element: <CreatorRoute />,
+        children: [
+          { path: "/studio", element: <StudioPage /> },
+          { path: "/ad-hub", element: <AdHubPage /> },
+        ],
+      },
       { path: "/profile", element: <ProfilePage /> },
       { path: "/settings", element: <SettingsPage /> },
       { path: "/auth/callback", element: <AuthCallbackPage /> },

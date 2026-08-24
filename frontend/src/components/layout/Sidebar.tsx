@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   Home,
   Radio,
@@ -9,11 +10,16 @@ import {
   Library,
   Settings,
   UploadCloud,
+  BadgeDollarSign,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatViewers } from "@/lib/format";
 import "./Sidebar.css";
+
+const SIDEBAR_COLLAPSED_KEY = "vanta.sidebarCollapsed";
 
 const primary = [
   { to: "/", label: "Home", Icon: Home, end: true },
@@ -29,20 +35,48 @@ const secondary = [
 ] as const;
 
 const studio = [
-  { to: "/studio", label: "Studio", Icon: UploadCloud },
+  { to: "/studio", label: "Creator Studio", Icon: UploadCloud },
+  { to: "/ad-hub", label: "Ad Hub", Icon: BadgeDollarSign },
+] as const;
+
+const utility = [
   { to: "/settings", label: "Settings", Icon: Settings },
 ] as const;
 
 export function Sidebar() {
   const followedLive = useAppStore((s) => s.followingFeed.liveStreams);
+  const user = useAppStore((s) => s.user);
+  const isGuest = user.id.startsWith("guest-") || user.handle.startsWith("guest");
+  const showCreatorTools = !isGuest;
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  }, [collapsed]);
 
   return (
-    <aside className="ls-sidebar">
+    <aside className={`ls-sidebar ${collapsed ? "is-collapsed" : ""}`}>
       <div className="ls-sidebar__brand">
         <NavLink to="/" className="ls-sidebar__logo" aria-label="VANTA home">
           <span className="ls-sidebar__logo-mark" />
           <span className="ls-sidebar__logo-text">VANTA</span>
         </NavLink>
+        <button
+          className="ls-sidebar__collapse"
+          type="button"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
+          onClick={() => setCollapsed((value) => !value)}
+        >
+          {collapsed ? (
+            <PanelLeftOpen size={16} strokeWidth={1.8} />
+          ) : (
+            <PanelLeftClose size={16} strokeWidth={1.8} />
+          )}
+        </button>
         <div className="ls-sidebar__wordmark mono">
           <span>v0.1.0</span>
           <span className="ls-sidebar__dot" />
@@ -60,6 +94,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               `ls-sidebar__item ${isActive ? "is-active" : ""}`
             }
+            title={label}
           >
             <Icon size={16} strokeWidth={1.75} />
             <span>{label}</span>
@@ -76,6 +111,7 @@ export function Sidebar() {
             className={({ isActive }) =>
               `ls-sidebar__item ${isActive ? "is-active" : ""}`
             }
+            title={label}
           >
             <Icon size={16} strokeWidth={1.75} />
             <span>{label}</span>
@@ -83,21 +119,24 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <nav className="ls-sidebar__section">
-        <div className="ls-sidebar__label mono">Studio</div>
-        {studio.map(({ to, label, Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `ls-sidebar__item ${isActive ? "is-active" : ""}`
-            }
-          >
-            <Icon size={16} strokeWidth={1.75} />
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </nav>
+      {showCreatorTools ? (
+        <nav className="ls-sidebar__section">
+          <div className="ls-sidebar__label mono">Studio</div>
+          {studio.map(({ to, label, Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `ls-sidebar__item ${isActive ? "is-active" : ""}`
+              }
+              title={label}
+            >
+              <Icon size={16} strokeWidth={1.75} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      ) : null}
 
       {followedLive.length > 0 && (
         <nav className="ls-sidebar__section ls-sidebar__section--followed">
@@ -111,6 +150,7 @@ export function Sidebar() {
                 className={({ isActive }) =>
                   `ls-sidebar__streamer ${isActive ? "is-active" : ""}`
                 }
+                title={`${streamer.displayName} live`}
               >
                 <Avatar src={streamer.avatar} alt={streamer.displayName} size={24} live />
                 <span className="ls-sidebar__streamer-name">{streamer.displayName}</span>
@@ -123,6 +163,23 @@ export function Sidebar() {
           })}
         </nav>
       )}
+
+      <nav className="ls-sidebar__section ls-sidebar__section--utility">
+        <div className="ls-sidebar__label mono">Account</div>
+        {utility.map(({ to, label, Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              `ls-sidebar__item ${isActive ? "is-active" : ""}`
+            }
+            title={label}
+          >
+            <Icon size={16} strokeWidth={1.75} />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+      </nav>
 
       <div className="ls-sidebar__footer mono">
         <span>© VANTA</span>

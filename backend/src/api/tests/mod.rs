@@ -3,6 +3,7 @@ use super::*;
 mod support;
 use support::*;
 
+mod ad_marketplace;
 mod catalog_public;
 mod collaboration_invites;
 mod collaboration_presence;
@@ -12,6 +13,7 @@ mod live_presence;
 mod media_pipeline;
 mod mirror;
 mod moderation;
+mod person_profile_links;
 mod playback_media_jobs;
 mod upload_processing;
 mod uploads_lifecycle;

@@ -47,10 +47,67 @@ pub struct UpdatePersonProfileRequest {
     pub location: Option<String>,
     pub about: Option<String>,
     pub known_for: Option<Vec<String>>,
-    pub website_url: Option<String>,
-    pub instagram_url: Option<String>,
-    pub x_url: Option<String>,
-    pub imdb_url: Option<String>,
+    #[serde(default)]
+    pub website_url: NullablePatch<String>,
+    #[serde(default)]
+    pub instagram_url: NullablePatch<String>,
+    #[serde(default)]
+    pub x_url: NullablePatch<String>,
+    #[serde(default)]
+    pub imdb_url: NullablePatch<String>,
+    #[serde(default)]
+    pub linkedin_url: NullablePatch<String>,
+    #[serde(default)]
+    pub facebook_url: NullablePatch<String>,
+    pub public_links: Option<Vec<UpdatePersonProfileLinkRequest>>,
+}
+
+#[derive(Clone, Debug)]
+pub enum NullablePatch<T> {
+    Unset,
+    Set(Option<T>),
+}
+
+impl<T> Default for NullablePatch<T> {
+    fn default() -> Self {
+        Self::Unset
+    }
+}
+
+impl<'de, T> Deserialize<'de> for NullablePatch<T>
+where
+    T: Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Option::<T>::deserialize(deserializer).map(Self::Set)
+    }
+}
+
+impl<T> NullablePatch<T> {
+    pub fn is_set(&self) -> bool {
+        matches!(self, Self::Set(_))
+    }
+
+    pub fn as_deref(&self) -> Option<Option<&str>>
+    where
+        T: AsRef<str>,
+    {
+        match self {
+            Self::Unset => None,
+            Self::Set(value) => Some(value.as_ref().map(AsRef::as_ref)),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdatePersonProfileLinkRequest {
+    pub platform: Option<String>,
+    pub label: String,
+    pub url: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

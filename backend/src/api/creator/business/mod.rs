@@ -2,10 +2,14 @@ use super::discovery::fetch_user;
 use super::*;
 
 mod credits;
+mod marketplace;
 mod metrics;
 mod series;
 mod subscriptions;
 mod tiers;
+
+#[cfg(test)]
+pub(crate) use marketplace::{accept_ad_offer, get_ad_hub, submit_ad_offer_review};
 
 pub(super) fn routes() -> Router<SharedState> {
     Router::new()
@@ -32,6 +36,19 @@ pub(super) fn routes() -> Router<SharedState> {
         .route(
             "/api/v1/creator/me/content/:content_kind/:content_id/credits",
             put(credits::replace_project_credits),
+        )
+        .route("/api/v1/creator/me/ad-hub", get(marketplace::get_ad_hub))
+        .route(
+            "/api/v1/creator/me/ad-offers/:offer_id/accept",
+            post(marketplace::accept_ad_offer),
+        )
+        .route(
+            "/api/v1/creator/me/ad-offers/:offer_id/decline",
+            post(marketplace::decline_ad_offer),
+        )
+        .route(
+            "/api/v1/creator/me/ad-offers/:offer_id/submissions",
+            post(marketplace::submit_ad_offer_review),
         )
         .route(
             "/api/v1/creator/subscriptions/:creator_id/tiers/:tier_id",

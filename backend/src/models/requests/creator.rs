@@ -106,3 +106,10 @@ pub struct ProjectCreditInput {
 pub struct UpdateProjectCreditsRequest {
     pub credits: Vec<ProjectCreditInput>,
 }
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmitAdOfferReviewRequest {
+    pub submission_url: String,
+    pub notes: Option<String>,
+}

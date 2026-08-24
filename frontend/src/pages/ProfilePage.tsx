@@ -1,8 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
-import { Check, Copy, ExternalLink, Pencil, Save } from "lucide-react";
+import { Link as RouterLink, Navigate, useParams } from "react-router-dom";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Link as LinkIcon,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
+import type { IconType } from "react-icons";
+import { FaFacebookF, FaImdb, FaInstagram, FaLinkedinIn, FaXTwitter } from "react-icons/fa6";
 import { repository } from "@/lib/repository";
-import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import type { PersonProfile, UpdatePersonProfileRequest } from "@/types";
@@ -21,7 +32,31 @@ type PersonForm = {
   instagramUrl: string;
   xUrl: string;
   imdbUrl: string;
+  linkedinUrl: string;
+  facebookUrl: string;
+  publicLinks: Array<{
+    platform: string;
+    label: string;
+    url: string;
+  }>;
 };
+
+const standardLinkFields = [
+  { key: "websiteUrl", label: "Website", platform: "website", Icon: LinkIcon },
+  { key: "instagramUrl", label: "Instagram", platform: "instagram", Icon: FaInstagram },
+  { key: "xUrl", label: "X", platform: "x", Icon: FaXTwitter },
+  { key: "imdbUrl", label: "IMDb", platform: "imdb", Icon: FaImdb },
+  { key: "linkedinUrl", label: "LinkedIn", platform: "linkedin", Icon: FaLinkedinIn },
+  { key: "facebookUrl", label: "Facebook", platform: "facebook", Icon: FaFacebookF },
+] as const satisfies ReadonlyArray<{
+  key: keyof Pick<
+    PersonForm,
+    "websiteUrl" | "instagramUrl" | "xUrl" | "imdbUrl" | "linkedinUrl" | "facebookUrl"
+  >;
+  label: string;
+  platform: string;
+  Icon: LucideIcon | IconType;
+}>;
 
 function formFromProfile(profile: PersonProfile): PersonForm {
   return {
@@ -37,7 +72,19 @@ function formFromProfile(profile: PersonProfile): PersonForm {
     instagramUrl: profile.instagramUrl ?? "",
     xUrl: profile.xUrl ?? "",
     imdbUrl: profile.imdbUrl ?? "",
+    linkedinUrl: profile.linkedinUrl ?? "",
+    facebookUrl: profile.facebookUrl ?? "",
+    publicLinks: profile.publicLinks.map((link) => ({
+      platform: link.platform || "custom",
+      label: link.label,
+      url: link.url,
+    })),
   };
+}
+
+function nullableUrl(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
 function payloadFromForm(form: PersonForm): UpdatePersonProfileRequest {
@@ -53,16 +100,24 @@ function payloadFromForm(form: PersonForm): UpdatePersonProfileRequest {
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean),
-    websiteUrl: form.websiteUrl || null,
-    instagramUrl: form.instagramUrl || null,
-    xUrl: form.xUrl || null,
-    imdbUrl: form.imdbUrl || null,
+    websiteUrl: nullableUrl(form.websiteUrl),
+    instagramUrl: nullableUrl(form.instagramUrl),
+    xUrl: nullableUrl(form.xUrl),
+    imdbUrl: nullableUrl(form.imdbUrl),
+    linkedinUrl: nullableUrl(form.linkedinUrl),
+    facebookUrl: nullableUrl(form.facebookUrl),
+    publicLinks: form.publicLinks
+      .map((link) => ({
+        platform: link.platform.trim() || "custom",
+        label: link.label.trim(),
+        url: link.url.trim(),
+      }))
+      .filter((link) => link.label && link.url),
   };
 }
 
 export function ProfilePage() {
   const { profileHandle, slug } = useParams<{ profileHandle?: string; slug?: string }>();
-  const user = useAppStore((s) => s.user);
   const publicSlug = slug ?? (profileHandle?.startsWith("@") ? profileHandle.slice(1) : undefined);
   const isOwnProfile = publicSlug === undefined && profileHandle === undefined;
   const [profile, setProfile] = useState<PersonProfile | null>(null);
@@ -124,6 +179,40 @@ export function ProfilePage() {
     setForm((current) => (current ? { ...current, [field]: value } : current));
   };
 
+  const updateCustomLink = (
+    index: number,
+    field: "platform" | "label" | "url",
+    value: string,
+  ) => {
+    setForm((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        publicLinks: current.publicLinks.map((link, linkIndex) =>
+          linkIndex === index ? { ...link, [field]: value } : link,
+        ),
+      };
+    });
+  };
+
+  const addCustomLink = () => {
+    setForm((current) => current
+      ? {
+          ...current,
+          publicLinks: [...current.publicLinks, { platform: "custom", label: "", url: "" }],
+        }
+      : current);
+  };
+
+  const removeCustomLink = (index: number) => {
+    setForm((current) => current
+      ? {
+          ...current,
+          publicLinks: current.publicLinks.filter((_, linkIndex) => linkIndex !== index),
+        }
+      : current);
+  };
+
   const saveProfile = async () => {
     if (!form) return;
     setStatus("Saving profile...");
@@ -168,11 +257,19 @@ export function ProfilePage() {
     );
   }
 
-  const links: Array<[string, string]> = [];
-  if (profile.websiteUrl) links.push(["Website", profile.websiteUrl]);
-  if (profile.instagramUrl) links.push(["Instagram", profile.instagramUrl]);
-  if (profile.xUrl) links.push(["X", profile.xUrl]);
-  if (profile.imdbUrl) links.push(["IMDb", profile.imdbUrl]);
+  const links = [
+    ...standardLinkFields
+      .flatMap(({ key, label, platform, Icon }) => {
+        const href = profile[key];
+        return href ? [{ label, platform, Icon, href }] : [];
+      }),
+    ...profile.publicLinks.map((link) => ({
+      label: link.label,
+      platform: link.platform || "custom",
+      Icon: LinkIcon,
+      href: link.url,
+    })),
+  ];
   const profileUrlPath = profile.profileUrlPath || `/@${profile.slug}`;
   const profileUrl = new URL(profileUrlPath, window.location.origin).href;
 
@@ -258,10 +355,49 @@ export function ProfilePage() {
           <Input value={form.avatar} onChange={(event) => updateField("avatar", event.target.value)} placeholder="Avatar URL" />
           <Input value={form.heroImage} onChange={(event) => updateField("heroImage", event.target.value)} placeholder="Hero image URL" />
           <Input value={form.knownFor} onChange={(event) => updateField("knownFor", event.target.value)} placeholder="Known for, comma separated" />
-          <Input value={form.websiteUrl} onChange={(event) => updateField("websiteUrl", event.target.value)} placeholder="Website URL" />
-          <Input value={form.instagramUrl} onChange={(event) => updateField("instagramUrl", event.target.value)} placeholder="Instagram URL" />
-          <Input value={form.xUrl} onChange={(event) => updateField("xUrl", event.target.value)} placeholder="X URL" />
-          <Input value={form.imdbUrl} onChange={(event) => updateField("imdbUrl", event.target.value)} placeholder="IMDb URL" />
+          <div className="ls-profile__links-editor">
+            <div className="ls-list__label mono">Public links</div>
+            <div className="ls-profile__standard-links">
+              {standardLinkFields.map(({ key, label, Icon }) => (
+                <label className="ls-profile__link-field" key={key}>
+                  <span><Icon size={14} />{label}</span>
+                  <Input
+                    value={form[key]}
+                    onChange={(event) => updateField(key, event.target.value)}
+                    placeholder={`${label} URL`}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="ls-profile__custom-links">
+              <div className="ls-profile__custom-head">
+                <span className="mono">Custom</span>
+                <Button variant="outline" icon={<Plus />} onClick={addCustomLink}>Add link</Button>
+              </div>
+              {form.publicLinks.map((link, index) => (
+                <div className="ls-profile__custom-link" key={index}>
+                  <Input
+                    value={link.label}
+                    onChange={(event) => updateCustomLink(index, "label", event.target.value)}
+                    placeholder="Label"
+                  />
+                  <Input
+                    value={link.url}
+                    onChange={(event) => updateCustomLink(index, "url", event.target.value)}
+                    placeholder="https://..."
+                  />
+                  <button
+                    className="ls-profile__remove-link"
+                    type="button"
+                    aria-label={`Remove ${link.label || "custom link"}`}
+                    onClick={() => removeCustomLink(index)}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
           <label className="ls-profile__textarea">
             <textarea
               value={form.about}
@@ -283,15 +419,16 @@ export function ProfilePage() {
               <span>Link</span>
               <span>{profileUrlPath}</span>
             </div>
-            {profile.userId === user.id ? (
+            <div className="ls-list__label mono">Connected</div>
+            {links.length === 0 ? (
               <div className="ls-profile__side-row">
-                <span>Account</span>
-                <span>Linked</span>
+                <span>Public links</span>
+                <span>None yet</span>
               </div>
             ) : null}
-            {links.map(([label, href]) => (
-              <a className="ls-profile__side-row" key={label} href={href} target="_blank" rel="noreferrer">
-                <span>{label}</span>
+            {links.map(({ label, href, Icon }) => (
+              <a className="ls-profile__side-row" key={`${label}-${href}`} href={href} target="_blank" rel="noreferrer">
+                <span><Icon size={13} />{label}</span>
                 <ExternalLink size={13} />
               </a>
             ))}
@@ -312,7 +449,7 @@ export function ProfilePage() {
               <div className="ls-profile__role mono">{role}</div>
               <div className="ls-profile__credits">
                 {credits.map((credit) => (
-                  <Link
+                  <RouterLink
                     className="ls-profile__credit"
                     key={`${credit.contentKind}-${credit.contentId}-${credit.role}`}
                     to={credit.contentKind === "series" ? `/series/${credit.contentSlug}` : `/film/${credit.contentSlug}`}
@@ -325,7 +462,7 @@ export function ProfilePage() {
                         {credit.character ? ` / ${credit.character}` : ""}
                       </div>
                     </div>
-                  </Link>
+                  </RouterLink>
                 ))}
               </div>
             </div>

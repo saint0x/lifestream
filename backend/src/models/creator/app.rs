@@ -136,3 +136,110 @@ pub struct CreatorAppState {
     pub content: CreatorContentResponse,
     pub upload_operations: CreatorUploadOperationsResponse,
 }
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdMarketplacePackage {
+    pub id: Id,
+    pub code: String,
+    pub title: String,
+    pub description: String,
+    pub placement_kind: String,
+    pub spot_length_seconds: Option<i64>,
+    pub deliverables: Vec<String>,
+    pub base_price_cents: i64,
+    pub currency: String,
+    pub status: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdMarketplaceAdvertiser {
+    pub id: Id,
+    pub name: String,
+    pub industry: String,
+    pub website_url: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdMarketplaceCampaign {
+    pub id: Id,
+    pub name: String,
+    pub objective: String,
+    pub starts_at: Option<String>,
+    pub ends_at: Option<String>,
+    pub budget_cents: i64,
+    pub currency: String,
+    pub status: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdMarketplaceSubmission {
+    pub id: Id,
+    pub offer_id: Id,
+    pub submission_url: String,
+    pub notes: String,
+    pub status: String,
+    pub submitted_at: String,
+    pub reviewed_at: Option<String>,
+    pub advertiser_feedback: Option<String>,
+    pub revision_due_at: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdMarketplaceOffer {
+    pub id: Id,
+    pub title: String,
+    pub brief: String,
+    pub requirements: Vec<String>,
+    pub offer_amount_cents: i64,
+    pub creator_payout_cents: i64,
+    pub platform_fee_cents: i64,
+    pub currency: String,
+    pub status: String,
+    pub advertiser_review_status: String,
+    pub due_at: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub accepted_at: Option<String>,
+    pub declined_at: Option<String>,
+    pub package: AdMarketplacePackage,
+    pub advertiser: AdMarketplaceAdvertiser,
+    pub campaign: AdMarketplaceCampaign,
+    pub submissions: Vec<AdMarketplaceSubmission>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdMarketplaceSummary {
+    pub pending_offers: i64,
+    pub active_offers: i64,
+    pub in_review_offers: i64,
+    pub approved_offers: i64,
+    pub declined_offers: i64,
+    pub total_offer_amount_cents: i64,
+    pub total_creator_payout_cents: i64,
+    pub currency: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdMarketplacePaymentProvider {
+    pub provider_key: String,
+    pub display_name: String,
+    pub enabled: bool,
+    pub mode: String,
+    pub status: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatorAdHubResponse {
+    pub summary: AdMarketplaceSummary,
+    pub offers: Vec<AdMarketplaceOffer>,
+    pub packages: Vec<AdMarketplacePackage>,
+    pub payment_provider: AdMarketplacePaymentProvider,
+}

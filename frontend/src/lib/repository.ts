@@ -1,4 +1,5 @@
 import type {
+  AdMarketplaceOffer,
   AnalyticsPoint,
   Broadcast,
   BillingPlan,
@@ -6,6 +7,7 @@ import type {
   ContentItem,
   Credit,
   CreatorNotification,
+  CreatorAdHubResponse,
   CreatorProfile,
   Episode,
   Film,
@@ -782,6 +784,34 @@ export const repository = {
 
   async listMediaAssets(signal?: AbortSignal): Promise<ReadonlyArray<MediaAsset>> {
     return requestJson<ReadonlyArray<MediaAsset>>("/api/v1/creator/me/media-assets", { signal });
+  },
+
+  async fetchAdHub(signal?: AbortSignal): Promise<CreatorAdHubResponse> {
+    return requestJson<CreatorAdHubResponse>("/api/v1/creator/me/ad-hub", { signal });
+  },
+
+  async acceptAdOffer(id: string): Promise<AdMarketplaceOffer> {
+    return requestJson<AdMarketplaceOffer>(
+      `/api/v1/creator/me/ad-offers/${encodeURIComponent(id)}/accept`,
+      { method: "POST" },
+    );
+  },
+
+  async declineAdOffer(id: string): Promise<AdMarketplaceOffer> {
+    return requestJson<AdMarketplaceOffer>(
+      `/api/v1/creator/me/ad-offers/${encodeURIComponent(id)}/decline`,
+      { method: "POST" },
+    );
+  },
+
+  async submitAdOfferReview(
+    id: string,
+    input: { readonly submissionUrl: string; readonly notes?: string },
+  ): Promise<AdMarketplaceOffer> {
+    return requestJson<AdMarketplaceOffer>(
+      `/api/v1/creator/me/ad-offers/${encodeURIComponent(id)}/submissions`,
+      { method: "POST", body: input },
+    );
   },
 
   search(query: string): ReadonlyArray<ContentItem> {

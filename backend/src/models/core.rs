@@ -150,6 +150,16 @@ pub struct PersonCredit {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PersonProfileLink {
+    pub id: Id,
+    pub platform: String,
+    pub label: String,
+    pub url: String,
+    pub position: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PersonProfile {
     pub id: Id,
     pub user_id: Option<Id>,
@@ -166,6 +176,9 @@ pub struct PersonProfile {
     pub instagram_url: Option<String>,
     pub x_url: Option<String>,
     pub imdb_url: Option<String>,
+    pub linkedin_url: Option<String>,
+    pub facebook_url: Option<String>,
+    pub public_links: Vec<PersonProfileLink>,
     pub created_at: String,
     pub updated_at: String,
     pub credits: Vec<PersonCredit>,

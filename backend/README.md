@@ -104,6 +104,10 @@ cargo run -- issue-session \
 - `GET /api/v1/creator/me/analytics`
 - `GET /api/v1/creator/me/revenue`
 - `GET /api/v1/creator/me/notifications`
+- `GET /api/v1/creator/me/ad-hub`
+- `POST /api/v1/creator/me/ad-offers/:offer_id/accept`
+- `POST /api/v1/creator/me/ad-offers/:offer_id/decline`
+- `POST /api/v1/creator/me/ad-offers/:offer_id/submissions`
 - `GET /ws/live/:stream_id`
 
 Public routes:
