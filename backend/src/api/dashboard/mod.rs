@@ -11,7 +11,7 @@ pub(crate) use analytics::{
 };
 pub(crate) use content::{
     derive_upload_lifecycle_status, fetch_broadcast_by_id, fetch_broadcasts,
-    fetch_creator_upload_operations_response, fetch_creator_upload_operations_summary,
+    fetch_creator_upload_operations_response_for_database, fetch_creator_upload_operations_summary,
     fetch_filtered_uploads_for_database, fetch_upload_by_id, fetch_upload_by_id_for_database,
     fetch_uploads_for_database, summarize_creator_content, validate_bulk_upload_action,
     validate_upload_job_kind, validate_upload_job_source_type, validate_upload_visibility,

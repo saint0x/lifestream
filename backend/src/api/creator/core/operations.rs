@@ -7,8 +7,7 @@ pub(super) async fn get_creator_upload_operations(
     let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_creator_upload_operations_response(state.db.try_sqlite_adapter()?, creator_id)
-            .await?,
+        fetch_creator_upload_operations_response_for_database(&state.db, creator_id).await?,
     ))
 }
 

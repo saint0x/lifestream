@@ -8,7 +8,9 @@ pub(crate) use ingest::{
     append_upload_chunk, complete_upload_ingest, get_upload_ingest_session,
     start_upload_ingest_session,
 };
-pub(crate) use lifecycle::{create_upload_job, list_upload_jobs, update_upload_job};
+pub(crate) use lifecycle::{
+    create_upload_job, list_creator_upload_jobs, list_upload_jobs, update_upload_job,
+};
 pub(crate) use publish::{
     get_media_asset_for_upload_job, list_media_assets, publish_upload_job,
     retry_upload_job_processing,

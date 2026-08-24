@@ -7,7 +7,7 @@ mod validation;
 
 pub(crate) use broadcasts::{fetch_broadcast_by_id, fetch_broadcasts};
 pub(crate) use operations::{
-    fetch_creator_upload_operations_response, fetch_creator_upload_operations_summary,
+    fetch_creator_upload_operations_response_for_database, fetch_creator_upload_operations_summary,
     summarize_creator_content,
 };
 pub(crate) use uploads::{

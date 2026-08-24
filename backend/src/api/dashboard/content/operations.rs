@@ -51,6 +51,60 @@ pub(crate) async fn fetch_creator_upload_operations_response(
     ))
 }
 
+pub(crate) async fn fetch_creator_upload_operations_response_for_database(
+    database: &crate::db::Database,
+    creator_id: &str,
+) -> AppResult<CreatorUploadOperationsResponse> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        let (jobs, ingest_sessions, media_assets, uploads) = tokio::try_join!(
+            list_creator_upload_jobs(database, creator_id),
+            fetch_postgres_upload_ingest_sessions(pool, creator_id),
+            fetch_media_assets_for_database(database, creator_id),
+            fetch_uploads_for_database(database, creator_id),
+        )?;
+        return Ok(build_creator_upload_operations_response(
+            jobs,
+            ingest_sessions,
+            media_assets,
+            uploads,
+        ));
+    }
+
+    fetch_creator_upload_operations_response(database.try_sqlite_adapter()?, creator_id).await
+}
+
+async fn fetch_postgres_upload_ingest_sessions(
+    pool: &sqlx::PgPool,
+    creator_id: &str,
+) -> AppResult<Vec<UploadIngestSession>> {
+    let rows = sqlx::query(
+        r#"
+        SELECT job_id, relative_path, status, mime_type,
+               bytes_received::BIGINT AS bytes_received, created_at, updated_at, completed_at
+        FROM upload_job_ingest_sessions
+        WHERE creator_id = $1
+        ORDER BY created_at DESC
+        "#,
+    )
+    .bind(creator_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|row| UploadIngestSession {
+            job_id: row.get("job_id"),
+            relative_path: row.get("relative_path"),
+            status: row.get("status"),
+            mime_type: row.get("mime_type"),
+            bytes_received: row.get("bytes_received"),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+            completed_at: row.get("completed_at"),
+        })
+        .collect())
+}
+
 pub(crate) async fn fetch_creator_upload_operations_summary(
     pool: &SqlitePool,
     creator_id: &str,
