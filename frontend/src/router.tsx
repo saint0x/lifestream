@@ -18,10 +18,12 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { StudioPage } from "@/pages/StudioPage";
 import { AdHubPage } from "@/pages/AdHubPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
+import { ViewerAnalytics } from "@/components/analytics/ViewerAnalytics";
 
 function Shell() {
   return (
     <Layout>
+      <ViewerAnalytics />
       <Outlet />
     </Layout>
   );

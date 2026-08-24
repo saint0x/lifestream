@@ -218,6 +218,7 @@ async fn revoking_auth_session_expires_bound_playback_session() -> AppResult<()>
         State(state.clone()),
         auth_headers(&playback_token),
         Path(target.upload.id.clone()),
+        None,
     )
     .await?
     .0;

@@ -36,5 +36,5 @@ pub use uploads::{
 pub use viewer::{
     ChatInput, CreateSessionRequest, CreatorContentQuery, NullablePatch,
     UpdatePersonProfileLinkRequest, UpdatePersonProfileRequest, UpdateProfileRequest,
-    UpdateSettingsRequest,
+    UpdateSettingsRequest, ViewerEventInput,
 };

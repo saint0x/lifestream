@@ -38,11 +38,15 @@ import type {
 } from "@/types";
 import {
   clearAccessToken,
-  createGuestSession,
   getAccessToken,
   requestJson,
   requestBytes,
 } from "./api";
+import {
+  buildLocalLibrary,
+  buildLocalWatchlistResponse,
+  getLocalWatchlistIds,
+} from "./localLibrary";
 
 interface BootstrapPayload {
   readonly creator: {
@@ -304,6 +308,118 @@ function buildLiveDiscoveryPath(options: LiveDiscoveryOptions = {}): string {
   return query ? `/api/v1/live/discovery?${query}` : "/api/v1/live/discovery";
 }
 
+function buildAnonymousViewerState(catalog: HomePayload): ViewerAppState {
+  const localLibrary = buildLocalLibrary();
+  const catalogItems = [
+    ...catalog.trendingSeries,
+    ...catalog.trendingFilms,
+  ];
+  const localWatchlistIds = getLocalWatchlistIds();
+  const anonymousUser: User = {
+    id: "",
+    handle: "",
+    displayName: "",
+    avatar: "",
+    tier: "free",
+    joinedAt: "",
+    watchlist: localWatchlistIds,
+    following: [],
+    continueWatching: localLibrary.continueWatching,
+  };
+
+  return {
+    user: anonymousUser,
+    library: localLibrary,
+    watchlist: buildLocalWatchlistResponse(localWatchlistIds, catalogItems),
+    following: {
+      totalFollowedStreamers: 0,
+      liveNowCount: 0,
+      followedStreamers: [],
+      liveStreams: [],
+    },
+    profile: {
+      user: anonymousUser,
+      email: "",
+      emailVerified: false,
+      matureContentAllowed: false,
+      defaultAudio: "English",
+      subtitlePreset: "Off",
+      autoplayTrailers: false,
+      liveChatFilter: "Standard",
+      hoursWatched: 0,
+      connectedAccounts: [],
+    },
+    settings: {
+      playback: {
+        defaultQuality: "Auto",
+        audioLanguage: "English",
+        subtitleLanguage: "Off",
+        subtitleStyle: "Default",
+        autoplayNextEpisode: true,
+        autoplayTrailers: false,
+        reducedMotion: false,
+        preferDubbed: false,
+        playbackSpeed: "1x",
+      },
+      notifications: {
+        seriesReleases: { label: "Series releases", push: false, email: false, lock: false },
+        liveStreams: { label: "Live streams", push: false, email: false, lock: false },
+        originals: { label: "Originals", push: false, email: false, lock: false },
+        watchlistUpdates: { label: "Watchlist updates", push: false, email: false, lock: false },
+        creatorUpdates: { label: "Creator updates", push: false, email: false, lock: false },
+        securityAlerts: { label: "Security alerts", push: false, email: false, lock: true },
+      },
+      privacy: {
+        showFriendActivity: false,
+        improveRecommendations: true,
+        personalizedAds: true,
+        abTests: true,
+        dataExportSizeMb: 0,
+        deleteCooldownDays: 0,
+      },
+      parental: {
+        maxRating: "TV-MA",
+        requirePinForMature: false,
+        hideLiveChatForKids: false,
+        blockMatureLiveStreams: false,
+        pinSet: false,
+      },
+      downloads: {
+        videoQuality: "Auto",
+        wifiOnly: true,
+        smartDownloads: false,
+        storageUsedGb: 0,
+        storageLimitGb: 0,
+        deviceLimit: 0,
+        activeDevices: 0,
+      },
+      language: {
+        interfaceLanguage: "English",
+        subtitleLanguage: "Off",
+        catalogRegion: "US",
+        dateFormat: "MM/DD/YYYY",
+        clockFormat: "12h",
+      },
+    },
+    plan: {
+      planName: "Free",
+      monthlyPrice: 0,
+      nextRenewalDate: "",
+      paymentBrand: "",
+      paymentLast4: "",
+      billingCity: "",
+      billingRegion: "",
+      billingCountry: "",
+      invoicesCount: 0,
+      screens: 1,
+      features: [],
+      averageRevenuePerUser: 0,
+    },
+    notifications: [],
+    sessions: [],
+  };
+}
+
 export const repository = {
   hasState(): boolean {
     return state !== null;
@@ -314,25 +430,18 @@ export const repository = {
   },
 
   async hydrate(): Promise<void> {
-    if (getAccessToken() === null) {
-      await createGuestSession();
-    }
     let bootstrap = await requestJson<BootstrapPayload>("/api/v1/bootstrap", {
       auth: getAccessToken() !== null,
     });
     if (!bootstrap.viewer && getAccessToken() !== null) {
       clearAccessToken();
-      await createGuestSession();
       bootstrap = await requestJson<BootstrapPayload>("/api/v1/bootstrap", {
-        auth: true,
+        auth: false,
       });
-    }
-    if (!bootstrap.viewer) {
-      throw new Error("Bootstrap did not return viewer state.");
     }
 
     const creator = bootstrap.creator;
-    const viewerState = bootstrap.viewer;
+    const viewerState = bootstrap.viewer ?? buildAnonymousViewerState(bootstrap.home);
     state = {
       series: bootstrap.home.trendingSeries,
       films: bootstrap.home.trendingFilms,

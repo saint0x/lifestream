@@ -26,6 +26,33 @@ pub struct CreateSessionRequest {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ViewerEventInput {
+    pub visitor_id: String,
+    pub event_type: String,
+    pub content_id: Option<Id>,
+    pub content_kind: Option<String>,
+    pub episode_id: Option<Id>,
+    pub stream_id: Option<Id>,
+    pub session_id: Option<Id>,
+    pub path: Option<String>,
+    pub url: Option<String>,
+    pub referrer_url: Option<String>,
+    pub landing_url: Option<String>,
+    pub initial_referrer_url: Option<String>,
+    pub utm_source: Option<String>,
+    pub utm_medium: Option<String>,
+    pub utm_campaign: Option<String>,
+    pub utm_term: Option<String>,
+    pub utm_content: Option<String>,
+    pub progress_sec: Option<i64>,
+    pub duration_sec: Option<i64>,
+    pub watch_time_ms: Option<i64>,
+    pub metadata: Option<Value>,
+    pub occurred_at: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateProfileRequest {
     pub display_name: Option<String>,
     pub email: Option<String>,

@@ -6,7 +6,7 @@ use crate::config::DatabaseKind;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     AuthSession, ContinueWatchingEntry, PlaybackSession, ProgressInput, UpdateProfileRequest,
-    UpdateSettingsRequest, User,
+    UpdateSettingsRequest, User, ViewerEventInput,
 };
 
 pub struct NewAuthSession<'a> {
@@ -1774,6 +1774,132 @@ impl Database {
         Ok(())
     }
 
+    pub async fn record_viewer_event(
+        &self,
+        id: &str,
+        user_id: Option<&str>,
+        input: &ViewerEventInput,
+        received_at: &str,
+    ) -> AppResult<()> {
+        let visitor_id = normalize_required_text(&input.visitor_id, 96, "visitorId")?;
+        let event_type = normalize_required_text(&input.event_type, 96, "eventType")?;
+        let content_id = normalize_optional_text(input.content_id.as_deref(), 128);
+        let content_kind = normalize_optional_text(input.content_kind.as_deref(), 32);
+        let episode_id = normalize_optional_text(input.episode_id.as_deref(), 128);
+        let stream_id = normalize_optional_text(input.stream_id.as_deref(), 128);
+        let session_id = normalize_optional_text(input.session_id.as_deref(), 128);
+        let path = normalize_optional_text(input.path.as_deref(), 512);
+        let url = normalize_optional_text(input.url.as_deref(), 2048);
+        let referrer_url = normalize_optional_text(input.referrer_url.as_deref(), 2048);
+        let landing_url = normalize_optional_text(input.landing_url.as_deref(), 2048);
+        let initial_referrer_url =
+            normalize_optional_text(input.initial_referrer_url.as_deref(), 2048);
+        let utm_source = normalize_optional_text(input.utm_source.as_deref(), 160);
+        let utm_medium = normalize_optional_text(input.utm_medium.as_deref(), 160);
+        let utm_campaign = normalize_optional_text(input.utm_campaign.as_deref(), 160);
+        let utm_term = normalize_optional_text(input.utm_term.as_deref(), 160);
+        let utm_content = normalize_optional_text(input.utm_content.as_deref(), 160);
+        let progress_sec = input.progress_sec.map(|value| value.max(0));
+        let duration_sec = input.duration_sec.map(|value| value.max(0));
+        let watch_time_ms = input.watch_time_ms.map(|value| value.max(0));
+        let metadata_json = input
+            .metadata
+            .as_ref()
+            .map(|value| serde_json::to_string(value))
+            .transpose()?
+            .map(|value| value.chars().take(8192).collect::<String>())
+            .unwrap_or_else(|| "{}".to_string());
+        let occurred_at = input
+            .occurred_at
+            .as_deref()
+            .and_then(|value| normalize_optional_text(Some(value), 64))
+            .unwrap_or_else(|| received_at.to_string());
+
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                sqlx::query(
+                    r#"
+                    INSERT INTO viewer_events (
+                        id, visitor_id, user_id, event_type, content_id, content_kind, episode_id,
+                        stream_id, session_id, path, url, referrer_url, landing_url,
+                        initial_referrer_url, utm_source, utm_medium, utm_campaign, utm_term,
+                        utm_content, progress_sec, duration_sec, watch_time_ms, metadata_json,
+                        occurred_at, received_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    "#,
+                )
+                .bind(id)
+                .bind(&visitor_id)
+                .bind(user_id)
+                .bind(&event_type)
+                .bind(content_id.as_deref())
+                .bind(content_kind.as_deref())
+                .bind(episode_id.as_deref())
+                .bind(stream_id.as_deref())
+                .bind(session_id.as_deref())
+                .bind(path.as_deref())
+                .bind(url.as_deref())
+                .bind(referrer_url.as_deref())
+                .bind(landing_url.as_deref())
+                .bind(initial_referrer_url.as_deref())
+                .bind(utm_source.as_deref())
+                .bind(utm_medium.as_deref())
+                .bind(utm_campaign.as_deref())
+                .bind(utm_term.as_deref())
+                .bind(utm_content.as_deref())
+                .bind(progress_sec)
+                .bind(duration_sec)
+                .bind(watch_time_ms)
+                .bind(&metadata_json)
+                .bind(&occurred_at)
+                .bind(received_at)
+                .execute(pool)
+                .await?;
+            }
+            DatabaseProvider::Postgres(pool) => {
+                sqlx::query(
+                    r#"
+                    INSERT INTO viewer_events (
+                        id, visitor_id, user_id, event_type, content_id, content_kind, episode_id,
+                        stream_id, session_id, path, url, referrer_url, landing_url,
+                        initial_referrer_url, utm_source, utm_medium, utm_campaign, utm_term,
+                        utm_content, progress_sec, duration_sec, watch_time_ms, metadata_json,
+                        occurred_at, received_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+                    "#,
+                )
+                .bind(id)
+                .bind(&visitor_id)
+                .bind(user_id)
+                .bind(&event_type)
+                .bind(content_id.as_deref())
+                .bind(content_kind.as_deref())
+                .bind(episode_id.as_deref())
+                .bind(stream_id.as_deref())
+                .bind(session_id.as_deref())
+                .bind(path.as_deref())
+                .bind(url.as_deref())
+                .bind(referrer_url.as_deref())
+                .bind(landing_url.as_deref())
+                .bind(initial_referrer_url.as_deref())
+                .bind(utm_source.as_deref())
+                .bind(utm_medium.as_deref())
+                .bind(utm_campaign.as_deref())
+                .bind(utm_term.as_deref())
+                .bind(utm_content.as_deref())
+                .bind(progress_sec)
+                .bind(duration_sec)
+                .bind(watch_time_ms)
+                .bind(&metadata_json)
+                .bind(&occurred_at)
+                .bind(received_at)
+                .execute(pool)
+                .await?;
+            }
+        }
+        Ok(())
+    }
+
     pub async fn mark_user_notification_read(
         &self,
         user_id: &str,
@@ -2565,6 +2691,18 @@ impl Database {
 
 fn bool_to_sqlite_int(value: bool) -> i64 {
     value as i64
+}
+
+fn normalize_optional_text(value: Option<&str>, max_len: usize) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.chars().take(max_len).collect())
+}
+
+fn normalize_required_text(value: &str, max_len: usize, field: &str) -> AppResult<String> {
+    normalize_optional_text(Some(value), max_len)
+        .ok_or_else(|| AppError::BadRequest(format!("{field} is required")))
 }
 
 fn bool_to_postgres_int(value: bool) -> i32 {
@@ -3598,6 +3736,120 @@ mod tests {
         .expect("remaining rows")
         .get("count");
         assert_eq!(remaining, 0);
+    }
+
+    #[tokio::test]
+    async fn sqlite_provider_records_viewer_events_for_anonymous_and_signed_in_viewers() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .expect("sqlite pool");
+        sqlx::raw_sql(include_str!("../migrations/0051_viewer_events.sql"))
+            .execute(&pool)
+            .await
+            .expect("viewer event schema");
+        sqlx::raw_sql(
+            r#"
+            CREATE TABLE users (
+                id TEXT PRIMARY KEY
+            );
+            INSERT INTO users (id) VALUES ('usr-test');
+            "#,
+        )
+        .execute(&pool)
+        .await
+        .expect("users schema");
+
+        let database = Database::from_sqlite(pool.clone());
+        database
+            .record_viewer_event(
+                "ve-anon",
+                None,
+                &ViewerEventInput {
+                    visitor_id: "vis_test".to_string(),
+                    event_type: "page_view".to_string(),
+                    content_id: None,
+                    content_kind: None,
+                    episode_id: None,
+                    stream_id: None,
+                    session_id: None,
+                    path: Some("/films".to_string()),
+                    url: Some("https://streamvanta.tv/films".to_string()),
+                    referrer_url: None,
+                    landing_url: Some("https://streamvanta.tv/".to_string()),
+                    initial_referrer_url: None,
+                    utm_source: Some("newsletter".to_string()),
+                    utm_medium: Some("email".to_string()),
+                    utm_campaign: Some("launch".to_string()),
+                    utm_term: None,
+                    utm_content: None,
+                    progress_sec: None,
+                    duration_sec: None,
+                    watch_time_ms: Some(-10),
+                    metadata: Some(serde_json::json!({ "surface": "catalog" })),
+                    occurred_at: Some("2026-08-24T12:00:00Z".to_string()),
+                },
+                "2026-08-24T12:00:01Z",
+            )
+            .await
+            .expect("anonymous event");
+        database
+            .record_viewer_event(
+                "ve-user",
+                Some("usr-test"),
+                &ViewerEventInput {
+                    visitor_id: "vis_test".to_string(),
+                    event_type: "playback_progress".to_string(),
+                    content_id: Some("film-test".to_string()),
+                    content_kind: Some("film".to_string()),
+                    episode_id: None,
+                    stream_id: None,
+                    session_id: Some("pbs-test".to_string()),
+                    path: Some("/watch/film/film-test".to_string()),
+                    url: None,
+                    referrer_url: None,
+                    landing_url: None,
+                    initial_referrer_url: None,
+                    utm_source: None,
+                    utm_medium: None,
+                    utm_campaign: None,
+                    utm_term: None,
+                    utm_content: None,
+                    progress_sec: Some(42),
+                    duration_sec: Some(120),
+                    watch_time_ms: Some(1000),
+                    metadata: None,
+                    occurred_at: None,
+                },
+                "2026-08-24T12:01:00Z",
+            )
+            .await
+            .expect("signed event");
+
+        let rows = sqlx::query(
+            r#"
+            SELECT id, user_id, event_type, watch_time_ms, metadata_json
+            FROM viewer_events
+            ORDER BY id
+            "#,
+        )
+        .fetch_all(&pool)
+        .await
+        .expect("event rows");
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].get::<String, _>("id"), "ve-anon");
+        assert!(rows[0].get::<Option<String>, _>("user_id").is_none());
+        assert_eq!(rows[0].get::<i64, _>("watch_time_ms"), 0);
+        assert_eq!(
+            rows[0].get::<String, _>("metadata_json"),
+            r#"{"surface":"catalog"}"#
+        );
+        assert_eq!(rows[1].get::<String, _>("event_type"), "playback_progress");
+        assert_eq!(
+            rows[1].get::<Option<String>, _>("user_id"),
+            Some("usr-test".to_string())
+        );
     }
 
     #[tokio::test]

@@ -51,19 +51,19 @@ export function getVisitorId(): string {
 
 export function getLiveAttributionParams(): URLSearchParams {
   const params = new URLSearchParams();
-  const currentUrl = new URL(window.location.href);
+  const attribution = getViewerAttribution();
 
-  const values: Record<string, string | null> = {
-    visitor_id: trimForTransport(getVisitorId(), 96),
-    landing_url: trimForTransport(getLandingUrl(), MAX_URL_LENGTH),
-    initial_referrer_url: trimForTransport(getInitialReferrerUrl(), MAX_URL_LENGTH),
-    current_url: trimForTransport(currentUrl.href, MAX_URL_LENGTH),
-    current_referrer_url: trimForTransport(document.referrer, MAX_URL_LENGTH),
-    utm_source: trimForTransport(currentUrl.searchParams.get("utm_source"), MAX_PARAM_LENGTH),
-    utm_medium: trimForTransport(currentUrl.searchParams.get("utm_medium"), MAX_PARAM_LENGTH),
-    utm_campaign: trimForTransport(currentUrl.searchParams.get("utm_campaign"), MAX_PARAM_LENGTH),
-    utm_term: trimForTransport(currentUrl.searchParams.get("utm_term"), MAX_PARAM_LENGTH),
-    utm_content: trimForTransport(currentUrl.searchParams.get("utm_content"), MAX_PARAM_LENGTH),
+  const values: Record<string, string | null | undefined> = {
+    visitor_id: attribution.visitorId,
+    landing_url: attribution.landingUrl,
+    initial_referrer_url: attribution.initialReferrerUrl,
+    current_url: attribution.currentUrl,
+    current_referrer_url: attribution.currentReferrerUrl,
+    utm_source: attribution.utmSource,
+    utm_medium: attribution.utmMedium,
+    utm_campaign: attribution.utmCampaign,
+    utm_term: attribution.utmTerm,
+    utm_content: attribution.utmContent,
   };
 
   for (const [key, value] of Object.entries(values)) {
@@ -71,4 +71,31 @@ export function getLiveAttributionParams(): URLSearchParams {
   }
 
   return params;
+}
+
+export function getViewerAttribution(): {
+  readonly visitorId: string;
+  readonly landingUrl?: string;
+  readonly initialReferrerUrl?: string;
+  readonly currentUrl?: string;
+  readonly currentReferrerUrl?: string;
+  readonly utmSource?: string;
+  readonly utmMedium?: string;
+  readonly utmCampaign?: string;
+  readonly utmTerm?: string;
+  readonly utmContent?: string;
+} {
+  const currentUrl = new URL(window.location.href);
+  return {
+    visitorId: trimForTransport(getVisitorId(), 96) ?? getVisitorId(),
+    landingUrl: trimForTransport(getLandingUrl(), MAX_URL_LENGTH) ?? undefined,
+    initialReferrerUrl: trimForTransport(getInitialReferrerUrl(), MAX_URL_LENGTH) ?? undefined,
+    currentUrl: trimForTransport(currentUrl.href, MAX_URL_LENGTH) ?? undefined,
+    currentReferrerUrl: trimForTransport(document.referrer, MAX_URL_LENGTH) ?? undefined,
+    utmSource: trimForTransport(currentUrl.searchParams.get("utm_source"), MAX_PARAM_LENGTH) ?? undefined,
+    utmMedium: trimForTransport(currentUrl.searchParams.get("utm_medium"), MAX_PARAM_LENGTH) ?? undefined,
+    utmCampaign: trimForTransport(currentUrl.searchParams.get("utm_campaign"), MAX_PARAM_LENGTH) ?? undefined,
+    utmTerm: trimForTransport(currentUrl.searchParams.get("utm_term"), MAX_PARAM_LENGTH) ?? undefined,
+    utmContent: trimForTransport(currentUrl.searchParams.get("utm_content"), MAX_PARAM_LENGTH) ?? undefined,
+  };
 }

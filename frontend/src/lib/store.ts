@@ -1,6 +1,15 @@
 import { create } from "zustand";
 import { repository } from "./repository";
-import { clearAccessToken, requestJson } from "./api";
+import { clearAccessToken, getAccessToken, requestJson } from "./api";
+import { trackViewerEvent } from "./analytics";
+import {
+  buildLocalLibrary,
+  buildLocalWatchlistResponse,
+  getLocalWatchlistIds,
+  removeLocalProgress,
+  setLocalWatchlistIds,
+  upsertLocalProgress,
+} from "./localLibrary";
 import type {
   AuthSession,
   BillingPlan,
@@ -202,6 +211,20 @@ function patchFromViewerState(
   };
 }
 
+function refreshLocalViewerPatch(): Pick<AppState, "watchlist" | "watchlistDetails" | "continueWatching" | "library"> {
+  const ids = getLocalWatchlistIds();
+  const catalog = repository.hasState()
+    ? repository.listAllContent().filter((item) => item.kind === "series" || item.kind === "film")
+    : [];
+  const library = buildLocalLibrary();
+  return {
+    watchlist: new Set(ids),
+    watchlistDetails: buildLocalWatchlistResponse(ids, catalog),
+    continueWatching: library.continueWatching,
+    library,
+  };
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   hydrationStatus: repository.hasState() ? "ready" : "idle",
   hydrationMessage: null,
@@ -237,6 +260,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (willAdd) next.add(id);
     else next.delete(id);
     set({ watchlist: next });
+
+    trackViewerEvent({
+      eventType: willAdd ? "watchlist_add" : "watchlist_remove",
+      contentId: id,
+      metadata: { signedIn: Boolean(getAccessToken()) },
+    });
+
+    if (!getAccessToken()) {
+      setLocalWatchlistIds(Array.from(next));
+      set(refreshLocalViewerPatch());
+      return;
+    }
 
     void requestJson<User>("/api/v1/me/watchlist/" + id, {
       method: willAdd ? "POST" : "DELETE",
@@ -283,6 +318,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     const filtered = previous.filter((item) => item.contentId !== entry.contentId);
     set({ continueWatching: [entry, ...filtered] });
 
+    trackViewerEvent({
+      eventType: "playback_progress",
+      contentId: entry.contentId,
+      contentKind: entry.kind,
+      episodeId: entry.episodeId,
+      progressSec: entry.progressSec,
+      durationSec: entry.durationSec,
+      watchTimeMs: 1000,
+      metadata: { signedIn: Boolean(getAccessToken()) },
+    });
+
+    if (!getAccessToken()) {
+      upsertLocalProgress(entry);
+      set(refreshLocalViewerPatch());
+      return;
+    }
+
     void requestJson<User>("/api/v1/me/progress", {
       method: "PUT",
       body: entry,
@@ -303,6 +355,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       continueWatching: previous.filter((item) => item.contentId !== contentId),
     });
+
+    trackViewerEvent({
+      eventType: "library_progress_remove",
+      contentId,
+      metadata: { signedIn: Boolean(getAccessToken()) },
+    });
+
+    if (!getAccessToken()) {
+      removeLocalProgress(contentId);
+      set(refreshLocalViewerPatch());
+      return;
+    }
 
     void requestJson<User>("/api/v1/me/progress/" + contentId, {
       method: "DELETE",

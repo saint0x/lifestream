@@ -91,8 +91,8 @@ use crate::{
         UpdateSettingsRequest, UpdateUploadJobRequest, UpdateUploadLifecycleRequest,
         UpdateUploadRequest, Upload, UploadIngestSession, UploadIngestTicket, UploadJob, User,
         UserEntitlementReconciliationAction, UserEntitlements, UserLibrary, UserNotification,
-        UserProfileDetails, UserSettingsBundle, ViewerAppState, ViewerPreview, WatchHistoryEntry,
-        WatchlistResponse, WsEvent,
+        UserProfileDetails, UserSettingsBundle, ViewerAppState, ViewerEventInput, ViewerPreview,
+        WatchHistoryEntry, WatchlistResponse, WsEvent,
     },
     state::AppState,
 };

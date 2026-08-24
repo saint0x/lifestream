@@ -12,6 +12,7 @@ import { LiveCard } from "@/components/content/LiveCard";
 import { requestJson, resolveApiUrl } from "@/lib/api";
 import { preparePlaybackGrantMediaAuthorization } from "@/lib/playback";
 import { shareCurrentPage } from "@/lib/share";
+import { getVisitorId } from "@/lib/attribution";
 import type { LiveStream, PlaybackGrant } from "@/types";
 import "./LiveWatchPage.css";
 
@@ -84,6 +85,11 @@ export function LiveWatchPage() {
     void requestJson<PlaybackGrant>(stream.playbackSessionUrl, {
       method: "POST",
       auth: false,
+      body: {
+        deviceId: getVisitorId(),
+        deviceName: "Browser",
+        playerVersion: "vanta-web",
+      },
       signal: controller.signal,
     })
       .then(async (grant) => {

@@ -77,16 +77,18 @@ pub(crate) async fn create_upload_playback_session(
     State(state): State<SharedState>,
     headers: HeaderMap,
     Path(upload_id): Path<String>,
+    payload: Option<Json<PlaybackSessionCreateRequest>>,
 ) -> AppResult<Json<PlaybackGrant>> {
-    create_playback_session_for_content_id(state, headers, upload_id).await
+    create_playback_session_for_content_id(state, headers, upload_id, payload).await
 }
 
 pub(crate) async fn create_content_playback_session(
     State(state): State<SharedState>,
     headers: HeaderMap,
     Path(content_id): Path<String>,
+    payload: Option<Json<PlaybackSessionCreateRequest>>,
 ) -> AppResult<Json<PlaybackGrant>> {
-    create_playback_session_for_content_id(state, headers, content_id).await
+    create_playback_session_for_content_id(state, headers, content_id, payload).await
 }
 
 pub(crate) async fn create_live_playback_session(
@@ -259,8 +261,30 @@ async fn create_playback_session_for_content_id(
     state: SharedState,
     headers: HeaderMap,
     content_id: String,
+    payload: Option<Json<PlaybackSessionCreateRequest>>,
 ) -> AppResult<Json<PlaybackGrant>> {
     let maybe_identity = optional_identity(&state.db, &headers).await?;
+    let payload = payload.map(|Json(payload)| payload).unwrap_or_default();
+    let device_id = normalize_optional_playback_metadata(
+        payload.device_id.as_deref(),
+        "deviceId",
+        PLAYBACK_SESSION_DEVICE_ID_MAX_LEN,
+    )?;
+    let device_name = normalize_optional_playback_metadata(
+        payload.device_name.as_deref(),
+        "deviceName",
+        PLAYBACK_SESSION_DEVICE_NAME_MAX_LEN,
+    )?;
+    let player_version = normalize_optional_playback_metadata(
+        payload.player_version.as_deref(),
+        "playerVersion",
+        PLAYBACK_SESSION_PLAYER_VERSION_MAX_LEN,
+    )?;
+    let capabilities_json = payload
+        .capabilities
+        .as_ref()
+        .map(serde_json::to_string)
+        .transpose()?;
     let target = fetch_upload_playback_target(state.db.try_sqlite_adapter()?, &content_id).await?;
     let access = resolve_upload_playback_access(
         state.db.try_sqlite_adapter()?,
@@ -293,10 +317,10 @@ async fn create_playback_session_for_content_id(
             access_scope: &access_scope,
             created_at: &now_rfc3339,
             expires_at: &expires_at,
-            device_id: None,
-            device_name: None,
-            player_version: None,
-            capabilities_json: None,
+            device_id: device_id.as_deref(),
+            device_name: device_name.as_deref(),
+            player_version: player_version.as_deref(),
+            capabilities_json: capabilities_json.as_deref(),
         })
         .await?;
 

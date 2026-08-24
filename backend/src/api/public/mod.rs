@@ -1,6 +1,7 @@
 use super::*;
 
 mod auth;
+mod analytics;
 mod catalog;
 mod health;
 mod live;
@@ -44,6 +45,7 @@ pub(super) fn routes() -> Router<SharedState> {
         .route("/metrics", get(metrics))
         .route("/api/v1/home", get(catalog::home))
         .route("/api/v1/bootstrap", get(bootstrap))
+        .route("/api/v1/analytics/events", post(analytics::record_viewer_event))
         .route(
             "/api/auth/sign-in/anonymous",
             post(auth::create_guest_session),

@@ -281,6 +281,7 @@ async fn processed_upload_materializes_thumbnail_variant_and_publish_uses_it() -
         State(state.clone()),
         HeaderMap::new(),
         Path(published.id.clone()),
+        None,
     )
     .await?
     .0;
@@ -597,6 +598,7 @@ async fn processed_upload_materializes_webvtt_caption_variant_from_embedded_subt
         State(state.clone()),
         HeaderMap::new(),
         Path(published.id.clone()),
+        None,
     )
     .await?
     .0;
@@ -847,6 +849,7 @@ async fn processed_upload_materializes_multi_audio_variants_and_playback_honors_
         State(state.clone()),
         HeaderMap::new(),
         Path(published.id.clone()),
+        None,
     )
     .await?
     .0;
@@ -898,6 +901,7 @@ async fn processed_upload_materializes_multi_audio_variants_and_playback_honors_
         State(state.clone()),
         auth_headers(&viewer_token),
         Path(published.id.clone()),
+        None,
     )
     .await?
     .0;

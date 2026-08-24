@@ -7,6 +7,7 @@ import { useAppStore } from "@/lib/store";
 import { formatDuration } from "@/lib/format";
 import { requestJson, resolveApiUrl } from "@/lib/api";
 import { preparePlaybackGrantMediaAuthorization } from "@/lib/playback";
+import { getVisitorId } from "@/lib/attribution";
 import type { Episode, Film, PlaybackGrant, Series } from "@/types";
 import "./WatchPage.css";
 
@@ -17,6 +18,7 @@ interface WatchPageProps {
 export function WatchPage({ kind }: WatchPageProps) {
   const { id } = useParams<{ id: string }>();
   const recordProgress = useAppStore((s) => s.recordProgress);
+  const continueWatching = useAppStore((s) => s.continueWatching);
   const [playbackGrant, setPlaybackGrant] = useState<PlaybackGrant | null>(null);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [playbackLoading, setPlaybackLoading] = useState(false);
@@ -87,7 +89,16 @@ export function WatchPage({ kind }: WatchPageProps) {
     setPlaybackLoading(true);
     setPlaybackError(null);
     const controller = new AbortController();
-    void requestJson<PlaybackGrant>(playbackSessionUrl, { method: "POST", signal: controller.signal })
+    void requestJson<PlaybackGrant>(playbackSessionUrl, {
+      method: "POST",
+      auth: false,
+      body: {
+        deviceId: getVisitorId(),
+        deviceName: "Browser",
+        playerVersion: "vanta-web",
+      },
+      signal: controller.signal,
+    })
       .then(async (grant) => {
         await preparePlaybackGrantMediaAuthorization(grant, controller.signal);
         setPlaybackGrant(grant);
@@ -123,6 +134,9 @@ export function WatchPage({ kind }: WatchPageProps) {
       idxInSeason >= 0 && season
         ? season.episodes[idxInSeason + 1]
         : undefined;
+    const savedProgress = continueWatching.find(
+      (entry) => entry.kind === "series" && entry.contentId === series.id && entry.episodeId === episode.id,
+    );
 
     return (
       <div className="ls-watch">
@@ -147,7 +161,7 @@ export function WatchPage({ kind }: WatchPageProps) {
             title={`${series.title} — ${episode.title}`}
             subtitle="[ they don't know the signal is a song ]"
             durationSec={episode.durationSec}
-            initialProgressSec={episode.progressSec ?? 0}
+            initialProgressSec={savedProgress?.progressSec ?? episode.progressSec ?? 0}
             sourceUrl={playbackGrant ? resolveApiUrl(playbackGrant.manifestUrl) : null}
             onProgress={(sec) => {
               recordProgress({
@@ -226,7 +240,11 @@ export function WatchPage({ kind }: WatchPageProps) {
           poster={playbackGrant?.posterUrl ? resolveApiUrl(playbackGrant.posterUrl) : film.images.backdrop}
           title={film.title}
           durationSec={film.durationSec}
-          initialProgressSec={film.progressSec ?? 0}
+          initialProgressSec={
+            continueWatching.find((entry) => entry.kind === "film" && entry.contentId === film.id)?.progressSec
+            ?? film.progressSec
+            ?? 0
+          }
           sourceUrl={playbackGrant ? resolveApiUrl(playbackGrant.manifestUrl) : null}
           onProgress={(sec) => {
             recordProgress({
