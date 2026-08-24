@@ -36,6 +36,11 @@ function CreatorRoute() {
   return isSignedInUser(user) ? <Outlet /> : <Navigate to="/" replace />;
 }
 
+function SignedInRoute() {
+  const user = useAppStore((state) => state.user);
+  return isSignedInUser(user) ? <Outlet /> : <Navigate to="/" replace />;
+}
+
 export const router = createBrowserRouter([
   {
     element: <Shell />,
@@ -54,7 +59,12 @@ export const router = createBrowserRouter([
       { path: "/watch/film/:id", element: <WatchPage kind="film" /> },
       { path: "/watchlist", element: <WatchlistPage /> },
       { path: "/library", element: <LibraryPage /> },
-      { path: "/following", element: <FollowingPage /> },
+      {
+        element: <SignedInRoute />,
+        children: [
+          { path: "/following", element: <FollowingPage /> },
+        ],
+      },
       {
         element: <CreatorRoute />,
         children: [

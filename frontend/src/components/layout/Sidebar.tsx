@@ -32,6 +32,9 @@ const primary = [
 const secondary = [
   { to: "/watchlist", label: "Watchlist", Icon: Bookmark },
   { to: "/library", label: "Library", Icon: Library },
+] as const;
+
+const signedInSecondary = [
   { to: "/following", label: "Following", Icon: Users },
 ] as const;
 
@@ -47,7 +50,7 @@ const utility = [
 export function Sidebar() {
   const followedLive = useAppStore((s) => s.followingFeed.liveStreams);
   const user = useAppStore((s) => s.user);
-  const showCreatorTools = isSignedInUser(user);
+  const signedIn = isSignedInUser(user);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
@@ -117,9 +120,24 @@ export function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
+        {signedInSecondary.map(({ to, label, Icon }) => (
+          signedIn ? (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `ls-sidebar__item ${isActive ? "is-active" : ""}`
+              }
+              title={label}
+            >
+              <Icon size={16} strokeWidth={1.75} />
+              <span>{label}</span>
+            </NavLink>
+          ) : null
+        ))}
       </nav>
 
-      {showCreatorTools ? (
+      {signedIn ? (
         <nav className="ls-sidebar__section">
           <div className="ls-sidebar__label mono">Studio</div>
           {studio.map(({ to, label, Icon }) => (
