@@ -4,7 +4,7 @@ import { repository } from "@/lib/repository";
 import { LiveCard } from "@/components/content/LiveCard";
 import { ContentCard } from "@/components/content/ContentCard";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import type { Category, Film, LiveStream, Series } from "@/types";
 import "./CategoryPage.css";
 
@@ -18,12 +18,6 @@ export function CategoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pageSize = 18;
-
-  usePageBreadcrumbs([
-    { label: "Dashboard", href: "/" },
-    { label: "Live", href: "/live" },
-    { label: cat?.name ?? "Category" },
-  ]);
 
   useEffect(() => {
     if (!slug) return;
@@ -124,7 +118,14 @@ export function CategoryPage() {
       >
         <div className="ls-category__scrim" />
         <div className="ls-category__body">
-          <div className="ls-category__kicker mono">/ category / {cat.slug}</div>
+          <PageTrail
+            className="ls-category__kicker mono"
+            items={[
+              { label: "Dashboard", href: "/" },
+              { label: "Live", href: "/live" },
+              { label: cat.name },
+            ]}
+          />
           <h1 className="ls-category__title">{cat.name}</h1>
           <div className="ls-category__meta mono">
             <span>

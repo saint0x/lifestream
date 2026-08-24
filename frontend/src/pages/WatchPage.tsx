@@ -4,7 +4,7 @@ import { ChevronLeft, Play } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { useAppStore } from "@/lib/store";
 import { formatDuration } from "@/lib/format";
@@ -42,26 +42,6 @@ export function WatchPage({ kind }: WatchPageProps) {
     kind === "episode"
       ? episode?.playbackSessionUrl
       : film?.playbackSessionUrl;
-
-  usePageBreadcrumbs(
-    kind === "episode" && episode && series
-      ? [
-          { label: "Dashboard", href: "/" },
-          { label: "Series", href: "/series" },
-          { label: series.title, href: `/series/${series.slug}` },
-          { label: episode.title },
-        ]
-      : kind === "film" && film
-        ? [
-            { label: "Dashboard", href: "/" },
-            { label: "Films", href: "/films" },
-            { label: film.title },
-          ]
-        : [
-            { label: "Dashboard", href: "/" },
-            { label: "Watch" },
-          ],
-  );
 
   useEffect(() => {
     if (!id) return;
@@ -190,13 +170,15 @@ export function WatchPage({ kind }: WatchPageProps) {
           <Link to={`/series/${series.slug}`} className="ls-watch__back">
             <ChevronLeft size={14} /> Back to {series.title}
           </Link>
-          <div className="ls-watch__crumbs mono">
-            <span>{series.title}</span>
-            <span>/</span>
-            <span>S{String(episode.seasonNumber).padStart(2, "0")}</span>
-            <span>/</span>
-            <span>E{String(episode.episodeNumber).padStart(2, "0")}</span>
-          </div>
+          <PageTrail
+            className="ls-watch__crumbs mono"
+            items={[
+              { label: "Dashboard", href: "/" },
+              { label: "Series", href: "/series" },
+              { label: series.title, href: `/series/${series.slug}` },
+              { label: episode.title },
+            ]}
+          />
         </header>
 
         <div className="ls-watch__player">
@@ -299,11 +281,14 @@ export function WatchPage({ kind }: WatchPageProps) {
         <Link to={`/film/${film.slug}`} className="ls-watch__back">
           <ChevronLeft size={14} /> Back to {film.title}
         </Link>
-        <div className="ls-watch__crumbs mono">
-          <span>VANTA</span>
-          <span>/</span>
-          <span>FILM</span>
-        </div>
+        <PageTrail
+          className="ls-watch__crumbs mono"
+          items={[
+            { label: "Dashboard", href: "/" },
+            { label: "Films", href: "/films" },
+            { label: film.title },
+          ]}
+        />
       </header>
 
       <div className="ls-watch__player">

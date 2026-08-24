@@ -15,6 +15,7 @@ import { useAppStore } from "@/lib/store";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import type { UserSettingsBundle } from "@/types";
 import "./SettingsPage.css";
 
@@ -102,7 +103,13 @@ export function SettingsPage() {
   return (
     <div className="ls-settings">
       <header className="ls-settings__head">
-        <div className="ls-settings__kicker mono">/ yours / settings</div>
+        <PageTrail
+          className="ls-settings__kicker mono"
+          items={[
+            { label: "Dashboard", href: "/" },
+            { label: "Settings" },
+          ]}
+        />
         <h1 className="ls-settings__title">Settings</h1>
         <p className="ls-settings__sub">
           Preferences, playback defaults, privacy, billing — apply to every device you

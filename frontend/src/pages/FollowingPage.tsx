@@ -3,6 +3,7 @@ import { useAppStore } from "@/lib/store";
 import { repository } from "@/lib/repository";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { formatViewers } from "@/lib/format";
 import { LiveCard } from "@/components/content/LiveCard";
 import { Users } from "lucide-react";
@@ -17,7 +18,13 @@ export function FollowingPage() {
   return (
     <div className="ls-list">
       <header className="ls-list__head">
-        <div className="ls-list__kicker mono">/ yours / following</div>
+        <PageTrail
+          className="ls-list__kicker mono"
+          items={[
+            { label: "Dashboard", href: "/" },
+            { label: "Following" },
+          ]}
+        />
         <h1 className="ls-list__title">Following</h1>
         <p className="ls-list__sub">
           {followedStreamers.length} streamer{followedStreamers.length === 1 ? "" : "s"} you follow ·

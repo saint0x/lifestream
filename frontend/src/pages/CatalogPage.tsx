@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ContentCard } from "@/components/content/ContentCard";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { Button } from "@/components/ui/Button";
 import { repository } from "@/lib/repository";
 import type { Film, Genre, Series } from "@/types";
@@ -72,11 +72,6 @@ export function CatalogPage({ kind, originalsOnly = false }: CatalogPageProps) {
       : kind === "film"
         ? "Films"
         : "Browse";
-
-  usePageBreadcrumbs([
-    { label: "Dashboard", href: "/" },
-    { label: pageLabel },
-  ]);
 
   useEffect(() => {
     setOriginals(originalsOnly);
@@ -241,14 +236,13 @@ export function CatalogPage({ kind, originalsOnly = false }: CatalogPageProps) {
       />
       <header className="ls-catalog__head">
         <div>
-          <div className="ls-catalog__kicker mono">
-            /{" "}
-            {kind === "series"
-              ? "series"
-              : kind === "film"
-                ? "films"
-                : "browse"}
-          </div>
+          <PageTrail
+            className="ls-catalog__kicker mono"
+            items={[
+              { label: "Dashboard", href: "/" },
+              { label: pageLabel },
+            ]}
+          />
           <h1 className="ls-catalog__title">
             {originalsOnly
               ? "VANTA Originals"

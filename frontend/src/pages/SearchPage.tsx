@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Search as SearchIcon } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import type { SearchResult } from "@/types";
 import "./SearchPage.css";
 
@@ -17,12 +17,6 @@ export function SearchPage() {
   const [error, setError] = useState<string | null>(null);
   const pageSize = 16;
   const currentQuery = params.get("q")?.trim();
-
-  usePageBreadcrumbs([
-    { label: "Dashboard", href: "/" },
-    { label: "Search", href: currentQuery ? "/search" : undefined },
-    ...(currentQuery ? [{ label: currentQuery }] : []),
-  ]);
 
   useEffect(() => {
     setQuery(params.get("q") ?? "");
@@ -123,7 +117,14 @@ export function SearchPage() {
         }}
       />
       <header className="ls-search__head">
-        <div className="ls-search__kicker mono">/ search</div>
+        <PageTrail
+          className="ls-search__kicker mono"
+          items={[
+            { label: "Dashboard", href: "/" },
+            { label: "Search", href: currentQuery ? "/search" : undefined },
+            ...(currentQuery ? [{ label: currentQuery }] : []),
+          ]}
+        />
         <h1 className="ls-search__title">Search</h1>
         <form
           className="ls-search__form"

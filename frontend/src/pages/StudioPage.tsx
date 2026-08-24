@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { Button } from "@/components/ui/Button";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { Input } from "@/components/ui/Input";
 import { formatNumber, formatRelativeTime, formatRuntime, formatViewers } from "@/lib/format";
 import type { AnalyticsPoint, Broadcast, MediaAsset, TopContent, Upload, UploadJob } from "@/types";
@@ -506,7 +507,13 @@ export function StudioPage() {
   return (
     <div className="ls-studio">
       <header className="ls-studio__head">
-        <div className="ls-studio__kicker mono">/ creator / studio</div>
+        <PageTrail
+          className="ls-studio__kicker mono"
+          items={[
+            { label: "Dashboard", href: "/" },
+            { label: "Creator Studio" },
+          ]}
+        />
         <div className="ls-studio__title-row">
           <div>
             <h1 className="ls-studio__title">Creator Studio</h1>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { ContentCard } from "@/components/content/ContentCard";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { Bookmark } from "lucide-react";
 import { repository } from "@/lib/repository";
 import type { Film, Series } from "@/types";
@@ -45,7 +46,13 @@ export function WatchlistPage() {
   return (
     <div className="ls-list">
       <header className="ls-list__head">
-        <div className="ls-list__kicker mono">/ yours / watchlist</div>
+        <PageTrail
+          className="ls-list__kicker mono"
+          items={[
+            { label: "Dashboard", href: "/" },
+            { label: "Watchlist" },
+          ]}
+        />
         <h1 className="ls-list__title">Watchlist</h1>
         <p className="ls-list__sub">
           {items.length} title{items.length === 1 ? "" : "s"} saved for later

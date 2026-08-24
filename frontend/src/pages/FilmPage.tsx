@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ContentRow } from "@/components/content/ContentRow";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { formatRuntime } from "@/lib/format";
 import { shareCurrentPage } from "@/lib/share";
 import type { Film, Series } from "@/types";
@@ -22,12 +22,6 @@ export function FilmPage() {
   const inWatchlist = useAppStore((s) => (film ? s.watchlist.has(film.id) : false));
   const toggleWatchlist = useAppStore((s) => s.toggleWatchlist);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
-
-  usePageBreadcrumbs([
-    { label: "Dashboard", href: "/" },
-    { label: "Films", href: "/films" },
-    { label: film?.title ?? "Film" },
-  ]);
 
   useEffect(() => {
     if (!slug) return;
@@ -112,12 +106,16 @@ export function FilmPage() {
       <div className="ls-detail__content">
         <div className="ls-detail__header">
           <div>
-            <div className="ls-detail__kicker mono">
-              <span className="ls-detail__kicker-dot" />
-              FILM
-              <span className="ls-detail__kicker-sep">—</span>
-              {formatRuntime(film.durationSec)}
-            </div>
+            <PageTrail
+              className="ls-detail__kicker mono"
+              showDot
+              suffix={formatRuntime(film.durationSec)}
+              items={[
+                { label: "Dashboard", href: "/" },
+                { label: "Films", href: "/films" },
+                { label: film.title },
+              ]}
+            />
             <h1 className="ls-detail__title">{film.title}</h1>
             {film.tagline !== undefined && (
               <div className="ls-detail__tagline serif">{film.tagline}</div>

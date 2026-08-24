@@ -5,7 +5,6 @@ import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -47,12 +46,6 @@ export function LiveWatchPage() {
     stream ? s.following.has(stream.streamer.id) : false,
   );
   const toggleFollow = useAppStore((s) => s.toggleFollow);
-
-  usePageBreadcrumbs([
-    { label: "Dashboard", href: "/" },
-    { label: "Live", href: "/live" },
-    { label: stream?.title ?? "Live Stream" },
-  ]);
 
   useEffect(() => {
     if (!slug) {

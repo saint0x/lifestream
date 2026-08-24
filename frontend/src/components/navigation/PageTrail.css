@@ -1,0 +1,55 @@
+.ls-page-trail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ls-page-trail__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ls-page-trail a,
+.ls-page-trail__item span,
+.ls-page-trail__suffix {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-page-trail a {
+  color: var(--c-text-faint);
+  border-radius: var(--r-sm);
+  transition:
+    color 160ms var(--ease-out),
+    background 160ms var(--ease-out);
+}
+
+.ls-page-trail a:hover {
+  color: var(--c-text);
+}
+
+.ls-page-trail__item span[aria-current="page"] {
+  color: var(--c-text);
+}
+
+.ls-page-trail__sep,
+.ls-page-trail__dash {
+  color: var(--c-text-ghost);
+}
+
+.ls-page-trail__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hero-accent, var(--c-live));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--hero-accent, var(--c-live)) 45%, transparent);
+  flex: 0 0 auto;
+}
+
+.ls-page-trail__suffix {
+  color: var(--c-text-faint);
+}

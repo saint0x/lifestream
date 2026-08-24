@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { HeroCarousel } from "@/components/content/HeroCarousel";
 import { ContentRow } from "@/components/content/ContentRow";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
 import type { Film, LiveStream, Series } from "@/types";
@@ -23,8 +22,6 @@ export function HomePage() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  usePageBreadcrumbs([{ label: "Dashboard" }]);
 
   const heroItems = originals.slice(0, 4);
 

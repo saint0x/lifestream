@@ -16,7 +16,7 @@ import { FaFacebookF, FaImdb, FaInstagram, FaLinkedinIn, FaXTwitter } from "reac
 import { repository } from "@/lib/repository";
 import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAppStore } from "@/lib/store";
@@ -141,11 +141,6 @@ export function ProfilePage() {
   const [status, setStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  usePageBreadcrumbs([
-    { label: "Dashboard", href: "/" },
-    { label: profile?.displayName ?? "Profile" },
-  ]);
 
   useEffect(() => {
     if (!isOwnProfile && !publicSlug) {
@@ -341,9 +336,13 @@ export function ProfilePage() {
             </div>
           )}
           <div className="ls-profile__intro">
-            <div className="ls-profile__kicker mono">
-              {isOwnProfile ? "your public profile" : "person profile"}
-            </div>
+            <PageTrail
+              className="ls-profile__kicker mono"
+              items={[
+                { label: "Dashboard", href: "/" },
+                { label: profile.displayName },
+              ]}
+            />
             <h1 className="ls-profile__name">{profile.displayName}</h1>
             <div className="ls-profile__headline">{profile.headline || `@${profile.slug}`}</div>
             <div className="ls-profile__meta mono">

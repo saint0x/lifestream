@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Play, X } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { repository } from "@/lib/repository";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { formatDuration, clamp01 } from "@/lib/format";
 import type { Film, Series } from "@/types";
 import "./ListPage.css";
@@ -51,7 +52,13 @@ export function LibraryPage() {
   return (
     <div className="ls-list">
       <header className="ls-list__head">
-        <div className="ls-list__kicker mono">/ yours / library</div>
+        <PageTrail
+          className="ls-list__kicker mono"
+          items={[
+            { label: "Dashboard", href: "/" },
+            { label: "Library" },
+          ]}
+        />
         <h1 className="ls-list__title">Library</h1>
         <p className="ls-list__sub">
           Continue where you left off — {continueWatching.length} item

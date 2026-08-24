@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { repository } from "@/lib/repository";
 import { LiveCard } from "@/components/content/LiveCard";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import type { Category, Genre, LiveStream } from "@/types";
 import "./BrowseLivePage.css";
 
@@ -26,11 +26,6 @@ export function BrowseLivePage() {
   const [limit, setLimit] = useState(24);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  usePageBreadcrumbs([
-    { label: "Dashboard", href: "/" },
-    { label: "Live" },
-  ]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -90,7 +85,13 @@ export function BrowseLivePage() {
       />
       <header className="ls-browse__head">
         <div>
-          <div className="ls-browse__kicker mono">/ live</div>
+          <PageTrail
+            className="ls-browse__kicker mono"
+            items={[
+              { label: "Dashboard", href: "/" },
+              { label: "Live" },
+            ]}
+          />
           <h1 className="ls-browse__title">Live, right now</h1>
           <p className="ls-browse__sub">
             {totalChannels} channels · {totalViewers.toLocaleString()} viewers ·

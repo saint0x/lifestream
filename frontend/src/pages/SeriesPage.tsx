@@ -9,7 +9,7 @@ import { AlertMeButton } from "@/components/alerts/AlertMeButton";
 import { EpisodeList } from "@/components/content/EpisodeList";
 import { ContentRow } from "@/components/content/ContentRow";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { shareCurrentPage } from "@/lib/share";
 import type { Film, Series } from "@/types";
 import "./DetailPage.css";
@@ -23,12 +23,6 @@ export function SeriesPage() {
   const inWatchlist = useAppStore((s) => (series ? s.watchlist.has(series.id) : false));
   const toggleWatchlist = useAppStore((s) => s.toggleWatchlist);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
-
-  usePageBreadcrumbs([
-    { label: "Dashboard", href: "/" },
-    { label: "Series", href: "/series" },
-    { label: series?.title ?? "Series" },
-  ]);
 
   useEffect(() => {
     if (!slug) return;
@@ -128,12 +122,16 @@ export function SeriesPage() {
       <div className="ls-detail__content">
         <div className="ls-detail__header">
           <div>
-            <div className="ls-detail__kicker mono">
-              <span className="ls-detail__kicker-dot" />
-              SERIES
-              <span className="ls-detail__kicker-sep">—</span>
-              {series.status.toUpperCase()}
-            </div>
+            <PageTrail
+              className="ls-detail__kicker mono"
+              showDot
+              suffix={series.status.toUpperCase()}
+              items={[
+                { label: "Dashboard", href: "/" },
+                { label: "Series", href: "/series" },
+                { label: series.title },
+              ]}
+            />
             <h1 className="ls-detail__title">{series.title}</h1>
             {series.tagline !== undefined && (
               <div className="ls-detail__tagline serif">{series.tagline}</div>

@@ -16,6 +16,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { repository } from "@/lib/repository";
 import { formatNumber, formatRelativeTime, formatRuntime, formatViewers } from "@/lib/format";
 import type { Broadcast, CreatorDashboardPayload, MediaAsset, UploadJob } from "@/types";
@@ -25,29 +26,29 @@ type StudioToolKind = "stream-editor" | "live-ops" | "series-editor" | "file-man
 
 interface StudioToolConfig {
   readonly title: string;
-  readonly eyebrow: string;
+  readonly trailLabel: string;
   readonly body: string;
 }
 
 const toolConfigs: Record<StudioToolKind, StudioToolConfig> = {
   "stream-editor": {
     title: "Streaming Editing Hub",
-    eyebrow: "/ creator / studio / stream",
+    trailLabel: "Stream",
     body: "Scene packaging, clips, show notes, live assets, and broadcast handoff.",
   },
   "live-ops": {
     title: "Live Operations Console",
-    eyebrow: "/ creator / studio / live",
+    trailLabel: "Live",
     body: "Audience pulse, chat and tips, health signals, and live-room readiness.",
   },
   "series-editor": {
     title: "Series Editing Hub",
-    eyebrow: "/ creator / studio / series",
+    trailLabel: "Series",
     body: "Episode cuts, season packaging, release status, and metadata polish.",
   },
   "file-manager": {
     title: "File Manager",
-    eyebrow: "/ creator / studio / files",
+    trailLabel: "Files",
     body: "Uploaded sources, processed media, playback assets, posters, and delivery readiness.",
   },
 };
@@ -151,7 +152,14 @@ export function StudioToolPage() {
   return (
     <div className="ls-studio">
       <header className="ls-studio__head">
-        <div className="ls-studio__kicker mono">{config.eyebrow}</div>
+        <PageTrail
+          className="ls-studio__kicker mono"
+          items={[
+            { label: "Dashboard", href: "/" },
+            { label: "Creator Studio", href: "/studio" },
+            { label: config.trailLabel },
+          ]}
+        />
         <div className="ls-studio__title-row">
           <div>
             <h1 className="ls-studio__title">{config.title}</h1>

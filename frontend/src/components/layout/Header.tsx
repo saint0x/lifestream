@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Bell,
@@ -12,7 +12,6 @@ import {
   Globe,
   LogIn,
   UserPlus,
-  ChevronRight,
 } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
@@ -22,134 +21,7 @@ import type { SearchResult } from "@/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { usePageNavigation, type PageCrumb } from "./PageNavigation";
 import "./Header.css";
-
-function titleize(value: string): string {
-  return decodeURIComponent(value)
-    .replace(/^@/, "")
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function findEpisodeContext(id: string) {
-  if (!repository.hasState()) return null;
-  const episode = repository.getEpisode(id);
-  if (!episode) return null;
-  const series = repository.getSeriesById(episode.seriesId);
-  if (!series) return null;
-  return { episode, series };
-}
-
-function buildBreadcrumbs(pathname: string, search: string): ReadonlyArray<PageCrumb> {
-  if (pathname === "/") return [{ label: "Dashboard" }];
-
-  const parts = pathname.split("/").filter(Boolean);
-  const [section, value, next] = parts;
-  const dashboard = { label: "Dashboard", href: "/" };
-
-  if (section?.startsWith("@")) {
-    return [dashboard, { label: titleize(section) }];
-  }
-
-  if (section === "series") {
-    const series = value && repository.hasState() ? repository.getSeriesBySlug(value) : undefined;
-    return value
-      ? [dashboard, { label: "Series", href: "/series" }, { label: series?.title ?? titleize(value) }]
-      : [dashboard, { label: "Series" }];
-  }
-
-  if (section === "films") return [dashboard, { label: "Films" }];
-
-  if (section === "film") {
-    const film = value && repository.hasState() ? repository.getFilmBySlug(value) : undefined;
-    return [dashboard, { label: "Films", href: "/films" }, { label: film?.title ?? titleize(value ?? "Film") }];
-  }
-
-  if (section === "watch" && value === "episode" && next) {
-    const context = findEpisodeContext(next);
-    if (context) {
-      return [
-        dashboard,
-        { label: "Series", href: "/series" },
-        { label: context.series.title, href: `/series/${context.series.slug}` },
-        { label: context.episode.title },
-      ];
-    }
-    return [dashboard, { label: "Watch" }, { label: "Episode" }];
-  }
-
-  if (section === "watch" && value === "film" && next) {
-    const film = repository.hasState() ? repository.getFilmById(next) : undefined;
-    return [dashboard, { label: "Films", href: "/films" }, { label: film?.title ?? "Film" }];
-  }
-
-  if (section === "live") {
-    const stream = value && repository.hasState() ? repository.getLiveStreamBySlug(value) : undefined;
-    return value
-      ? [dashboard, { label: "Live", href: "/live" }, { label: stream?.title ?? titleize(value) }]
-      : [dashboard, { label: "Live" }];
-  }
-
-  if (section === "category") {
-    return [dashboard, { label: "Live", href: "/live" }, { label: titleize(value ?? "Category") }];
-  }
-
-  if (section === "search") {
-    const params = new URLSearchParams(search);
-    const query = params.get("q")?.trim();
-    return [dashboard, { label: "Search", href: "/search" }, ...(query ? [{ label: query }] : [])];
-  }
-
-  if (section === "originals") return [dashboard, { label: "Originals" }];
-  if (section === "watchlist") return [dashboard, { label: "Watchlist" }];
-  if (section === "library") return [dashboard, { label: "Library" }];
-  if (section === "following") return [dashboard, { label: "Following" }];
-  if (section === "profile") return [dashboard, { label: "Profile" }];
-  if (section === "settings") return [dashboard, { label: "Settings" }];
-  if (section === "studio" && value === "tool") {
-    return [dashboard, { label: "Creator Studio", href: "/studio" }, { label: titleize(next ?? "Tool") }];
-  }
-  if (section === "studio") return [dashboard, { label: "Creator Studio" }];
-  if (section === "ad-hub") return [dashboard, { label: "Ad Hub" }];
-
-  return [dashboard, { label: titleize(section ?? "Page") }];
-}
-
-function BreadcrumbTrail() {
-  const location = useLocation();
-  const { crumbs: pageCrumbs } = usePageNavigation();
-  const crumbs = pageCrumbs ?? buildBreadcrumbs(location.pathname, location.search);
-
-  return (
-    <nav className="ls-header__crumbs" aria-label="Page path">
-      {crumbs.map((crumb, index) => {
-        const isLast = index === crumbs.length - 1;
-        return (
-          <span className="ls-header__crumb" key={`${crumb.label}-${index}`}>
-            {index > 0 ? (
-              <ChevronRight
-                className="ls-header__crumb-sep"
-                size={12}
-                strokeWidth={1.8}
-                aria-hidden="true"
-              />
-            ) : null}
-            {crumb.href && !isLast ? (
-              <Link to={crumb.href}>{crumb.label}</Link>
-            ) : (
-              <span className="ls-header__crumb-cur" aria-current={isLast ? "page" : undefined}>
-                {crumb.label}
-              </span>
-            )}
-          </span>
-        );
-      })}
-    </nav>
-  );
-}
 
 export function Header() {
   const navigate = useNavigate();
@@ -312,9 +184,7 @@ export function Header() {
   return (
     <header className="ls-header" ref={rootRef}>
       <div className="ls-header__grid">
-        <div className="ls-header__nav">
-          <BreadcrumbTrail />
-          <form
+        <form
             className="ls-header__search-wrap"
             onSubmit={(e) => {
               e.preventDefault();
@@ -387,8 +257,7 @@ export function Header() {
                 )}
               </div>
             )}
-          </form>
-        </div>
+        </form>
 
         <div className="ls-header__actions">
           <button

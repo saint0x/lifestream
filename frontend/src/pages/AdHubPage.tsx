@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageMetadata } from "@/components/seo/PageMetadata";
-import { usePageBreadcrumbs } from "@/components/layout/PageNavigation";
+import { PageTrail } from "@/components/navigation/PageTrail";
 import { repository } from "@/lib/repository";
 import type { AdMarketplaceOffer, AdMarketplaceSummary, CreatorAdHubResponse } from "@/types";
 import "./AdHubPage.css";
@@ -78,11 +78,6 @@ export function AdHubPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedPackageId, setExpandedPackageId] = useState<string | null>(null);
-
-  usePageBreadcrumbs([
-    { label: "Dashboard", href: "/" },
-    { label: "Ad Hub" },
-  ]);
 
   const offers = hub?.offers ?? emptyOffers;
   const selectedOffer = useMemo(
@@ -205,7 +200,13 @@ export function AdHubPage() {
         }}
       />
       <header className="ls-ad-hub__head">
-        <div className="ls-ad-hub__kicker mono">/ creator / ad hub</div>
+        <PageTrail
+          className="ls-ad-hub__kicker mono"
+          items={[
+            { label: "Dashboard", href: "/" },
+            { label: "Ad Hub" },
+          ]}
+        />
         <div className="ls-ad-hub__title-row">
           <div>
             <h1 className="ls-ad-hub__title">Ad Hub</h1>
