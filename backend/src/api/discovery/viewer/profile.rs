@@ -255,7 +255,18 @@ async fn ensure_viewer_account_bundle_rows(pool: &SqlitePool, user_id: &str) -> 
             autoplay_next_episode, autoplay_trailers, reduced_motion, prefer_dubbed,
             playback_speed
         ) VALUES (?, 'Auto (up to 4K HDR)', 'English · 5.1 (Dolby Atmos)', 'English',
-                  'English · Standard', 1, 1, 0, 0, '1× (normal)')
+                  'English · Medium', 1, 1, 0, 0, '1× (normal)')
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        UPDATE user_playback_settings
+        SET subtitle_style = 'English · Medium'
+        WHERE user_id = ? AND subtitle_style = 'English · Standard'
         "#,
     )
     .bind(user_id)

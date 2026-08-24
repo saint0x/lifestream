@@ -474,8 +474,19 @@ async fn ensure_postgres_viewer_account_bundle_rows(
             autoplay_next_episode, autoplay_trailers, reduced_motion, prefer_dubbed,
             playback_speed
         ) VALUES ($1, 'Auto (up to 4K HDR)', 'English · 5.1 (Dolby Atmos)', 'English',
-                  'English · Standard', 1, 1, 0, 0, '1× (normal)')
+                  'English · Medium', 1, 1, 0, 0, '1× (normal)')
         ON CONFLICT(user_id) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        UPDATE user_playback_settings
+        SET subtitle_style = 'English · Medium'
+        WHERE user_id = $1 AND subtitle_style = 'English · Standard'
         "#,
     )
     .bind(user_id)
