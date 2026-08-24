@@ -1,0 +1,6 @@
+ALTER TABLE media_assets
+ALTER COLUMN duration_sec TYPE DOUBLE PRECISION,
+ALTER COLUMN frame_rate TYPE DOUBLE PRECISION;
+
+ALTER TABLE media_timeline_previews
+ALTER COLUMN interval_sec TYPE DOUBLE PRECISION;

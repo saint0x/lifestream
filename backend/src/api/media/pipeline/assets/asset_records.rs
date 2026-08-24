@@ -378,8 +378,10 @@ fn postgres_media_asset_select(predicate: &str) -> String {
         SELECT id, upload_job_id, upload_id, series_id, kind, title, status, visibility,
                source_relative_path, poster_relative_path, playback_relative_path, mime_type,
                checksum_sha256, container_format, file_size_bytes::BIGINT AS file_size_bytes,
-               duration_sec, width::BIGINT AS width, height::BIGINT AS height,
-               frame_rate, video_codec, audio_codec, has_video, has_audio, created_at, updated_at,
+               duration_sec::DOUBLE PRECISION AS duration_sec,
+               width::BIGINT AS width, height::BIGINT AS height,
+               frame_rate::DOUBLE PRECISION AS frame_rate,
+               video_codec, audio_codec, has_video, has_audio, created_at, updated_at,
                processed_at, published_content_id
         FROM media_assets
         {predicate}
@@ -506,7 +508,8 @@ async fn fetch_postgres_media_preview_track_rows(
         SELECT id, label, image_relative_path, vtt_relative_path,
                tile_width::BIGINT AS tile_width, tile_height::BIGINT AS tile_height,
                columns_count::BIGINT AS columns_count, rows_count::BIGINT AS rows_count,
-               interval_sec, frame_count::BIGINT AS frame_count, is_default, created_at
+               interval_sec::DOUBLE PRECISION AS interval_sec,
+               frame_count::BIGINT AS frame_count, is_default, created_at
         FROM media_timeline_previews
         WHERE asset_id = $1
         ORDER BY created_at ASC
