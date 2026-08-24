@@ -31,8 +31,8 @@ pub(super) async fn generate_hls_package(
     ensure_parent_dir(&hls_full_path)
         .await
         .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
-    let hls_run_id = start_media_processing_run(
-        state.db.sqlite_adapter(),
+    let hls_run_id = start_media_processing_run_for_database(
+        &state.db,
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -50,8 +50,8 @@ pub(super) async fn generate_hls_package(
     .await
     {
         Ok(package) => {
-            finish_media_processing_run(
-                state.db.sqlite_adapter(),
+            finish_media_processing_run_for_database(
+                &state.db,
                 &hls_run_id,
                 "completed",
                 json!({
@@ -88,8 +88,8 @@ pub(super) async fn generate_hls_package(
             package
         }
         Err(error) => {
-            let _ = finish_media_processing_run(
-                state.db.sqlite_adapter(),
+            let _ = finish_media_processing_run_for_database(
+                &state.db,
                 &hls_run_id,
                 "failed",
                 json!({ "target": hls_relative_path, "error": error.to_string() }),

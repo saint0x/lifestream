@@ -14,8 +14,8 @@ pub(super) async fn generate_image_derivatives(
 
     let image_derivative_plans = build_image_derivative_plans(probed)
         .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
-    let derivatives_run_id = start_media_processing_run(
-        state.db.sqlite_adapter(),
+    let derivatives_run_id = start_media_processing_run_for_database(
+        &state.db,
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -54,8 +54,8 @@ pub(super) async fn generate_image_derivatives(
         )
         .await
         {
-            let _ = finish_media_processing_run(
-                state.db.sqlite_adapter(),
+            let _ = finish_media_processing_run_for_database(
+                &state.db,
                 &derivatives_run_id,
                 "failed",
                 json!({
@@ -68,8 +68,8 @@ pub(super) async fn generate_image_derivatives(
         }
         derived.push((plan.label.to_string(), relative_path, width, height));
     }
-    finish_media_processing_run(
-        state.db.sqlite_adapter(),
+    finish_media_processing_run_for_database(
+        &state.db,
         &derivatives_run_id,
         "completed",
         json!({

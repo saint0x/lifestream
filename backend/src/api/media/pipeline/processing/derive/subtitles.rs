@@ -12,8 +12,8 @@ pub(super) async fn generate_subtitle_variants(
         return Ok(Vec::new());
     }
 
-    let subtitles_run_id = start_media_processing_run(
-        state.db.sqlite_adapter(),
+    let subtitles_run_id = start_media_processing_run_for_database(
+        &state.db,
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -56,8 +56,8 @@ pub(super) async fn generate_subtitle_variants(
         if let Err(error) =
             extract_subtitle_stream_to_webvtt(&attempt.source_path, stream, &full_path).await
         {
-            let _ = finish_media_processing_run(
-                state.db.sqlite_adapter(),
+            let _ = finish_media_processing_run_for_database(
+                &state.db,
                 &subtitles_run_id,
                 "failed",
                 json!({
@@ -82,8 +82,8 @@ pub(super) async fn generate_subtitle_variants(
             ordinal == 0,
         ));
     }
-    finish_media_processing_run(
-        state.db.sqlite_adapter(),
+    finish_media_processing_run_for_database(
+                &state.db,
         &subtitles_run_id,
         "completed",
         json!({

@@ -22,8 +22,8 @@ pub(super) async fn generate_timeline_preview(
     ensure_parent_dir(&vtt_full_path)
         .await
         .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
-    let preview_run_id = start_media_processing_run(
-        state.db.sqlite_adapter(),
+    let preview_run_id = start_media_processing_run_for_database(
+        &state.db,
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -48,8 +48,8 @@ pub(super) async fn generate_timeline_preview(
     .await
     {
         Ok(track) => {
-            finish_media_processing_run(
-                state.db.sqlite_adapter(),
+            finish_media_processing_run_for_database(
+                &state.db,
                 &preview_run_id,
                 "completed",
                 json!({
@@ -69,8 +69,8 @@ pub(super) async fn generate_timeline_preview(
             Ok(Some(track))
         }
         Err(error) => {
-            let _ = finish_media_processing_run(
-                state.db.sqlite_adapter(),
+            let _ = finish_media_processing_run_for_database(
+                &state.db,
                 &preview_run_id,
                 "failed",
                 json!({
