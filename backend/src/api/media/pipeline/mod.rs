@@ -8,10 +8,12 @@ mod processing;
 
 pub(crate) use assets::{
     NewMediaPreviewTrack, NewMediaVariant, StoredMediaPreviewTrack, ensure_media_asset_shell,
-    fetch_media_asset_by_id_any_creator, fetch_media_asset_by_upload_id,
-    fetch_media_asset_by_upload_job, fetch_media_asset_variants, fetch_media_assets,
-    fetch_media_preview_track_rows, fetch_media_processing_runs, finish_media_processing_run,
-    replace_media_preview_tracks, replace_media_variants, start_media_processing_run,
+    ensure_media_asset_shell_for_database, fetch_media_asset_by_id_any_creator,
+    fetch_media_asset_by_upload_id, fetch_media_asset_by_upload_job,
+    fetch_media_asset_by_upload_job_for_database, fetch_media_asset_variants, fetch_media_assets,
+    fetch_media_assets_for_database, fetch_media_preview_track_rows, fetch_media_processing_runs,
+    finish_media_processing_run, replace_media_preview_tracks, replace_media_variants,
+    start_media_processing_run,
 };
 #[cfg(test)]
 pub(crate) use jobs::{MAX_MEDIA_PROCESSING_ATTEMPTS, fail_media_job_for_lease};

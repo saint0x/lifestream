@@ -1,4 +1,6 @@
-use super::lifecycle::ensure_creator_upload_ingest_enabled_for_jobs;
+use super::lifecycle::{
+    ensure_creator_upload_ingest_enabled_for_jobs, fetch_postgres_upload_job_by_id,
+};
 use super::*;
 
 pub(crate) async fn get_upload_ingest_session(
@@ -166,7 +168,9 @@ pub(crate) async fn complete_upload_ingest(
 
     ensure_media_asset_shell_for_ingest(&state.db, creator_id, &job, &session.relative_path)
         .await?;
-    schedule_media_processing(state.clone(), creator_id.to_string(), id.clone()).await;
+    if state.db.try_postgres_adapter().is_err() {
+        schedule_media_processing(state.clone(), creator_id.to_string(), id.clone()).await;
+    }
 
     Ok(Json(
         get_creator_upload_job(&state.db, creator_id, &id).await?,
@@ -178,6 +182,9 @@ pub(crate) async fn get_creator_upload_job(
     creator_id: &str,
     job_id: &str,
 ) -> AppResult<UploadJob> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        return fetch_postgres_upload_job_by_id(pool, creator_id, job_id).await;
+    }
     fetch_upload_job_by_id(database.try_sqlite_adapter()?, creator_id, job_id).await
 }
 
@@ -186,6 +193,9 @@ pub(crate) async fn get_creator_upload_ingest_session(
     creator_id: &str,
     job_id: &str,
 ) -> AppResult<UploadIngestSession> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        return fetch_postgres_upload_ingest_session(pool, creator_id, job_id).await;
+    }
     fetch_upload_ingest_session(database.try_sqlite_adapter()?, creator_id, job_id).await
 }
 
@@ -195,6 +205,24 @@ pub(crate) async fn validate_creator_upload_ingest_token(
     job_id: &str,
     upload_token: &str,
 ) -> AppResult<()> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        let token_hash = hash_token(upload_token);
+        let exists = sqlx::query(
+            "SELECT 1 FROM upload_job_ingest_sessions WHERE creator_id = $1 AND job_id = $2 AND upload_token_hash = $3",
+        )
+        .bind(creator_id)
+        .bind(job_id)
+        .bind(token_hash)
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+        return if exists {
+            Ok(())
+        } else {
+            Err(AppError::Unauthorized)
+        };
+    }
     validate_upload_ingest_token(
         database.try_sqlite_adapter()?,
         creator_id,
@@ -211,6 +239,18 @@ async fn rotate_creator_upload_ingest_token(
     upload_token: &str,
     updated_at: &str,
 ) -> AppResult<()> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        sqlx::query(
+            "UPDATE upload_job_ingest_sessions SET upload_token_hash = $1, updated_at = $2 WHERE job_id = $3 AND creator_id = $4",
+        )
+        .bind(hash_token(upload_token))
+        .bind(updated_at)
+        .bind(job_id)
+        .bind(creator_id)
+        .execute(pool)
+        .await?;
+        return Ok(());
+    }
     sqlx::query(
         "UPDATE upload_job_ingest_sessions SET upload_token_hash = ?, updated_at = ? WHERE job_id = ? AND creator_id = ?",
     )
@@ -232,6 +272,29 @@ async fn create_creator_upload_ingest_session(
     mime_type: &str,
     now: &str,
 ) -> AppResult<()> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        sqlx::query(
+            r#"
+            INSERT INTO upload_job_ingest_sessions (
+                job_id, creator_id, relative_path, upload_token_hash, status, mime_type,
+                bytes_received, created_at, updated_at, completed_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            "#,
+        )
+        .bind(job_id)
+        .bind(creator_id)
+        .bind(relative_path)
+        .bind(hash_token(upload_token))
+        .bind("active")
+        .bind(mime_type)
+        .bind(0_i64)
+        .bind(now)
+        .bind(now)
+        .bind(Option::<String>::None)
+        .execute(pool)
+        .await?;
+        return Ok(());
+    }
     sqlx::query(
         r#"
         INSERT INTO upload_job_ingest_sessions (
@@ -262,6 +325,27 @@ async fn update_creator_upload_ingest_progress(
     bytes_received: i64,
     updated_at: &str,
 ) -> AppResult<()> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        sqlx::query(
+            "UPDATE upload_job_ingest_sessions SET bytes_received = $1, updated_at = $2 WHERE job_id = $3 AND creator_id = $4",
+        )
+        .bind(bytes_received)
+        .bind(updated_at)
+        .bind(job_id)
+        .bind(creator_id)
+        .execute(pool)
+        .await?;
+        sqlx::query(
+            "UPDATE upload_jobs SET bytes_received = $1, updated_at = $2 WHERE id = $3 AND creator_id = $4",
+        )
+        .bind(bytes_received)
+        .bind(updated_at)
+        .bind(job_id)
+        .bind(creator_id)
+        .execute(pool)
+        .await?;
+        return Ok(());
+    }
     sqlx::query(
         "UPDATE upload_job_ingest_sessions SET bytes_received = ?, updated_at = ? WHERE job_id = ? AND creator_id = ?",
     )
@@ -290,6 +374,28 @@ async fn complete_creator_upload_ingest(
     checksum_sha256: &str,
     completed_at: &str,
 ) -> AppResult<()> {
+    if let Ok(pool) = database.try_postgres_adapter() {
+        sqlx::query(
+            "UPDATE upload_job_ingest_sessions SET status = 'completed', updated_at = $1, completed_at = $2 WHERE job_id = $3 AND creator_id = $4",
+        )
+        .bind(completed_at)
+        .bind(completed_at)
+        .bind(job_id)
+        .bind(creator_id)
+        .execute(pool)
+        .await?;
+        sqlx::query(
+            "UPDATE upload_jobs SET status = 'uploaded', checksum_sha256 = $1, completed_at = $2, updated_at = $3, processing_attempt_count = 0, last_processing_error = NULL, last_failed_at = NULL WHERE id = $4 AND creator_id = $5",
+        )
+        .bind(checksum_sha256)
+        .bind(completed_at)
+        .bind(completed_at)
+        .bind(job_id)
+        .bind(creator_id)
+        .execute(pool)
+        .await?;
+        return Ok(());
+    }
     sqlx::query(
         "UPDATE upload_job_ingest_sessions SET status = 'completed', updated_at = ?, completed_at = ? WHERE job_id = ? AND creator_id = ?",
     )
@@ -318,12 +424,38 @@ async fn ensure_media_asset_shell_for_ingest(
     job: &UploadJob,
     source_relative_path: &str,
 ) -> AppResult<()> {
-    ensure_media_asset_shell(
-        database.try_sqlite_adapter()?,
-        creator_id,
-        job,
-        source_relative_path,
+    ensure_media_asset_shell_for_database(database, creator_id, job, source_relative_path)
+        .await
+        .map(|_| ())
+}
+
+async fn fetch_postgres_upload_ingest_session(
+    pool: &sqlx::PgPool,
+    creator_id: &str,
+    job_id: &str,
+) -> AppResult<UploadIngestSession> {
+    let row = sqlx::query(
+        r#"
+        SELECT job_id, relative_path, status, mime_type,
+               bytes_received::BIGINT AS bytes_received, created_at, updated_at, completed_at
+        FROM upload_job_ingest_sessions
+        WHERE creator_id = $1 AND job_id = $2
+        "#,
     )
-    .await
-    .map(|_| ())
+    .bind(creator_id)
+    .bind(job_id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    Ok(UploadIngestSession {
+        job_id: row.get("job_id"),
+        relative_path: row.get("relative_path"),
+        status: row.get("status"),
+        mime_type: row.get("mime_type"),
+        bytes_received: row.get("bytes_received"),
+        created_at: row.get("created_at"),
+        updated_at: row.get("updated_at"),
+        completed_at: row.get("completed_at"),
+    })
 }

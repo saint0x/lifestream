@@ -27,7 +27,7 @@ pub(crate) async fn list_creator_media_assets(
     database: &crate::db::Database,
     creator_id: &str,
 ) -> AppResult<Vec<MediaAsset>> {
-    fetch_media_assets(database.try_sqlite_adapter()?, creator_id).await
+    fetch_media_assets_for_database(database, creator_id).await
 }
 
 pub(crate) async fn get_creator_media_asset_for_upload_job(
@@ -35,5 +35,5 @@ pub(crate) async fn get_creator_media_asset_for_upload_job(
     creator_id: &str,
     job_id: &str,
 ) -> AppResult<MediaAsset> {
-    fetch_media_asset_by_upload_job(database.try_sqlite_adapter()?, creator_id, job_id).await
+    fetch_media_asset_by_upload_job_for_database(database, creator_id, job_id).await
 }

@@ -255,13 +255,13 @@ use media::pipeline::{
 };
 use media::pipeline::{
     HlsVariantPlan, ProbedAudioStream, ProbedMedia, StoredMediaPreviewTrack,
-    ensure_media_asset_shell, fetch_admin_media_job_record, fetch_admin_media_jobs,
+    ensure_media_asset_shell_for_database, fetch_admin_media_job_record, fetch_admin_media_jobs,
     fetch_media_asset_by_id_any_creator, fetch_media_asset_by_upload_id,
-    fetch_media_asset_by_upload_job, fetch_media_asset_variants, fetch_media_assets,
-    fetch_media_preview_track_rows, fetch_pending_media_jobs, fetch_upload_ingest_session,
-    fetch_upload_ingest_sessions, fetch_upload_job_by_id, fetch_upload_job_by_id_global,
-    fetch_upload_job_creator_id, fetch_upload_jobs, plan_hls_variants,
-    publish_due_scheduled_upload_releases, reconcile_single_media_job,
+    fetch_media_asset_by_upload_job_for_database, fetch_media_asset_variants, fetch_media_assets,
+    fetch_media_assets_for_database, fetch_media_preview_track_rows, fetch_pending_media_jobs,
+    fetch_upload_ingest_session, fetch_upload_ingest_sessions, fetch_upload_job_by_id,
+    fetch_upload_job_by_id_global, fetch_upload_job_creator_id, fetch_upload_jobs,
+    plan_hls_variants, publish_due_scheduled_upload_releases, reconcile_single_media_job,
     reconcile_stale_media_processing_jobs, requeue_media_job_for_processing,
     schedule_media_processing,
 };

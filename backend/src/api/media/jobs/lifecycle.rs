@@ -299,7 +299,7 @@ async fn fetch_postgres_upload_jobs(
     Ok(rows.into_iter().map(postgres_upload_job_from_row).collect())
 }
 
-async fn fetch_postgres_upload_job_by_id(
+pub(super) async fn fetch_postgres_upload_job_by_id(
     pool: &sqlx::PgPool,
     creator_id: &str,
     id: &str,
