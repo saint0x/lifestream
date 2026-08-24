@@ -37,6 +37,29 @@ async fn run_background_worker_pass(state: SharedState) {
                     .await;
             }
         }
+        if state
+            .reconciliation_gates
+            .should_run("creator_attention_rollups", Duration::from_secs(60))
+            .await
+        {
+            match reconcile_creator_attention_rollups(&state.db).await {
+                Ok(updated) => {
+                    tracing::info!(
+                        updated_rollups = updated,
+                        "creator attention rollup reconciliation completed"
+                    );
+                }
+                Err(error) => {
+                    tracing::warn!(error = %error, "creator attention rollup reconciliation failed");
+                    state
+                        .background_worker
+                        .mark_failure(format!(
+                            "creator attention rollup reconciliation failed: {error}"
+                        ))
+                        .await;
+                }
+            }
+        }
         return;
     }
 
@@ -130,7 +153,7 @@ async fn run_background_worker_pass(state: SharedState) {
         .should_run("creator_attention_rollups", Duration::from_secs(60))
         .await
     {
-        match reconcile_creator_attention_rollups(state.db.sqlite_adapter()).await {
+        match reconcile_creator_attention_rollups(&state.db).await {
             Ok(updated) => {
                 tracing::info!(
                     updated_rollups = updated,

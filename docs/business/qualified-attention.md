@@ -89,15 +89,25 @@ B = $0.05
 
 The source of truth is raw viewer attention, not static analytics rows.
 
-Current implemented source:
+Current implemented sources:
 
 - `live_viewer_sessions`
+- `viewer_events`
+- `content_credits`
+- creator-owned `uploads`
 - `visitor_id`
 - optional `user_id`
 - stream id
+- content id
+- episode id
+- playback progress
+- watchlist actions
+- page-level dwell events where content attribution is known
 - connected time
 - last seen time
 - disconnected time
+
+`user_watch_history` remains the signed-in library/resume-state persistence layer. It is not counted as a primary CAV input unless a measured playback or dwell event exists, because history rows are mutable user state while CAV must be rebuilt from raw attention signals.
 - attribution source / medium / campaign
 - UTM fields
 - landing URL and referrer
@@ -120,15 +130,17 @@ That precedence is important. One human should not be counted multiple times mer
 
 `U` is the count of unique resolved viewers who cross the qualified-view threshold.
 
-Current v1 threshold:
+Current v2 threshold:
 
 ```text
-qualified = total creator watch seconds >= 60
+qualified = total creator watch seconds >= 90
 ```
 
-A viewer who opens a stream for a few seconds is measured, but does not become a qualified viewer.
+A viewer who opens a stream or title for a few seconds is measured, but does not become a qualified viewer.
 
-Daily rollups are UTC calendar-day materializations. Current v1 assigns a live viewer session to the day of `connected_at`; the worker reconciles today and yesterday so late disconnects update the affected rollup without inventing unmeasured time.
+VOD progress events are deduplicated at viewer/content/day granularity. The algorithm uses the highest persisted progress point for that viewer and content rather than summing every player heartbeat. This prevents noisy clients from inflating attention by emitting repeated progress events.
+
+Daily rollups are UTC calendar-day materializations. Current v2 assigns live viewer sessions to the day of `connected_at` and viewer events to the day of `occurred_at`; the worker reconciles today and yesterday so late disconnects and late events update the affected rollup without inventing unmeasured time.
 
 ## Attention Multiplier
 
@@ -150,13 +162,15 @@ Engagement measures demonstrated viewer action.
 
 The full target model includes chat, comments, follows, shares, profile exploration, clicks, watchlist activity, clips, notification opt-ins, and audience support.
 
-Current v1 only uses events that are actually captured in source tables:
+Current v2 only uses events that are actually captured in source tables:
 
 - live chat participation
 - live clip requests
 - live notification opt-ins
+- watchlist actions
+- deep content behavior from playback progress and multi-content consumption
 
-Current v1:
+Current v2:
 
 ```text
 E = 1 + 0.40 * I
@@ -165,7 +179,7 @@ E = 1 + 0.40 * I
 Where `I` is a normalized measured engagement intensity:
 
 ```text
-I = 0.55 * chat + 0.20 * clips + 0.25 * notify
+I = 0.25 * chat + 0.12 * clips + 0.15 * notify + 0.25 * watchlist + 0.23 * depth
 ```
 
 Signals that are not yet captured are not silently estimated.
@@ -179,13 +193,13 @@ r = returning qualified viewers / qualified viewers
 R = 0.8 + 0.8 * r
 ```
 
-Current v1 defines returning viewers as qualified viewers with at least two measured sessions for the creator.
+Current v2 defines returning viewers as qualified viewers with at least two measured sessions for the creator or meaningful attention across at least two creator-attributed content objects.
 
 ## Audience Quality Multiplier
 
 Audience quality represents advertiser demand by creator category.
 
-Current v1 starts with explicit category coefficients:
+Current v2 starts with explicit category coefficients:
 
 | Category | Q |
 | :-- | --: |
@@ -205,14 +219,23 @@ Data confidence represents measurement quality.
 D = identity_confidence * attribution_confidence
 ```
 
-Current v1:
+Current v2:
 
 - authenticated qualified viewers increase identity confidence
 - attributed qualified viewers increase attribution confidence
 - anonymous but stable `visitor_id` traffic is still valid, but discounted versus authenticated first-party identity
 - traffic without attribution is discounted
 
-Bot and invalid-traffic filtering belongs in this multiplier, but v1 does not pretend to have a full fraud model yet.
+Bot and invalid-traffic filtering belongs in this multiplier, but v2 does not pretend to have a full fraud model yet.
+
+Current v2 confidence includes:
+
+- identity confidence from signed-in viewers and stable anonymous visitor IDs
+- attribution confidence from UTM/referrer/landing markers
+- behavior confidence from repeat sessions, multi-content viewing, watchlist action, or sustained playback progress
+- invalid-traffic penalty for abnormal event volume or implausibly long single-day watch time
+
+It is still not a final fraud system. It is a stricter measured-confidence layer that refuses to sell low-evidence traffic at full value.
 
 ## Bot And Low-Quality Traffic Filtering
 
@@ -256,7 +279,7 @@ The score is not a view count. It is the advertiser-facing quality rating of a c
 Current backend algorithm version:
 
 ```text
-cav-v1.0.0
+cav-v2.0.0
 ```
 
 Algorithm versions must be stored and returned with score output. Any future formula change must bump the version.
@@ -355,4 +378,6 @@ Raw measurement tables are the source of truth. CAV and Verified Viewer Score ar
 
 Do not store arbitrary score numbers on creator rows. Do not show static score fixtures. Do not backfill fake engagement signals. Every multiplier must come from measured data, explicit coefficients, or a documented algorithm version.
 
-The backend persists derived daily rows in `creator_attention_daily` using `(creator_id, day, algorithm_version)` as the key. Those rows are materialized from the canonical raw-session calculation and may be safely overwritten by later reconciliation passes for the same day/version.
+The backend persists derived daily rows in `creator_attention_daily` using `(creator_id, day, algorithm_version)` as the key. Those rows are materialized from the canonical raw measurement calculation and may be safely overwritten by later reconciliation passes for the same day/version.
+
+Production uses Railway Postgres for this calculation. SQLite is only a development and test mirror.

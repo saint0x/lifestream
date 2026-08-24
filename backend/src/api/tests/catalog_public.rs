@@ -59,12 +59,16 @@ async fn public_search_uses_catalog_metadata_and_people_profiles() -> AppResult<
     .await?;
 
     let items = payload["items"].as_array().expect("items");
-    assert!(items.iter().any(|item| {
-        item["kind"] == "profile" && item["title"] == "Mara Vale"
-    }));
-    assert!(items.iter().any(|item| {
-        item["kind"] == "series" && item["title"] == "Northlight"
-    }));
+    assert!(
+        items
+            .iter()
+            .any(|item| { item["kind"] == "profile" && item["title"] == "Mara Vale" })
+    );
+    assert!(
+        items
+            .iter()
+            .any(|item| { item["kind"] == "series" && item["title"] == "Northlight" })
+    );
     assert!(payload["total"].as_i64().is_some_and(|total| total >= 2));
     Ok(())
 }
