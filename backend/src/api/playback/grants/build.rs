@@ -117,8 +117,8 @@ pub(crate) async fn build_upload_playback_grant(
         .poster_path
         .as_ref()
         .map(|path| state.storage.playback_media_url(path, playback_token));
-    let thumbnail_url = (!target.upload.thumbnail.trim().is_empty())
-        .then(|| target.upload.thumbnail.clone());
+    let thumbnail_url =
+        (!target.upload.thumbnail.trim().is_empty()).then(|| target.upload.thumbnail.clone());
     let poster_url = asset_poster_url.or_else(|| thumbnail_url.clone());
     let PlaybackGrantTracks {
         audio_tracks,

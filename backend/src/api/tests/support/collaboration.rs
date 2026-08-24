@@ -355,7 +355,15 @@ pub(crate) async fn insert_test_user_with_creator_profile(
 ) -> AppResult<()> {
     let now = Utc::now().to_rfc3339();
     sqlx::query(
-        "INSERT INTO users (id, handle, display_name, avatar, tier, joined_at) VALUES (?, ?, ?, ?, ?, ?)",
+        r#"
+        INSERT INTO users (id, handle, display_name, avatar, tier, joined_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            handle = excluded.handle,
+            display_name = excluded.display_name,
+            avatar = excluded.avatar,
+            tier = excluded.tier
+        "#,
     )
     .bind(user_id)
     .bind(handle)
@@ -372,6 +380,19 @@ pub(crate) async fn insert_test_user_with_creator_profile(
             joined_at, stream_key, rtmp_url, default_category, default_tags_json, followers,
             subscribers, monthly_viewers, total_watch_hours, live_status, current_broadcast_id
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            user_id = excluded.user_id,
+            handle = excluded.handle,
+            display_name = excluded.display_name,
+            avatar = excluded.avatar,
+            banner = excluded.banner,
+            tagline = excluded.tagline,
+            bio = excluded.bio,
+            partner_status = excluded.partner_status,
+            stream_key = excluded.stream_key,
+            rtmp_url = excluded.rtmp_url,
+            default_category = excluded.default_category,
+            default_tags_json = excluded.default_tags_json
         "#,
     )
     .bind(creator_id)

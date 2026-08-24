@@ -74,7 +74,7 @@ async fn ending_broadcast_with_stale_ingest_records_terminal_ingest_event() -> A
             .await?;
     assert!(events.iter().any(|event| {
         event.event_type == "creator_broadcast_ended"
-            && event.payload["details"]["actorUserId"] == Value::String("usr-1".to_string())
+            && event.payload["details"]["actorUserId"] == Value::String(creator.user_id.clone())
     }));
 
     Ok(())
