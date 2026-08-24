@@ -7,15 +7,15 @@ mod live;
 pub(super) mod people;
 
 pub(super) use catalog::CatalogRepository;
-pub(crate) use catalog::{
-    postgres_fetch_film_by_id, postgres_fetch_live_streams, postgres_fetch_series_by_id,
-    postgres_fetch_streamer_by_id,
-};
 pub(crate) use catalog::bootstrap;
 #[cfg(test)]
 pub(crate) use catalog::{
     CatalogPageQuery, SearchQuery, get_series_for_episode, list_films_page, list_series_page,
     search,
+};
+pub(crate) use catalog::{
+    postgres_fetch_film_by_id, postgres_fetch_live_streams, postgres_fetch_series_by_id,
+    postgres_fetch_streamer_by_id,
 };
 #[cfg(test)]
 pub(crate) use health::{

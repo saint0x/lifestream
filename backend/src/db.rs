@@ -1575,8 +1575,8 @@ impl Database {
                 .bind(&input.content_id)
                 .bind(&target.kind)
                 .bind(&target.episode_id)
-                .bind(normalized_progress_sec)
-                .bind(target.duration_sec)
+                .bind(i64_to_postgres_int(normalized_progress_sec)?)
+                .bind(i64_to_postgres_int(target.duration_sec)?)
                 .bind(watched_at)
                 .execute(pool)
                 .await?;
@@ -2293,14 +2293,14 @@ impl Database {
                             .ok_or(AppError::NotFound)?
                             .get("duration_sec")
                     }
-                    DatabaseProvider::Postgres(pool) => {
-                        sqlx::query("SELECT duration_sec::BIGINT AS duration_sec FROM films WHERE id = $1")
-                            .bind(&input.content_id)
-                            .fetch_optional(pool)
-                            .await?
-                            .ok_or(AppError::NotFound)?
-                            .get("duration_sec")
-                    }
+                    DatabaseProvider::Postgres(pool) => sqlx::query(
+                        "SELECT duration_sec::BIGINT AS duration_sec FROM films WHERE id = $1",
+                    )
+                    .bind(&input.content_id)
+                    .fetch_optional(pool)
+                    .await?
+                    .ok_or(AppError::NotFound)?
+                    .get("duration_sec"),
                 };
                 Ok(ProgressTarget {
                     kind: "film".to_string(),
@@ -2437,9 +2437,9 @@ impl Database {
                 .bind(content_id)
                 .bind(kind)
                 .bind(episode_id)
-                .bind(progress_sec)
-                .bind(duration_sec)
-                .bind(completed)
+                .bind(i64_to_postgres_int(progress_sec)?)
+                .bind(i64_to_postgres_int(duration_sec)?)
+                .bind(bool_to_postgres_int(completed))
                 .bind(completed_at)
                 .bind(watched_at)
                 .execute(pool)
@@ -2456,6 +2456,11 @@ fn bool_to_sqlite_int(value: bool) -> i64 {
 
 fn bool_to_postgres_int(value: bool) -> i32 {
     value as i32
+}
+
+fn i64_to_postgres_int(value: i64) -> AppResult<i32> {
+    i32::try_from(value)
+        .map_err(|_| AppError::BadRequest("integer value is out of range".to_string()))
 }
 
 async fn sqlite_exists(pool: &SqlitePool, query: &str, value: &str) -> AppResult<bool> {
