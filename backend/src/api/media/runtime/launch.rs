@@ -298,8 +298,8 @@ fn prepend_media_root_placeholder(session: &LiveIngestSession, args: Vec<String>
     let launch_relative_path = collaboration_launch_relative_path(session);
     let workspace_root = FsPath::new(&launch_relative_path)
         .parent()
-        .map(|path| format!("${{LIFESTREAM_MEDIA_ROOT}}/{}", path.to_string_lossy()))
-        .unwrap_or_else(|| "${LIFESTREAM_MEDIA_ROOT}".to_string());
+        .map(|path| format!("${{VANTA_MEDIA_ROOT}}/{}", path.to_string_lossy()))
+        .unwrap_or_else(|| "${VANTA_MEDIA_ROOT}".to_string());
 
     args.into_iter()
         .map(|arg| {

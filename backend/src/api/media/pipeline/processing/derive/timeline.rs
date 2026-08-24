@@ -23,7 +23,7 @@ pub(super) async fn generate_timeline_preview(
         .await
         .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
     let preview_run_id = start_media_processing_run(
-        &state.pool,
+        state.db.sqlite_adapter(),
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -49,7 +49,7 @@ pub(super) async fn generate_timeline_preview(
     {
         Ok(track) => {
             finish_media_processing_run(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 &preview_run_id,
                 "completed",
                 json!({
@@ -70,7 +70,7 @@ pub(super) async fn generate_timeline_preview(
         }
         Err(error) => {
             let _ = finish_media_processing_run(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 &preview_run_id,
                 "failed",
                 json!({

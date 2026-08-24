@@ -1,10 +1,10 @@
 use super::manifest::{render_master_manifest, render_variant_playlist};
 use super::*;
 
-const SYNTHETIC_TS_SEGMENT_BYTES: &[u8] = b"G@LIFESTREAM_SYNTHETIC_TS_SEGMENT_000";
+const SYNTHETIC_TS_SEGMENT_BYTES: &[u8] = b"G@VANTA_SYNTHETIC_TS_SEGMENT_000";
 const SYNTHETIC_FMP4_INIT_BYTES: &[u8] = b"\x00\x00\x00\x18ftypiso6\x00\x00\x00\x01iso6mp41";
 const SYNTHETIC_FMP4_PART_BYTES: &[u8] = b"\x00\x00\x00\x10stypmsdh\x00\x00\x00\x00";
-const SYNTHETIC_FMP4_SEGMENT_BYTES: &[u8] = b"\x00\x00\x00\x18moof\x00\x00\x00\x00mdatLIFESTREAM";
+const SYNTHETIC_FMP4_SEGMENT_BYTES: &[u8] = b"\x00\x00\x00\x18moof\x00\x00\x00\x00mdatVANTA";
 
 pub(super) async fn emit_live_packaging_artifacts(
     state: &SharedState,
@@ -76,16 +76,25 @@ async fn emit_variant_media_artifacts(
         tokio::fs::write(variant_dir.join("init.mp4"), SYNTHETIC_FMP4_INIT_BYTES)
             .await
             .map_err(AppError::Io)?;
-        tokio::fs::write(variant_dir.join("part_000_000.m4s"), SYNTHETIC_FMP4_PART_BYTES)
-            .await
-            .map_err(AppError::Io)?;
-        tokio::fs::write(variant_dir.join("segment_000.m4s"), SYNTHETIC_FMP4_SEGMENT_BYTES)
-            .await
-            .map_err(AppError::Io)?;
+        tokio::fs::write(
+            variant_dir.join("part_000_000.m4s"),
+            SYNTHETIC_FMP4_PART_BYTES,
+        )
+        .await
+        .map_err(AppError::Io)?;
+        tokio::fs::write(
+            variant_dir.join("segment_000.m4s"),
+            SYNTHETIC_FMP4_SEGMENT_BYTES,
+        )
+        .await
+        .map_err(AppError::Io)?;
     } else {
-        tokio::fs::write(variant_dir.join("segment_000.ts"), SYNTHETIC_TS_SEGMENT_BYTES)
-            .await
-            .map_err(AppError::Io)?;
+        tokio::fs::write(
+            variant_dir.join("segment_000.ts"),
+            SYNTHETIC_TS_SEGMENT_BYTES,
+        )
+        .await
+        .map_err(AppError::Io)?;
     }
 
     Ok(())
@@ -100,9 +109,13 @@ async fn sync_live_playback_persistence(
         return Ok(());
     };
 
-    let creator = fetch_creator_profile(&state.pool, &session.creator_id).await?;
-    let broadcast =
-        fetch_broadcast_by_id(&state.pool, &session.creator_id, &session.broadcast_id).await?;
+    let creator = fetch_creator_profile(state.db.sqlite_adapter(), &session.creator_id).await?;
+    let broadcast = fetch_broadcast_by_id(
+        state.db.sqlite_adapter(),
+        &session.creator_id,
+        &session.broadcast_id,
+    )
+    .await?;
     let live_stream_id = format!("lv-{}-live", creator.handle);
     let upload_job_id = format!("upjob-live-{}", session.id);
     let asset_id = format!("ast-live-{}", session.id);
@@ -140,7 +153,7 @@ async fn sync_live_playback_persistence(
     .bind(&now)
     .bind(&now)
     .bind(Some(live_stream_id.clone()))
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     sqlx::query(
@@ -194,7 +207,7 @@ async fn sync_live_playback_persistence(
     .bind(&now)
     .bind(Some(&now))
     .bind(Some(live_stream_id.clone()))
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     sqlx::query(
@@ -210,7 +223,7 @@ async fn sync_live_playback_persistence(
     .bind(broadcast.thumbnail)
     .bind(manifest_relative_path)
     .bind(live_stream_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     Ok(())

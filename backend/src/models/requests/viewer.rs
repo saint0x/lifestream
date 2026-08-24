@@ -38,6 +38,23 @@ pub struct UpdateProfileRequest {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct UpdatePersonProfileRequest {
+    pub slug: Option<String>,
+    pub display_name: Option<String>,
+    pub avatar: Option<String>,
+    pub hero_image: Option<String>,
+    pub headline: Option<String>,
+    pub location: Option<String>,
+    pub about: Option<String>,
+    pub known_for: Option<Vec<String>>,
+    pub website_url: Option<String>,
+    pub instagram_url: Option<String>,
+    pub x_url: Option<String>,
+    pub imdb_url: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateSettingsRequest {
     pub playback: Option<PlaybackSettings>,
     pub notifications: Option<NotificationSettings>,

@@ -9,8 +9,8 @@ import urllib.request
 import uuid
 
 BASE = "http://127.0.0.1:8080"
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-AUTH = "Bearer lifestream-local-dev-token"
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+AUTH = "Bearer vanta-local-dev-token"
 
 
 def req(path, method="GET", body=None, headers=None):

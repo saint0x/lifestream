@@ -9,15 +9,17 @@ pub(super) async fn execute_issue_mirror_grant(
 ) -> AppResult<CollaborationSocketCommandOutcome> {
     let creator_id = helpers::require_creator_identity(identity)?;
     helpers::require_host_role(session)?;
-    ensure_creator_collaboration_enabled(&state.pool, creator_id).await?;
+    ensure_creator_collaboration_enabled(state.db.sqlite_adapter(), creator_id).await?;
     let host_session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, session_id).await?;
+        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, session_id)
+            .await?;
     if host_session.status == "ended" {
         return Err(AppError::BadRequest(
             "cannot issue collaboration grants for an ended session".to_string(),
         ));
     }
-    let participant = fetch_collaboration_participant_by_id(&state.pool, participant_id).await?;
+    let participant =
+        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), participant_id).await?;
     if participant.session_id != *session_id {
         return Err(AppError::NotFound);
     }
@@ -54,7 +56,8 @@ pub(super) async fn execute_revoke_mirror_grants(
     participant_id: &str,
 ) -> AppResult<CollaborationSocketCommandOutcome> {
     let host_session = helpers::require_host_session(state, session_id, identity, session).await?;
-    let participant = fetch_collaboration_participant_by_id(&state.pool, participant_id).await?;
+    let participant =
+        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), participant_id).await?;
     if participant.session_id != host_session.id {
         return Err(AppError::NotFound);
     }

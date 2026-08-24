@@ -132,8 +132,8 @@ pub(crate) async fn fetch_creator_live_health(
             cpu_percent: row.get("cpu_percent"),
             dropped_frames: row.get("dropped_frames"),
             free_disk_gb: row.get("free_disk_gb"),
-    })
-    .collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
     samples.reverse();
 
     Ok(match settings_row {

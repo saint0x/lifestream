@@ -1,7 +1,7 @@
 use super::*;
 
 pub(crate) async fn reconcile_expired_user_entitlements(state: SharedState) -> AppResult<()> {
-    reconcile_expired_user_entitlements_for_read(&state.pool, None).await
+    reconcile_expired_user_entitlements_for_read(state.db.sqlite_adapter(), None).await
 }
 
 pub(crate) async fn reconcile_expired_user_entitlements_for_read(

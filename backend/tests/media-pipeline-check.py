@@ -4,9 +4,10 @@ import subprocess
 import tempfile
 import time
 import urllib.request
+import uuid
 
 BASE = "http://127.0.0.1:8080"
-AUTH = "Bearer lifestream-local-dev-token"
+AUTH = "Bearer vanta-local-dev-token"
 
 
 def open_json(request):
@@ -54,6 +55,9 @@ subprocess.run(
 
 payload = open(path, "rb").read()
 size = len(payload)
+run_id = uuid.uuid4().hex
+title = f"Fozzy pipeline validation {run_id}"
+storage_key = f"uploads/creator/deepsaint/features/fozzy-pipeline-validation-{run_id}.mp4"
 
 create = urllib.request.Request(
     BASE + "/api/v1/creator/me/upload-jobs",
@@ -61,10 +65,10 @@ create = urllib.request.Request(
         {
             "kind": "film",
             "sourceType": "resumable-upload",
-            "title": "Fozzy pipeline validation",
+            "title": title,
             "intendedVisibility": "public",
             "bytesExpected": size,
-            "storageKey": "uploads/creator/deepsaint/features/fozzy-pipeline-validation.mp4",
+            "storageKey": storage_key,
             "mimeType": "video/mp4",
         }
     ).encode(),

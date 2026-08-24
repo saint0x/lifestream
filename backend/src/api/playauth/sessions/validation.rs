@@ -22,87 +22,47 @@ pub(crate) async fn fetch_playback_session_record_by_id(
 }
 
 pub(crate) async fn validate_playback_session_record(
-    pool: &SqlitePool,
+    database: &crate::db::Database,
     session_id: &str,
     playback_token: &str,
 ) -> AppResult<PlaybackSessionRecord> {
     let now = Utc::now().to_rfc3339();
-    let row = sqlx::query(
-        r#"
-        SELECT id, user_id, creator_id, asset_id, content_id, content_kind, access_scope,
-               auth_session_id,
-               created_at, expires_at, last_used_at
-        FROM playback_sessions
-        WHERE id = ? AND token_hash = ? AND expires_at > ?
-        "#,
-    )
-    .bind(session_id)
-    .bind(crate::auth::hash_token(playback_token))
-    .bind(&now)
-    .fetch_optional(pool)
-    .await?
-    .ok_or(AppError::Unauthorized)?;
-
-    let session = playback_session_record_from_row(row);
-    if !validate_existing_playback_session_access(pool, &session, None).await? {
-        expire_playback_session_by_id(pool, &session.id).await?;
+    let session = database
+        .fetch_active_playback_session_record(session_id, playback_token, &now)
+        .await?;
+    if !validate_existing_playback_session_access(database.sqlite_adapter(), &session, None).await?
+    {
+        expire_playback_session_by_id(database.sqlite_adapter(), &session.id).await?;
         return Err(AppError::Unauthorized);
     }
 
-    sqlx::query("UPDATE playback_sessions SET last_used_at = ? WHERE id = ?")
-        .bind(&now)
-        .bind(session_id)
-        .execute(pool)
-        .await?;
-
-    Ok(PlaybackSessionRecord {
-        last_used_at: now,
-        ..session
-    })
+    Ok(session)
 }
 
 pub(crate) async fn validate_playback_session_record_for_path(
-    pool: &SqlitePool,
+    database: &crate::db::Database,
     playback_token: &str,
     relative_path: &str,
 ) -> AppResult<PlaybackSessionRecord> {
-    let now = Utc::now().to_rfc3339();
-    let row = sqlx::query(
-        r#"
-        SELECT id, user_id, creator_id, asset_id, content_id, content_kind, access_scope,
-               auth_session_id,
-               created_at, expires_at, last_used_at
-        FROM playback_sessions
-        WHERE token_hash = ? AND expires_at > ?
-        ORDER BY created_at DESC
-        LIMIT 1
-        "#,
-    )
-    .bind(crate::auth::hash_token(playback_token))
-    .bind(&now)
-    .fetch_optional(pool)
-    .await?
-    .ok_or(AppError::Unauthorized)?;
-
-    let session = playback_session_record_from_row(row);
     if relative_path.is_empty() {
         return Err(AppError::Unauthorized);
     }
-    if !validate_existing_playback_session_access(pool, &session, Some(relative_path)).await? {
-        expire_playback_session_by_id(pool, &session.id).await?;
+    let now = Utc::now().to_rfc3339();
+    let session = database
+        .fetch_latest_active_playback_session_record_by_token(playback_token, &now)
+        .await?;
+    if !validate_existing_playback_session_access(
+        database.sqlite_adapter(),
+        &session,
+        Some(relative_path),
+    )
+    .await?
+    {
+        expire_playback_session_by_id(database.sqlite_adapter(), &session.id).await?;
         return Err(AppError::Unauthorized);
     }
 
-    sqlx::query("UPDATE playback_sessions SET last_used_at = ? WHERE id = ?")
-        .bind(&now)
-        .bind(&session.id)
-        .execute(pool)
-        .await?;
-
-    Ok(PlaybackSessionRecord {
-        last_used_at: now,
-        ..session
-    })
+    Ok(session)
 }
 
 pub(crate) async fn validate_existing_playback_session_access(

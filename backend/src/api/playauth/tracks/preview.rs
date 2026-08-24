@@ -7,7 +7,7 @@ fn asset_tracks_published(status: &str) -> bool {
 pub(crate) fn build_media_preview_tracks(
     status: &str,
     tracks: &[StoredMediaPreviewTrack],
-    playback_token: Option<&str>,
+    playback_media_url: Option<&dyn Fn(&str) -> String>,
 ) -> Vec<PlaybackPreviewTrack> {
     tracks
         .iter()
@@ -15,22 +15,12 @@ pub(crate) fn build_media_preview_tracks(
             id: track.id.clone(),
             label: track.label.clone(),
             image_path: track.image_relative_path.clone(),
-            image_url: playback_token
-                .map(|token| {
-                    format!(
-                        "/api/v1/media/{}?playbackToken={}",
-                        track.image_relative_path, token
-                    )
-                })
+            image_url: playback_media_url
+                .map(|media_url| media_url(&track.image_relative_path))
                 .unwrap_or_else(|| media_api_url(&track.image_relative_path)),
             vtt_path: track.vtt_relative_path.clone(),
-            vtt_url: playback_token
-                .map(|token| {
-                    format!(
-                        "/api/v1/media/{}?playbackToken={}",
-                        track.vtt_relative_path, token
-                    )
-                })
+            vtt_url: playback_media_url
+                .map(|media_url| media_url(&track.vtt_relative_path))
                 .unwrap_or_else(|| media_api_url(&track.vtt_relative_path)),
             tile_width: track.tile_width,
             tile_height: track.tile_height,

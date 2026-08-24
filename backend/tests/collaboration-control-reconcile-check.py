@@ -7,10 +7,10 @@ import time
 import urllib.error
 import urllib.request
 
-BASE = os.environ.get("LIFESTREAM_BASE_URL", "http://127.0.0.1:8080")
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-HOST = "Bearer lifestream-local-dev-token"
-COLLAB = "Bearer lifestream-local-collaborator-token"
+BASE = os.environ.get("VANTA_BASE_URL", "http://127.0.0.1:8080")
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+HOST = "Bearer vanta-local-dev-token"
+COLLAB = "Bearer vanta-local-collaborator-token"
 SUFFIX = str(int(time.time() * 1000))
 
 

@@ -55,7 +55,7 @@ pub(crate) async fn finalize_media_processing(
     .bind(job_id)
     .bind(creator_id)
     .bind(&attempt.lease_updated_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await
     .map_err(|error| (AppError::from(error), attempt.lease_updated_at.clone()))?;
     if asset_update.rows_affected() == 0 {
@@ -69,7 +69,7 @@ pub(crate) async fn finalize_media_processing(
     .bind(job_id)
     .bind(creator_id)
     .bind(&attempt.lease_updated_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await
     .map_err(|error| (AppError::from(error), attempt.lease_updated_at.clone()))?;
     if job_update.rows_affected() == 0 {

@@ -3,6 +3,7 @@ use super::*;
 mod support;
 use support::*;
 
+mod catalog_public;
 mod collaboration_invites;
 mod collaboration_presence;
 mod health_runtime;

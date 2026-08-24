@@ -43,7 +43,7 @@ fn normalized_track_preference(preference: Option<&str>) -> Option<String> {
 pub(crate) fn build_media_caption_tracks(
     status: &str,
     variants: &[MediaAssetVariant],
-    playback_token: Option<&str>,
+    playback_media_url: Option<&dyn Fn(&str) -> String>,
     preferred_subtitle_language: Option<&str>,
 ) -> Vec<PlaybackCaptionTrack> {
     let mut tracks = variants
@@ -55,11 +55,8 @@ pub(crate) fn build_media_caption_tracks(
                 .split_once(':')
                 .map(|(label, language)| (label.to_string(), language.to_string()))
                 .unwrap_or_else(|| (variant.label.clone(), "und".to_string()));
-            let url = if let Some(token) = playback_token {
-                format!(
-                    "/api/v1/media/{}?playbackToken={}",
-                    variant.relative_path, token
-                )
+            let url = if let Some(media_url) = playback_media_url {
+                media_url(&variant.relative_path)
             } else {
                 variant.url.clone()
             };

@@ -7,12 +7,12 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-BASE = os.environ.get("LIFESTREAM_BASE_URL", "http://127.0.0.1:8080")
+BASE = os.environ.get("VANTA_BASE_URL", "http://127.0.0.1:8080")
 DB = os.environ.get(
-    "LIFESTREAM_DB_PATH",
-    str(Path(__file__).resolve().parents[1] / "lifestream.db"),
+    "VANTA_DB_PATH",
+    str(Path(__file__).resolve().parents[1] / "vanta.db"),
 )
-AUTH = "Bearer lifestream-local-dev-token"
+AUTH = "Bearer vanta-local-dev-token"
 HEADERS = {"Authorization": AUTH, "Content-Type": "application/json"}
 SUFFIX = str(int(time.time() * 1000))
 
@@ -45,7 +45,7 @@ conn.execute(
         "sess-runtime-control-owner",
         "usr-1",
         "runtime-control-owner",
-        hashlib.sha256("lifestream-local-dev-token".encode()).hexdigest(),
+        hashlib.sha256("vanta-local-dev-token".encode()).hexdigest(),
         json.dumps(["user", "creator", "creator:write", "admin"]),
         now,
     ),
@@ -189,8 +189,8 @@ assert any(
 ), overview
 
 metrics_body = urllib.request.urlopen(BASE + "/metrics").read().decode()
-assert "lifestream_live_ingest_active_sessions" in metrics_body, metrics_body
-assert "lifestream_live_ingest_ready_outputs" in metrics_body, metrics_body
+assert "vanta_live_ingest_active_sessions" in metrics_body, metrics_body
+assert "vanta_live_ingest_ready_outputs" in metrics_body, metrics_body
 
 created = req(
     "/api/v1/creator/me/live/collabs/sessions",

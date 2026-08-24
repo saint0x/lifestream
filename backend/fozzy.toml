@@ -1,11 +1,11 @@
 base_dir = ".fozzy"
 
 [package]
-name = "lifestream-backend"
+name = "vanta-backend"
 version = "0.1.0"
 
 [[target.bin]]
-name = "lifestream-backend"
+name = "vanta-backend"
 path = "fozzy/main.fzy"
 
 [unsafe]

@@ -63,13 +63,19 @@ pub(crate) async fn fetch_user_profile_details_with_user(
         fetch_viewer_account_bundle(pool, &user_id),
         fetch_connected_accounts(pool, &user_id),
     )?;
-    Ok(user_profile_details_from_bundle(user, bundle.profile, connected_accounts))
+    Ok(user_profile_details_from_bundle(
+        user,
+        bundle.profile,
+        connected_accounts,
+    ))
 }
 
 pub(crate) async fn fetch_viewer_account_bundle(
     pool: &SqlitePool,
     user_id: &str,
 ) -> AppResult<ViewerAccountBundle> {
+    ensure_viewer_account_bundle_rows(pool, user_id).await?;
+
     let row = sqlx::query(
         r#"
         SELECT
@@ -144,7 +150,7 @@ pub(crate) async fn fetch_viewer_account_bundle(
                 lock: false,
             },
             originals: NotificationChannelSetting {
-                label: "LIFESTREAM Originals premieres".to_string(),
+                label: "VANTA Originals premieres".to_string(),
                 push: row.get::<i64, _>("originals_push") == 1,
                 email: row.get::<i64, _>("originals_email") == 1,
                 lock: false,
@@ -216,6 +222,126 @@ pub(crate) async fn fetch_viewer_account_bundle(
     })
 }
 
+async fn ensure_viewer_account_bundle_rows(pool: &SqlitePool, user_id: &str) -> AppResult<()> {
+    let next_renewal_date = (Utc::now() + ChronoDuration::days(30))
+        .date_naive()
+        .to_string();
+    let features_json = serde_json::to_string(&vec![
+        "HD streaming",
+        "mobile downloads",
+        "community live chat",
+    ])?;
+
+    sqlx::query(
+        r#"
+        INSERT OR IGNORE INTO user_profiles (
+            user_id, email, email_verified, mature_content_allowed, default_audio,
+            subtitle_preset, autoplay_trailers, live_chat_filter, hours_watched
+        )
+        SELECT id, lower(handle) || '@vanta.local', 0, 0, 'English',
+               'English · Standard', 1, 'Standard', 0
+        FROM users
+        WHERE id = ?
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT OR IGNORE INTO user_playback_settings (
+            user_id, default_quality, audio_language, subtitle_language, subtitle_style,
+            autoplay_next_episode, autoplay_trailers, reduced_motion, prefer_dubbed,
+            playback_speed
+        ) VALUES (?, 'Auto (up to 4K HDR)', 'English · 5.1 (Dolby Atmos)', 'English',
+                  'English · Standard', 1, 1, 0, 0, '1× (normal)')
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT OR IGNORE INTO user_notification_settings (
+            user_id, series_push, series_email, live_push, live_email, originals_push,
+            originals_email, watchlist_push, watchlist_email, creator_push, creator_email,
+            security_push, security_email
+        ) VALUES (?, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1)
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT OR IGNORE INTO user_privacy_settings (
+            user_id, show_friend_activity, improve_recommendations, personalized_ads,
+            ab_tests, data_export_size_mb, delete_cooldown_days
+        ) VALUES (?, 0, 1, 0, 1, 0.0, 30)
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT OR IGNORE INTO user_parental_controls (
+            user_id, max_rating, require_pin_for_mature, hide_live_chat_for_kids,
+            block_mature_live_streams, pin_set
+        ) VALUES (?, 'TV-14 / PG-13', 0, 0, 0, 0)
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT OR IGNORE INTO user_download_settings (
+            user_id, video_quality, wifi_only, smart_downloads, storage_used_gb,
+            storage_limit_gb, device_limit, active_devices
+        ) VALUES (?, 'High (1080p)', 1, 1, 0.0, 25.0, 2, 0)
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT OR IGNORE INTO user_language_settings (
+            user_id, interface_language, subtitle_language, catalog_region,
+            date_format, clock_format
+        ) VALUES (?, 'English (US)', 'English', 'United States', 'MMM D, YYYY', 'Auto')
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT OR IGNORE INTO billing_profiles (
+            user_id, plan_name, monthly_price, next_renewal_date, payment_brand,
+            payment_last4, billing_city, billing_region, billing_country, invoices_count,
+            screens, features_json, average_revenue_per_user
+        ) VALUES (?, 'VANTA Free', 0.0, ?, 'None', '0000', 'Unknown', 'Unknown',
+                  'Unknown', 0, 1, ?, 0.0)
+        "#,
+    )
+    .bind(user_id)
+    .bind(next_renewal_date)
+    .bind(features_json)
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 pub(crate) async fn fetch_user_settings_bundle(
     pool: &SqlitePool,
     user_id: &str,
@@ -258,5 +384,137 @@ pub(crate) fn user_settings_bundle_from_account_bundle(
         parental: bundle.parental,
         downloads: bundle.downloads,
         language: bundle.language,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    #[tokio::test]
+    async fn viewer_account_bundle_repairs_missing_rows_for_existing_user() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .expect("sqlite pool");
+
+        sqlx::raw_sql(
+            r#"
+            CREATE TABLE users (
+                id TEXT PRIMARY KEY,
+                handle TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                avatar TEXT NOT NULL,
+                tier TEXT NOT NULL,
+                joined_at TEXT NOT NULL
+            );
+            CREATE TABLE user_profiles (
+                user_id TEXT PRIMARY KEY,
+                email TEXT NOT NULL,
+                email_verified INTEGER NOT NULL,
+                mature_content_allowed INTEGER NOT NULL,
+                default_audio TEXT NOT NULL,
+                subtitle_preset TEXT NOT NULL,
+                autoplay_trailers INTEGER NOT NULL,
+                live_chat_filter TEXT NOT NULL,
+                hours_watched INTEGER NOT NULL
+            );
+            CREATE TABLE user_playback_settings (
+                user_id TEXT PRIMARY KEY,
+                default_quality TEXT NOT NULL,
+                audio_language TEXT NOT NULL,
+                subtitle_language TEXT NOT NULL,
+                subtitle_style TEXT NOT NULL,
+                autoplay_next_episode INTEGER NOT NULL,
+                autoplay_trailers INTEGER NOT NULL,
+                reduced_motion INTEGER NOT NULL,
+                prefer_dubbed INTEGER NOT NULL,
+                playback_speed TEXT NOT NULL
+            );
+            CREATE TABLE user_notification_settings (
+                user_id TEXT PRIMARY KEY,
+                series_push INTEGER NOT NULL,
+                series_email INTEGER NOT NULL,
+                live_push INTEGER NOT NULL,
+                live_email INTEGER NOT NULL,
+                originals_push INTEGER NOT NULL,
+                originals_email INTEGER NOT NULL,
+                watchlist_push INTEGER NOT NULL,
+                watchlist_email INTEGER NOT NULL,
+                creator_push INTEGER NOT NULL,
+                creator_email INTEGER NOT NULL,
+                security_push INTEGER NOT NULL,
+                security_email INTEGER NOT NULL
+            );
+            CREATE TABLE user_privacy_settings (
+                user_id TEXT PRIMARY KEY,
+                show_friend_activity INTEGER NOT NULL,
+                improve_recommendations INTEGER NOT NULL,
+                personalized_ads INTEGER NOT NULL,
+                ab_tests INTEGER NOT NULL,
+                data_export_size_mb REAL NOT NULL,
+                delete_cooldown_days INTEGER NOT NULL
+            );
+            CREATE TABLE user_parental_controls (
+                user_id TEXT PRIMARY KEY,
+                max_rating TEXT NOT NULL,
+                require_pin_for_mature INTEGER NOT NULL,
+                hide_live_chat_for_kids INTEGER NOT NULL,
+                block_mature_live_streams INTEGER NOT NULL,
+                pin_set INTEGER NOT NULL
+            );
+            CREATE TABLE user_download_settings (
+                user_id TEXT PRIMARY KEY,
+                video_quality TEXT NOT NULL,
+                wifi_only INTEGER NOT NULL,
+                smart_downloads INTEGER NOT NULL,
+                storage_used_gb REAL NOT NULL,
+                storage_limit_gb REAL NOT NULL,
+                device_limit INTEGER NOT NULL,
+                active_devices INTEGER NOT NULL
+            );
+            CREATE TABLE user_language_settings (
+                user_id TEXT PRIMARY KEY,
+                interface_language TEXT NOT NULL,
+                subtitle_language TEXT NOT NULL,
+                catalog_region TEXT NOT NULL,
+                date_format TEXT NOT NULL,
+                clock_format TEXT NOT NULL
+            );
+            CREATE TABLE billing_profiles (
+                user_id TEXT PRIMARY KEY,
+                plan_name TEXT NOT NULL,
+                monthly_price REAL NOT NULL,
+                next_renewal_date TEXT NOT NULL,
+                payment_brand TEXT NOT NULL,
+                payment_last4 TEXT NOT NULL,
+                billing_city TEXT NOT NULL,
+                billing_region TEXT NOT NULL,
+                billing_country TEXT NOT NULL,
+                invoices_count INTEGER NOT NULL,
+                screens INTEGER NOT NULL,
+                features_json TEXT NOT NULL,
+                average_revenue_per_user REAL NOT NULL
+            );
+            INSERT INTO users (id, handle, display_name, avatar, tier, joined_at)
+            VALUES ('usr-viewer', 'viewer_one', 'Viewer One', 'avatar.jpg', 'free', '2026-08-23T00:00:00Z');
+            "#,
+        )
+        .execute(&pool)
+        .await
+        .expect("schema");
+
+        let bundle = fetch_viewer_account_bundle(&pool, "usr-viewer")
+            .await
+            .expect("account bundle");
+
+        assert_eq!(bundle.profile.email, "viewer_one@vanta.local");
+        assert!(!bundle.profile.mature_content_allowed);
+        assert_eq!(bundle.playback.default_quality, "Auto (up to 4K HDR)");
+        assert_eq!(bundle.plan.plan_name, "VANTA Free");
+        assert_eq!(bundle.plan.screens, 1);
+        assert_eq!(bundle.language.catalog_region, "United States");
     }
 }

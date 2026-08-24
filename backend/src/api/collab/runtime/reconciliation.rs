@@ -12,9 +12,10 @@ pub(crate) async fn publish_collaboration_topology(
     state: &SharedState,
     session_id: &str,
 ) -> AppResult<()> {
-    let session = fetch_collaboration_session_by_id(&state.pool, session_id).await?;
+    let session = fetch_collaboration_session_by_id(state.db.sqlite_adapter(), session_id).await?;
     sync_collaboration_runtime_persistence(state, &session).await?;
-    let response = build_collaboration_runtime_response_for_host(&state.pool, session).await?;
+    let response =
+        build_collaboration_runtime_response_for_host(state.db.sqlite_adapter(), session).await?;
     state
         .realtime
         .publish(
@@ -32,7 +33,8 @@ async fn sync_collaboration_runtime_persistence(
     session: &CollaborationSession,
 ) -> AppResult<()> {
     let Some(active_session) =
-        fetch_active_live_ingest_session(&state.pool, &session.host_creator_id).await?
+        fetch_active_live_ingest_session(state.db.sqlite_adapter(), &session.host_creator_id)
+            .await?
     else {
         return Ok(());
     };
@@ -40,7 +42,7 @@ async fn sync_collaboration_runtime_persistence(
         return Ok(());
     }
     if let Some(runtime_output) =
-        fetch_live_runtime_output_for_session(&state.pool, &active_session.id).await?
+        fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &active_session.id).await?
     {
         sync_live_runtime_output_artifacts(state, &active_session, &runtime_output).await?;
     }
@@ -53,7 +55,7 @@ pub(crate) async fn publish_collaboration_presence(
     session_id: &str,
 ) -> AppResult<()> {
     let connected_participants =
-        count_active_collaboration_socket_sessions(&state.pool, session_id).await?;
+        count_active_collaboration_socket_sessions(state.db.sqlite_adapter(), session_id).await?;
     state
         .realtime
         .publish(
@@ -81,7 +83,7 @@ pub(crate) async fn expire_pending_collaboration_invites_for_session(
     )
     .bind(session_id)
     .bind(now)
-    .fetch_all(&state.pool)
+    .fetch_all(state.db.sqlite_adapter())
     .await?;
     let mut actions = Vec::with_capacity(rows.len());
     for row in rows {
@@ -92,7 +94,7 @@ pub(crate) async fn expire_pending_collaboration_invites_for_session(
         )
         .bind(now)
         .bind(&invite_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
         let _ = publish_collaboration_reconciliation_event(
             state,
@@ -133,7 +135,7 @@ pub(crate) async fn expire_collaboration_mirror_grants_for_session(
     )
     .bind(session_id)
     .bind(now)
-    .fetch_all(&state.pool)
+    .fetch_all(state.db.sqlite_adapter())
     .await?;
     let mut actions = Vec::with_capacity(rows.len());
     for row in rows {
@@ -145,7 +147,7 @@ pub(crate) async fn expire_collaboration_mirror_grants_for_session(
         )
         .bind(now)
         .bind(&grant_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
         let _ = publish_collaboration_reconciliation_event(
             state,
@@ -170,7 +172,8 @@ pub(crate) async fn expire_collaboration_mirror_grants_for_session(
     }
     if !actions.is_empty() {
         let expired_grants =
-            fetch_collaboration_mirror_grants_for_session(&state.pool, session_id).await?;
+            fetch_collaboration_mirror_grants_for_session(state.db.sqlite_adapter(), session_id)
+                .await?;
         let affected = expired_grants
             .into_iter()
             .filter(|grant| grant.state == "expired" && grant.revoked_at.as_deref() == Some(now))
@@ -196,7 +199,7 @@ pub(crate) async fn disconnect_stale_collaboration_socket_sessions_for_session(
     )
     .bind(session_id)
     .bind(cutoff)
-    .fetch_all(&state.pool)
+    .fetch_all(state.db.sqlite_adapter())
     .await?;
     let mut actions = Vec::with_capacity(rows.len());
     for row in rows {
@@ -207,7 +210,7 @@ pub(crate) async fn disconnect_stale_collaboration_socket_sessions_for_session(
         .bind(now)
         .bind(cutoff)
         .bind(&socket_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
         actions.push(CollaborationReconciliationAction {
             action_type: "socket_disconnected".to_string(),
@@ -230,8 +233,12 @@ pub(crate) async fn reconcile_single_collaboration_socket_session(
     session_id: &str,
     socket_id: &str,
 ) -> AppResult<CollaborationSocketPresenceReconciliationReport> {
-    let before =
-        fetch_collaboration_socket_presence_by_id_raw(&state.pool, session_id, socket_id).await?;
+    let before = fetch_collaboration_socket_presence_by_id_raw(
+        state.db.sqlite_adapter(),
+        session_id,
+        socket_id,
+    )
+    .await?;
     let now = Utc::now().to_rfc3339();
     let cutoff = active_presence_cutoff();
     let mut actions = Vec::new();
@@ -244,7 +251,7 @@ pub(crate) async fn reconcile_single_collaboration_socket_session(
         .bind(&cutoff)
         .bind(socket_id)
         .bind(session_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
         if updated.rows_affected() > 0 {
             actions.push(CollaborationSocketPresenceReconciliationAction {
@@ -258,8 +265,12 @@ pub(crate) async fn reconcile_single_collaboration_socket_session(
         }
     }
 
-    let socket_session =
-        fetch_collaboration_socket_presence_by_id_raw(&state.pool, session_id, socket_id).await?;
+    let socket_session = fetch_collaboration_socket_presence_by_id_raw(
+        state.db.sqlite_adapter(),
+        session_id,
+        socket_id,
+    )
+    .await?;
     if !actions.is_empty() {
         publish_collaboration_presence(&state, session_id).await?;
         publish_collaboration_topology(&state, session_id).await?;
@@ -289,10 +300,11 @@ pub(crate) async fn reconcile_single_collaboration_session(
         )
         .await?,
     );
-    let mut session = fetch_collaboration_session_by_id(&state.pool, session_id).await?;
+    let mut session =
+        fetch_collaboration_session_by_id(state.db.sqlite_adapter(), session_id).await?;
     if session.status != "ended" {
         let source_broadcast = fetch_broadcast_by_id(
-            &state.pool,
+            state.db.sqlite_adapter(),
             &session.host_creator_id,
             &session.source_broadcast_id,
         )
@@ -320,7 +332,8 @@ pub(crate) async fn reconcile_single_collaboration_session(
         }
     }
     let control =
-        build_creator_collaboration_control_response_for_host(&state.pool, session).await?;
+        build_creator_collaboration_control_response_for_host(state.db.sqlite_adapter(), session)
+            .await?;
     Ok(CollaborationReconciliationReport {
         session_id: session_id.to_string(),
         reconciled_at: now,

@@ -1,42 +1,68 @@
 import { useEffect, useState } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
-import { Heart, Bell, Share2, Gift, Bookmark, Flag } from "lucide-react";
+import { Heart, Share2 } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
-import { LiveChat } from "@/components/chat/LiveChat";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { formatViewers, formatUptime } from "@/lib/format";
 import { LiveCard } from "@/components/content/LiveCard";
-import { getApiBaseUrl, requestJson } from "@/lib/api";
-import type { LiveNotifyPreference, PlaybackGrant } from "@/types";
+import { requestJson, resolveApiUrl } from "@/lib/api";
+import { preparePlaybackGrantMediaAuthorization } from "@/lib/playback";
+import { shareCurrentPage } from "@/lib/share";
+import type { LiveStream, PlaybackGrant } from "@/types";
 import "./LiveWatchPage.css";
 
 export function LiveWatchPage() {
   const { slug } = useParams<{ slug: string }>();
-  const stream = slug ? repository.getLiveStreamBySlug(slug) : undefined;
+  const [stream, setStream] = useState(slug && repository.hasState() ? repository.getLiveStreamBySlug(slug) : undefined);
+  const [contextLoading, setContextLoading] = useState(true);
+  const [contextError, setContextError] = useState<string | null>(null);
+  const [otherStreams, setOtherStreams] = useState<ReadonlyArray<LiveStream>>([]);
   const [playbackGrant, setPlaybackGrant] = useState<PlaybackGrant | null>(null);
   const [playbackLoading, setPlaybackLoading] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
-  const [notifyEnabled, setNotifyEnabled] = useState(false);
-  const [notifyPending, setNotifyPending] = useState(false);
-  const [clipPending, setClipPending] = useState(false);
-  const [clipStatus, setClipStatus] = useState<string | null>(null);
-  const [reportOpen, setReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState("");
-  const [reportDetails, setReportDetails] = useState("");
-  const [reportPending, setReportPending] = useState(false);
-  const [reportStatus, setReportStatus] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const streamId = stream?.id;
   const isFollowing = useAppStore((s) =>
     stream ? s.following.has(stream.streamer.id) : false,
   );
   const toggleFollow = useAppStore((s) => s.toggleFollow);
 
-  if (!stream) return <Navigate to="/live" replace />;
+  useEffect(() => {
+    if (!slug) {
+      setStream(undefined);
+      setContextLoading(false);
+      setContextError("Live stream not found.");
+      return;
+    }
+    const controller = new AbortController();
+    setContextLoading(true);
+    setContextError(null);
+    void Promise.all([
+      repository.fetchLiveStreamBySlug(slug, controller.signal),
+      repository.fetchLiveDiscovery({ sort: "viewers", limit: 5 }, controller.signal),
+    ])
+      .then(([liveStream, discovery]) => {
+        setStream(liveStream);
+        setOtherStreams(discovery.streams.filter((item) => item.id !== liveStream.id).slice(0, 4));
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setStream(undefined);
+        setOtherStreams([]);
+        setContextError(error instanceof Error ? error.message : "Unable to load this live stream.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setContextLoading(false);
+      });
+    return () => controller.abort();
+  }, [slug]);
 
   useEffect(() => {
+    if (contextLoading || !stream) return;
     if (!stream.playbackSessionUrl) {
       setPlaybackGrant(null);
       setPlaybackError("Live playback is not available for this stream yet.");
@@ -46,92 +72,42 @@ export function LiveWatchPage() {
 
     setPlaybackLoading(true);
     setPlaybackError(null);
-    void requestJson<PlaybackGrant>(stream.playbackSessionUrl, { method: "POST", auth: false })
-      .then((grant) => {
+    const controller = new AbortController();
+    void requestJson<PlaybackGrant>(stream.playbackSessionUrl, {
+      method: "POST",
+      auth: false,
+      signal: controller.signal,
+    })
+      .then(async (grant) => {
+        await preparePlaybackGrantMediaAuthorization(grant, controller.signal);
         setPlaybackGrant(grant);
       })
       .catch((error) => {
+        if (controller.signal.aborted) return;
         setPlaybackGrant(null);
         setPlaybackError(error instanceof Error ? error.message : "Unable to start live playback.");
       })
       .finally(() => {
+        if (controller.signal.aborted) return;
         setPlaybackLoading(false);
       });
-  }, [stream.id, stream.playbackSessionUrl]);
+
+    return () => controller.abort();
+  }, [contextLoading, stream]);
 
   useEffect(() => {
-    setNotifyEnabled(false);
-    setNotifyPending(false);
-    setClipPending(false);
-    setClipStatus(null);
-    setReportOpen(false);
-    setReportReason("");
-    setReportDetails("");
-    setReportPending(false);
-    setReportStatus(null);
-  }, [stream.id]);
+    if (!streamId) return;
+  }, [streamId]);
 
-  const enableNotify = async () => {
-    setNotifyPending(true);
-    setReportStatus(null);
-    try {
-      const preference = await requestJson<LiveNotifyPreference>(
-        `/api/v1/live/streams/${stream.id}/notify`,
-        { method: "POST" },
-      );
-      setNotifyEnabled(preference.enabled);
-    } catch (error) {
-      setReportStatus(error instanceof Error ? error.message : "Unable to enable notifications.");
-    } finally {
-      setNotifyPending(false);
-    }
-  };
+  if (contextLoading) {
+    return <div className="ls-live-watch__route-state mono">Loading live stream…</div>;
+  }
 
-  const createClip = async () => {
-    setClipPending(true);
-    setClipStatus(null);
-    try {
-      await requestJson<unknown>(`/api/v1/live/streams/${stream.id}/clip`, {
-        method: "POST",
-      });
-      setClipStatus("Clip request queued for the live stream.");
-    } catch (error) {
-      setClipStatus(error instanceof Error ? error.message : "Unable to request a clip.");
-    } finally {
-      setClipPending(false);
-    }
-  };
+  if (contextError) {
+    return <div className="ls-live-watch__route-state ls-live-watch__state--error">{contextError}</div>;
+  }
 
-  const submitReport = async () => {
-    if (!reportReason.trim()) {
-      setReportStatus("A report reason is required.");
-      return;
-    }
-    setReportPending(true);
-    setReportStatus(null);
-    try {
-      await requestJson<unknown>(`/api/v1/live/streams/${stream.id}/report`, {
-        method: "POST",
-        body: {
-          reason: reportReason.trim(),
-          details: reportDetails.trim() || undefined,
-        },
-      });
-      setReportStatus("Report submitted to the moderation team.");
-      setReportReason("");
-      setReportDetails("");
-      setReportOpen(false);
-    } catch (error) {
-      setReportStatus(error instanceof Error ? error.message : "Unable to submit report.");
-    } finally {
-      setReportPending(false);
-    }
-  };
-
-  const others = repository
-    .listLiveStreams()
-    .filter((s) => s.id !== stream.id)
-    .slice(0, 4);
+  if (!stream) return <Navigate to="/live" replace />;
 
   return (
     <div className="ls-live-watch">
@@ -144,13 +120,13 @@ export function LiveWatchPage() {
             <div className="ls-live-watch__state ls-live-watch__state--error">{playbackError}</div>
           ) : null}
           <VideoPlayer
-            poster={playbackGrant?.posterUrl ? `${getApiBaseUrl()}${playbackGrant.posterUrl}` : stream.thumbnail}
+            poster={playbackGrant?.posterUrl ? resolveApiUrl(playbackGrant.posterUrl) : stream.thumbnail}
             title={stream.title}
             durationSec={72000}
             initialProgressSec={Math.floor(
               (Date.now() - new Date(stream.startedAt).getTime()) / 1000,
             )}
-            sourceUrl={playbackGrant ? `${getApiBaseUrl()}${playbackGrant.manifestUrl}` : null}
+            sourceUrl={playbackGrant ? resolveApiUrl(playbackGrant.manifestUrl) : null}
             allowPreviewTransport={false}
           />
         </div>
@@ -184,74 +160,19 @@ export function LiveWatchPage() {
               {isFollowing ? "Following" : "Follow"}
             </Button>
             <Button
-              variant={notifyEnabled ? "secondary" : "outline"}
-              icon={<Bell />}
-              onClick={() => void enableNotify()}
-              disabled={notifyPending || notifyEnabled}
-            >
-              {notifyEnabled ? "Notified" : notifyPending ? "Saving…" : "Notify"}
-            </Button>
-            <Button variant="outline" icon={<Gift />}>Subscribe</Button>
-            <Button variant="ghost" icon={<Share2 />}>Share</Button>
-            <Button
               variant="ghost"
-              icon={<Bookmark />}
-              onClick={() => void createClip()}
-              disabled={clipPending}
-            >
-              {clipPending ? "Clipping…" : "Clip"}
-            </Button>
-            <Button
-              variant={reportOpen ? "secondary" : "ghost"}
-              icon={<Flag />}
-              aria-label="Report"
+              icon={<Share2 />}
               onClick={() => {
-                setReportStatus(null);
-                setReportOpen((current) => !current);
+                void shareCurrentPage(stream.title)
+                  .then(setShareStatus)
+                  .catch(() => setShareStatus("Unable to share this stream."));
               }}
             >
-              Report
+              Share
             </Button>
           </div>
 
-          {clipStatus ? <div className="ls-live-watch__status">{clipStatus}</div> : null}
-          {reportStatus ? <div className="ls-live-watch__status">{reportStatus}</div> : null}
-          {reportOpen ? (
-            <div className="ls-live-watch__report">
-              <div className="ls-live-watch__section-label mono">Report live stream</div>
-              <input
-                type="text"
-                value={reportReason}
-                onChange={(event) => setReportReason(event.target.value)}
-                placeholder="Reason"
-              />
-              <textarea
-                value={reportDetails}
-                onChange={(event) => setReportDetails(event.target.value)}
-                placeholder="Add details for moderation"
-                rows={4}
-              />
-              <div className="ls-live-watch__report-actions">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setReportOpen(false);
-                    setReportStatus(null);
-                  }}
-                  disabled={reportPending}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={() => void submitReport()}
-                  disabled={reportPending}
-                >
-                  {reportPending ? "Submitting…" : "Submit report"}
-                </Button>
-              </div>
-            </div>
-          ) : null}
+          {shareStatus ? <div className="ls-live-watch__status">{shareStatus}</div> : null}
 
           <div className="ls-live-watch__stats mono">
             <div className="ls-live-watch__stat">
@@ -275,14 +196,12 @@ export function LiveWatchPage() {
         <section className="ls-live-watch__recs">
           <div className="ls-live-watch__section-label mono">Also live</div>
           <div className="ls-live-watch__rec-grid">
-            {others.map((s) => (
+            {otherStreams.map((s) => (
               <LiveCard key={s.id} stream={s} />
             ))}
           </div>
         </section>
       </div>
-
-      <LiveChat streamId={stream.id} streamTitle={stream.title} viewerCount={stream.viewers} />
     </div>
   );
 }

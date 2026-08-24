@@ -17,19 +17,25 @@ pub(super) async fn inspect_live_runtime_collaboration_artifacts(
     state: &SharedState,
     session: &LiveIngestSession,
 ) -> AppResult<CollaborationArtifactInspection> {
-    let Some(collaboration_session) =
-        fetch_active_collaboration_session_for_broadcast(&state.pool, &session.broadcast_id)
-            .await?
+    let Some(collaboration_session) = fetch_active_collaboration_session_for_broadcast(
+        state.db.sqlite_adapter(),
+        &session.broadcast_id,
+    )
+    .await?
     else {
         return Ok(CollaborationArtifactInspection::default());
     };
-    let runtime =
-        build_collaboration_runtime_response_for_host(&state.pool, collaboration_session).await?;
+    let runtime = build_collaboration_runtime_response_for_host(
+        state.db.sqlite_adapter(),
+        collaboration_session,
+    )
+    .await?;
     let engine_relative_path = collaboration_engine_relative_path(session);
     let bundle_relative_path = collaboration_bundle_relative_path(session);
     let media_relative_path = collaboration_media_relative_path(session);
     let launch_relative_path = collaboration_launch_relative_path(session);
-    let runtime_output = fetch_live_runtime_output_for_session(&state.pool, &session.id).await?;
+    let runtime_output =
+        fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session.id).await?;
     let artifacts_expected = runtime_output.as_ref().is_some_and(|output| {
         matches!(
             output.packaging_status.as_str(),
@@ -81,7 +87,12 @@ pub(super) async fn inspect_live_runtime_collaboration_artifacts(
     )
     .await?;
 
-    for program in &runtime.topology.programs {
+    for program in runtime
+        .topology
+        .programs
+        .iter()
+        .filter(|program| program.target_broadcast_id.is_some())
+    {
         let relative_path = collaboration_program_relative_path(session, program);
         validate_required_artifact_path(
             state,

@@ -6,9 +6,9 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-CREATOR = "Bearer lifestream-local-dev-token"
-VIEWER = "Bearer lifestream-viewer-token"
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+CREATOR = "Bearer vanta-local-dev-token"
+VIEWER = "Bearer vanta-viewer-token"
 
 
 def req(path, method="GET", token=None, body=None):
@@ -40,7 +40,7 @@ conn.execute(
         "usr-viewer",
         "viewer_one",
         "Viewer One",
-        "https://cdn.lifestream.local/avatar/viewer-one.jpg",
+        "https://cdn.vanta.local/avatar/viewer-one.jpg",
         "free",
         now,
     ),
@@ -55,7 +55,7 @@ conn.execute(
         "sess-viewer-local",
         "usr-viewer",
         "local-viewer",
-        hashlib.sha256("lifestream-viewer-token".encode()).hexdigest(),
+        hashlib.sha256("vanta-viewer-token".encode()).hexdigest(),
         json.dumps(["user"]),
         now,
     ),

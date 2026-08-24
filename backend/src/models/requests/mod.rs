@@ -17,10 +17,10 @@ pub use collaboration::{
 };
 pub use creator::{
     CreateCreatorEnforcementActionRequest, CreateCreatorModeratorRequest,
-    CreateCreatorSeriesRequest, CreateCreatorSubscriberTierRequest,
+    CreateCreatorSeriesRequest, CreateCreatorSubscriberTierRequest, ProjectCreditInput,
     ReleaseCreatorEnforcementActionRequest, UpdateCreatorLiveSettingsRequest,
     UpdateCreatorOperationalStateRequest, UpdateCreatorSeriesRequest,
-    UpdateCreatorSubscriberTierRequest,
+    UpdateCreatorSubscriberTierRequest, UpdateProjectCreditsRequest,
 };
 pub use live::{
     CreateLiveModerationActionRequest, IngestConnectRequest, IngestConnectResponse,
@@ -34,6 +34,6 @@ pub use uploads::{
     UpdateUploadRequest,
 };
 pub use viewer::{
-    ChatInput, CreateSessionRequest, CreatorContentQuery, UpdateProfileRequest,
-    UpdateSettingsRequest,
+    ChatInput, CreateSessionRequest, CreatorContentQuery, UpdatePersonProfileRequest,
+    UpdateProfileRequest, UpdateSettingsRequest,
 };

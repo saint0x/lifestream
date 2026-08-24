@@ -18,9 +18,11 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_participant(
     revoked_at: &str,
     reason: &str,
 ) -> AppResult<()> {
-    let grants =
-        fetch_revocable_collaboration_mirror_grants_for_participant(&state.pool, participant_id)
-            .await?;
+    let grants = fetch_revocable_collaboration_mirror_grants_for_participant(
+        state.db.sqlite_adapter(),
+        participant_id,
+    )
+    .await?;
     if grants.is_empty() {
         return Ok(());
     }
@@ -29,7 +31,7 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_participant(
     )
     .bind(revoked_at)
     .bind(participant_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     deactivate_collaboration_mirror_pickups_for_grants(state, &grants, "revoked", revoked_at)
         .await?;
@@ -52,8 +54,11 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_session(
     revoked_at: &str,
     reason: &str,
 ) -> AppResult<()> {
-    let grants =
-        fetch_revocable_collaboration_mirror_grants_for_session(&state.pool, session_id).await?;
+    let grants = fetch_revocable_collaboration_mirror_grants_for_session(
+        state.db.sqlite_adapter(),
+        session_id,
+    )
+    .await?;
     if grants.is_empty() {
         return Ok(());
     }
@@ -62,7 +67,7 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_session(
     )
     .bind(revoked_at)
     .bind(session_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     deactivate_collaboration_mirror_pickups_for_grants(state, &grants, "revoked", revoked_at)
         .await?;
@@ -85,8 +90,11 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_session_raw(
     revoked_at: &str,
     reason: &str,
 ) -> AppResult<()> {
-    let grants =
-        fetch_revocable_collaboration_mirror_grants_for_session(&state.pool, session_id).await?;
+    let grants = fetch_revocable_collaboration_mirror_grants_for_session(
+        state.db.sqlite_adapter(),
+        session_id,
+    )
+    .await?;
     if grants.is_empty() {
         return Ok(());
     }
@@ -95,7 +103,7 @@ pub(crate) async fn revoke_collaboration_mirror_grants_for_session_raw(
     )
     .bind(revoked_at)
     .bind(session_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     deactivate_collaboration_mirror_pickups_for_grants(state, &grants, "revoked", revoked_at)
         .await?;
@@ -180,7 +188,7 @@ pub(crate) async fn issue_mirror_grant_for_participant(
     .bind(hash_token(&raw_token))
     .bind(&issued_at)
     .bind(&expires_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     publish_collaboration_event(
         state,
@@ -198,7 +206,7 @@ pub(crate) async fn issue_mirror_grant_for_participant(
         }),
     )
     .await?;
-    fetch_collaboration_mirror_grant_by_id(&state.pool, &grant_id).await
+    fetch_collaboration_mirror_grant_by_id(state.db.sqlite_adapter(), &grant_id).await
 }
 
 pub(crate) async fn redeem_collaboration_mirror_grant_internal(
@@ -206,10 +214,12 @@ pub(crate) async fn redeem_collaboration_mirror_grant_internal(
     identity: &RequestIdentity,
     grant_id: &str,
 ) -> AppResult<CollaborationMirrorGrant> {
-    let grant = fetch_collaboration_mirror_grant_by_id(&state.pool, grant_id).await?;
+    let grant = fetch_collaboration_mirror_grant_by_id(state.db.sqlite_adapter(), grant_id).await?;
     let participant =
-        fetch_collaboration_participant_by_id(&state.pool, &grant.participant_id).await?;
-    let session = fetch_collaboration_session_by_id(&state.pool, &grant.session_id).await?;
+        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), &grant.participant_id)
+            .await?;
+    let session =
+        fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &grant.session_id).await?;
     if participant.user_id != identity.user_id {
         return Err(AppError::Forbidden);
     }
@@ -225,9 +235,10 @@ pub(crate) async fn redeem_collaboration_mirror_grant_internal(
     )
     .bind(&now)
     .bind(grant_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
-    let activated_grant = fetch_collaboration_mirror_grant_by_id(&state.pool, grant_id).await?;
+    let activated_grant =
+        fetch_collaboration_mirror_grant_by_id(state.db.sqlite_adapter(), grant_id).await?;
     let pickup = match activate_collaboration_mirror_pickup(
         state,
         &session,
@@ -243,7 +254,7 @@ pub(crate) async fn redeem_collaboration_mirror_grant_internal(
                 "UPDATE collaboration_mirror_grants SET state = 'issued', activated_at = NULL WHERE id = ? AND state = 'active'",
             )
             .bind(grant_id)
-            .execute(&state.pool)
+            .execute(state.db.sqlite_adapter())
             .await?;
             deactivate_collaboration_mirror_pickups_for_grants(
                 state,
@@ -272,5 +283,5 @@ pub(crate) async fn redeem_collaboration_mirror_grant_internal(
     )
     .await?;
 
-    fetch_collaboration_mirror_grant_by_id(&state.pool, grant_id).await
+    fetch_collaboration_mirror_grant_by_id(state.db.sqlite_adapter(), grant_id).await
 }

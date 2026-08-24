@@ -37,10 +37,10 @@ pub(crate) async fn get_creator_live(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<CreatorLiveSnapshot>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        build_creator_live_snapshot(&state.pool, creator_id).await?,
+        build_creator_live_snapshot(state.db.sqlite_adapter(), creator_id).await?,
     ))
 }
 
@@ -48,7 +48,7 @@ async fn get_creator_live_control(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<CreatorLiveControlResponse>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
         fetch_authoritative_creator_live_control_response(&state, creator_id).await?,
@@ -59,7 +59,7 @@ async fn get_creator_live_runtime(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<CreatorLiveRuntimeResponse>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
         fetch_authoritative_creator_live_runtime_response(&state, creator_id).await?,
@@ -71,10 +71,15 @@ pub(crate) async fn get_creator_live_socket_session(
     headers: HeaderMap,
     Path(socket_id): Path<String>,
 ) -> AppResult<Json<CreatorLiveSocketPresence>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_creator_live_socket_presence_by_id_raw(&state.pool, creator_id, &socket_id).await?,
+        fetch_creator_live_socket_presence_by_id_raw(
+            state.db.sqlite_adapter(),
+            creator_id,
+            &socket_id,
+        )
+        .await?,
     ))
 }
 
@@ -83,10 +88,14 @@ pub(crate) async fn reconcile_creator_live_socket_session(
     headers: HeaderMap,
     Path(socket_id): Path<String>,
 ) -> AppResult<Json<CreatorLiveSocketPresenceReconciliationReport>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let socket_session =
-        fetch_creator_live_socket_presence_by_id_raw(&state.pool, creator_id, &socket_id).await?;
+    let socket_session = fetch_creator_live_socket_presence_by_id_raw(
+        state.db.sqlite_adapter(),
+        creator_id,
+        &socket_id,
+    )
+    .await?;
     if socket_session.creator_id != creator_id {
         return Err(AppError::NotFound);
     }
@@ -99,10 +108,10 @@ async fn get_creator_live_settings(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<CreatorLiveSettings>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_creator_live_settings(&state.pool, creator_id).await?,
+        fetch_creator_live_settings(state.db.sqlite_adapter(), creator_id).await?,
     ))
 }
 
@@ -111,7 +120,7 @@ async fn update_creator_live_settings(
     headers: HeaderMap,
     Json(input): Json<UpdateCreatorLiveSettingsRequest>,
 ) -> AppResult<Json<CreatorLiveSettings>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     enforce_rate_limit(
         &state,
         &format!("creator-live-settings:{}", identity.user_id),
@@ -120,8 +129,8 @@ async fn update_creator_live_settings(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_live_settings_row(&state.pool, creator_id).await?;
-    let current = fetch_creator_live_settings(&state.pool, creator_id).await?;
+    ensure_creator_live_settings_row(state.db.sqlite_adapter(), creator_id).await?;
+    let current = fetch_creator_live_settings(state.db.sqlite_adapter(), creator_id).await?;
     if let Some(value) = input.slow_mode_seconds {
         validate_slow_mode_seconds(value)?;
     }
@@ -167,10 +176,10 @@ async fn update_creator_live_settings(
     .bind(&active_scene_id)
     .bind(to_json(&scenes)?)
     .bind(creator_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let settings = fetch_creator_live_settings(&state.pool, creator_id).await?;
+    let settings = fetch_creator_live_settings(state.db.sqlite_adapter(), creator_id).await?;
     publish_current_creator_live_state(&state, creator_id).await?;
     Ok(Json(settings))
 }
@@ -179,9 +188,9 @@ async fn get_creator_live_health(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<CreatorLiveHealth>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_creator_live_health(&state.pool, creator_id).await?,
+        fetch_creator_live_health(state.db.sqlite_adapter(), creator_id).await?,
     ))
 }

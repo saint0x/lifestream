@@ -1,16 +1,30 @@
 .ls-card {
   --card-accent: #ffffff;
+  --poster-card-width: 180px;
+  --landscape-card-width: 292px;
+  --wide-card-width: 372px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
   position: relative;
   color: var(--c-text);
   scroll-snap-align: start;
+  min-width: 0;
 }
 
-.ls-card--poster    { width: 180px; }
-.ls-card--landscape { width: 280px; }
-.ls-card--wide      { width: 360px; }
+.ls-card--poster {
+  width: var(--poster-card-width);
+}
+.ls-card--landscape {
+  width: var(--landscape-card-width);
+}
+.ls-card--wide {
+  width: var(--wide-card-width);
+}
+
+.ls-row__scroller .ls-card {
+  width: auto;
+}
 
 .ls-card__media {
   position: relative;
@@ -18,24 +32,36 @@
   border-radius: var(--r-md);
   border: 1px solid var(--c-border);
   background: var(--c-surface);
-  transition: border-color 200ms var(--ease-out), transform 260ms var(--ease-out);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  transition:
+    border-color 200ms var(--ease-out),
+    transform 260ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
 }
 
-.ls-card--poster .ls-card__media    { aspect-ratio: 2 / 3; }
-.ls-card--landscape .ls-card__media { aspect-ratio: 16 / 9; }
-.ls-card--wide .ls-card__media      { aspect-ratio: 16 / 9; }
+.ls-card--poster .ls-card__media {
+  aspect-ratio: 2 / 3;
+}
+.ls-card--landscape .ls-card__media,
+.ls-card--wide .ls-card__media {
+  aspect-ratio: 16 / 9;
+}
 
 .ls-card__media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 500ms var(--ease-out), filter 300ms var(--ease-out);
-  filter: saturate(1) brightness(0.9);
+  object-position: center;
+  transition:
+    transform 500ms var(--ease-out),
+    filter 300ms var(--ease-out);
+  filter: saturate(0.96) brightness(0.92);
 }
 
 .ls-card:hover .ls-card__media {
   border-color: var(--card-accent);
   transform: translateY(-2px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
 }
 .ls-card:hover .ls-card__media img {
   transform: scale(1.04);
@@ -45,7 +71,9 @@
 .ls-card__scrim {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.6) 100%);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.12) 0%, transparent 36%),
+    linear-gradient(180deg, transparent 52%, rgba(0, 0, 0, 0.68) 100%);
   pointer-events: none;
 }
 
@@ -54,7 +82,9 @@
   top: 8px;
   left: 8px;
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+  max-width: calc(100% - 48px);
   z-index: 2;
 }
 
@@ -68,7 +98,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(0,0,0,0.65);
+  background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(8px);
   border: 1px solid var(--c-border-hi);
   color: var(--c-text);
@@ -98,13 +128,15 @@
   transition: opacity 200ms var(--ease-out);
   z-index: 1;
 }
-.ls-card:hover .ls-card__play { opacity: 1; }
+.ls-card:hover .ls-card__play {
+  opacity: 1;
+}
 
 .ls-card__play-btn {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(8px);
   border: 1px solid var(--c-text);
   color: var(--c-text);
@@ -119,7 +151,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255, 0.12);
   z-index: 2;
 }
 .ls-card__progress-fill {
@@ -131,7 +163,8 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 0 2px;
+  padding: 0 1px;
+  min-width: 0;
 }
 
 .ls-card__title {
@@ -152,11 +185,23 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  min-width: 0;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.ls-card__meta-sep { color: var(--c-text-ghost); }
+.ls-card__meta span:not(.ls-card__live-dot) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ls-card__meta-sep {
+  color: var(--c-text-ghost);
+}
 
 .ls-card__live-dot {
   width: 5px;
@@ -165,4 +210,21 @@
   background: var(--c-live);
   animation: blink 1.6s var(--ease-in-out) infinite;
   display: inline-block;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 720px) {
+  .ls-card {
+    --poster-card-width: 156px;
+    --landscape-card-width: 260px;
+    --wide-card-width: 312px;
+  }
+}
+
+@media (max-width: 430px) {
+  .ls-card {
+    --poster-card-width: 148px;
+    --landscape-card-width: 236px;
+    --wide-card-width: 280px;
+  }
 }

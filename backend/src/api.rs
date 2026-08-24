@@ -28,6 +28,8 @@ use tracing::warn;
 use uuid::Uuid;
 
 #[cfg(test)]
+use crate::config::{Config, DatabaseKind, RuntimeEnvironment, StorageKind};
+#[cfg(test)]
 use crate::models::{AdminLiveIngestOverviewQuery, RepairLiveRuntimeOutputRequest};
 use crate::{
     auth::{RequestIdentity, hash_token, lookup_identity, optional_identity, require_identity},
@@ -61,10 +63,10 @@ use crate::{
         CreatorOperationalChecklistItem, CreatorOperationalState, CreatorProfile,
         CreatorRevenueBreakdownEntry, CreatorRevenueSummary, CreatorSeriesProject,
         CreatorSubscriberTier, CreatorUploadOperationRecord, CreatorUploadOperationsResponse,
-        CreatorUploadOperationsSummary, DownloadSettings, Episode, Film, FollowingFeedResponse,
-        HealthDependencies, HealthDependencyStatus, HealthResponse, HomeResponse,
-        IngestConnectRequest, IngestConnectResponse, IngestHeartbeatRequest, LanguageSettings,
-        LiveDiscoveryResponse, LiveIngestEvent, LiveIngestReconciliationAction,
+        CreatorUploadOperationsSummary, Credit, DownloadSettings, Episode, Film,
+        FollowingFeedResponse, HealthDependencies, HealthDependencyStatus, HealthResponse,
+        HomeResponse, IngestConnectRequest, IngestConnectResponse, IngestHeartbeatRequest,
+        LanguageSettings, LiveDiscoveryResponse, LiveIngestEvent, LiveIngestReconciliationAction,
         LiveIngestReconciliationReport, LiveIngestSession, LiveModerationAction,
         LiveModerationReconciliationAction, LiveModerationReconciliationReport,
         LiveNotifyPreference, LiveReportRequest, LiveRuntimeOutput, LiveStream,
@@ -75,21 +77,24 @@ use crate::{
         NotificationDeliveryRecord, NotificationSettings, ParentalControls, PlaybackAccessQuery,
         PlaybackAudioTrack, PlaybackCaptionTrack, PlaybackGrant, PlaybackPreviewTrack,
         PlaybackReconciliationAction, PlaybackReconciliationReport, PlaybackSession,
-        PlaybackSettings, PrivacySettings, ProgressInput, PublishUploadJobRequest,
-        ReleaseCreatorEnforcementActionRequest, ResolveLiveStreamReportRequest, RevenueEntry,
-        Season, Series, SessionTokenResponse, StartBroadcastRequest, Streamer,
-        TerminateLiveIngestRequest, TopContent, TrafficSource,
+        PlaybackSettings, PrivacySettings, ProgressInput, ProjectCreditInput,
+        PublishUploadJobRequest, ReleaseCreatorEnforcementActionRequest,
+        ResolveLiveStreamReportRequest, RevenueEntry, Season, Series, SessionTokenResponse,
+        StartBroadcastRequest, Streamer, TerminateLiveIngestRequest, TopContent, TrafficSource,
         UpdateCollaborationParticipantRequest, UpdateCreatorLiveSettingsRequest,
         UpdateCreatorOperationalStateRequest, UpdateCreatorSeriesRequest,
         UpdateCreatorSubscriberTierRequest, UpdateLiveRequest, UpdateLiveRuntimeStateRequest,
-        UpdateProfileRequest, UpdateSettingsRequest, UpdateUploadJobRequest,
-        UpdateUploadLifecycleRequest, UpdateUploadRequest, Upload, UploadIngestSession,
-        UploadIngestTicket, UploadJob, User, UserEntitlementReconciliationAction, UserEntitlements,
-        UserLibrary, UserNotification, UserProfileDetails, UserSettingsBundle, ViewerAppState,
-        ViewerPreview, WatchHistoryEntry, WatchlistResponse, WsEvent,
+        UpdateProfileRequest, UpdateProjectCreditsRequest, UpdateSettingsRequest,
+        UpdateUploadJobRequest, UpdateUploadLifecycleRequest, UpdateUploadRequest, Upload,
+        UploadIngestSession, UploadIngestTicket, UploadJob, User,
+        UserEntitlementReconciliationAction, UserEntitlements, UserLibrary, UserNotification,
+        UserProfileDetails, UserSettingsBundle, ViewerAppState, ViewerPreview, WatchHistoryEntry,
+        WatchlistResponse, WsEvent,
     },
     state::AppState,
 };
+#[cfg(test)]
+use public::{SearchQuery, search};
 
 mod admin_ops;
 mod api_runtime;
@@ -134,14 +139,14 @@ use collab::{
     fetch_collaboration_participant_for_user, fetch_collaboration_session_by_id,
     fetch_collaboration_session_for_host, fetch_collaboration_session_for_participant,
     fetch_collaboration_sessions_for_host, fetch_collaboration_sessions_for_participant,
-    fetch_collaboration_socket_presence_by_id_raw,
-    fetch_collaboration_socket_presence_for_session, fetch_creator_live_collaboration_summary,
+    fetch_collaboration_socket_presence_by_id_raw, fetch_collaboration_socket_presence_for_session,
+    fetch_creator_live_collaboration_summary, filter_visible_collaboration_events_for_session,
     filter_visible_collaboration_mirror_grants_for_session_view,
     filter_visible_collaboration_mirror_pickups_for_session_view,
-    filter_visible_collaboration_events_for_session, has_pending_collaboration_invite_for_user,
-    load_collaboration_socket_event_bootstrap, publish_collaboration_topology,
-    reconcile_single_collaboration_session, reconcile_single_collaboration_socket_session,
-    resolve_collaboration_broadcast, validate_collaboration_participant_access,
+    has_pending_collaboration_invite_for_user, load_collaboration_socket_event_bootstrap,
+    publish_collaboration_topology, reconcile_single_collaboration_session,
+    reconcile_single_collaboration_socket_session, resolve_collaboration_broadcast,
+    validate_collaboration_participant_access,
 };
 use collaboration_events::{
     collaboration_channel_id, publish_collaboration_event,
@@ -170,9 +175,9 @@ use control::{
     fetch_active_live_ingest_session, fetch_active_live_ingest_session_unreconciled,
     fetch_admin_live_ingest_overview, fetch_admin_live_ingest_session_record,
     fetch_admin_live_ingest_sessions, fetch_creator_live_ingest_session_record,
-    fetch_live_ingest_events_for_creator,
-    fetch_live_ingest_events_for_session, fetch_live_ingest_session_by_id,
-    fetch_live_ingest_session_by_id_global, fetch_live_ingest_session_by_id_global_unreconciled,
+    fetch_live_ingest_events_for_creator, fetch_live_ingest_events_for_session,
+    fetch_live_ingest_session_by_id, fetch_live_ingest_session_by_id_global,
+    fetch_live_ingest_session_by_id_global_unreconciled,
     fetch_live_ingest_session_by_id_unreconciled, fetch_recent_live_ingest_sessions,
     fetch_recent_live_runtime_outputs, fetch_terminalizable_live_ingest_sessions_for_broadcast,
     initialize_live_runtime_output, mark_live_ingest_session_stale,
@@ -236,13 +241,12 @@ use me::{
     reconcile_my_membership_entitlement, reconcile_my_purchase_entitlement, revoke_session,
 };
 use media::access::{
-    check_database, ensure_parent_dir, fetch_admin_playback_session_record,
-    fetch_admin_playback_sessions, media_api_url, media_path_for_relative,
-    parse_ffprobe_ratio, path_allowed_for_paths,
-    playback_path_allowed_for_asset, require_ingest_token, require_upload_token,
-    rewrite_hls_manifest_media_uri_line, rewrite_hls_manifest_reference, sanitize_slug,
-    sanitize_storage_key, serve_media_file, sha256_file, slugify, validate_playback_session,
-    validate_upload_ingest_token,
+    ensure_admin_playback_session_exists, ensure_parent_dir, expire_admin_playback_session,
+    fetch_admin_playback_session_record, fetch_admin_playback_sessions, media_api_url,
+    media_path_for_relative, normalize_relative_storage_path, parse_ffprobe_ratio,
+    path_allowed_for_paths, playback_path_allowed_for_asset, require_ingest_token,
+    require_upload_token, sanitize_slug, sanitize_storage_key, serve_media_file, sha256_file,
+    slugify, validate_playback_session, validate_upload_ingest_token,
 };
 #[cfg(test)]
 use media::pipeline::{
@@ -263,19 +267,19 @@ use media::pipeline::{
 };
 #[cfg(test)]
 use mirror::fetch_collaboration_mirror_grant_by_id;
+#[cfg(test)]
+use mirror::fetch_collaboration_mirror_pickups_for_participant;
 use mirror::{
     deactivate_collaboration_mirror_pickups_for_grants,
     fetch_collaboration_mirror_grants_for_participant,
-    fetch_collaboration_mirror_grants_for_session,
-    fetch_collaboration_mirror_pickups_for_session, issue_mirror_grant_for_participant,
-    redeem_collaboration_mirror_grant_internal, revoke_collaboration_mirror_grants_for_participant,
+    fetch_collaboration_mirror_grants_for_session, fetch_collaboration_mirror_pickups_for_session,
+    issue_mirror_grant_for_participant, redeem_collaboration_mirror_grant_internal,
+    revoke_collaboration_mirror_grants_for_participant,
     revoke_collaboration_mirror_grants_for_session,
     revoke_collaboration_mirror_grants_for_session_raw,
     sync_active_collaboration_mirror_pickups_for_session,
     sync_active_collaboration_mirror_pickups_for_session_and_publish,
 };
-#[cfg(test)]
-use mirror::fetch_collaboration_mirror_pickups_for_participant;
 use moderation::{
     creator_enforcement_action_from_row, fetch_active_live_moderation_action,
     fetch_live_moderation_action_by_id, fetch_live_moderation_action_by_id_raw,
@@ -289,11 +293,11 @@ use notifications::{
     fetch_notification_delivery_by_id, fetch_notification_delivery_by_id_raw,
     fetch_notifications_rows, reconcile_single_notification_delivery,
 };
+pub(crate) use playauth::PlaybackSessionRecord;
 use playauth::{
-    PlaybackSessionRecord, build_media_audio_tracks, build_media_caption_tracks,
-    build_media_preview_tracks, default_audio_track_id, default_caption_track_id,
-    default_preview_track_id, expire_playback_session_by_id,
-    expire_playback_sessions_for_auth_session, expire_playback_sessions_for_upload,
+    build_media_audio_tracks, build_media_caption_tracks, build_media_preview_tracks,
+    default_audio_track_id, default_caption_track_id, default_preview_track_id,
+    expire_playback_session_by_id, expire_playback_sessions_for_upload,
     fetch_active_creator_membership, fetch_live_stream_playback_target,
     fetch_playback_session_record_by_id, fetch_upload_playback_target,
     fetch_user_playback_preferences, playback_session_from_record,
@@ -316,13 +320,13 @@ use presence::{
     count_all_active_collaboration_socket_sessions, count_all_active_creator_live_socket_sessions,
     count_all_active_live_viewer_sessions, disconnect_collaboration_socket_session,
     disconnect_creator_live_socket_session, disconnect_live_viewer_session,
-    effective_live_viewer_count, ensure_stream_exists, fetch_auth_sessions,
-    fetch_chat_messages_for_viewer, fetch_continue_watching_entry, fetch_live_viewer_sample_users,
-    next_chat_message_sequence, reconcile_single_creator_live_socket_session,
+    effective_live_viewer_count, ensure_stream_exists, fetch_chat_messages_for_viewer,
+    fetch_continue_watching_entry, fetch_live_viewer_sample_users, next_chat_message_sequence,
+    reconcile_single_creator_live_socket_session,
     reconcile_stale_creator_live_socket_sessions_for_read, reconcile_stale_presence_sessions,
     register_collaboration_socket_session, register_creator_live_socket_session,
     register_live_viewer_session, touch_collaboration_socket_session,
-    touch_creator_live_socket_session, touch_live_viewer_session, upsert_watch_history_entry,
+    touch_creator_live_socket_session, touch_live_viewer_session,
 };
 use public::PersistedChatMessage;
 #[cfg(test)]
@@ -347,8 +351,9 @@ use reconciliation::{
     stale_live_ingest_cutoff, stale_media_processing_cutoff, validate_creator_access_tier,
 };
 use shared_helpers::{
-    build_fts_query, from_json, live_stream_from_row, notification_delivery_record_from_row,
-    playback_content_session_api_url, stream_channel_id, streamer_from_row, to_json,
+    from_json, live_stream_from_row, notification_delivery_record_from_row,
+    playback_content_session_api_url, playback_live_session_api_url, stream_channel_id,
+    streamer_from_row, to_json,
 };
 use validation::{
     monetized_access_policy, parse_optional_future_timestamp,
@@ -371,6 +376,10 @@ pub fn router(state: SharedState) -> Router {
 
 pub fn start_background_workers(state: SharedState) {
     api_runtime::start_background_workers(state)
+}
+
+pub async fn run_background_worker_loop(state: SharedState) {
+    api_runtime::run_background_worker_loop(state).await
 }
 
 #[cfg(test)]

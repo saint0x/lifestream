@@ -4,25 +4,26 @@ use crate::api::notifications::fetch_user_notifications;
 #[tokio::test]
 async fn creator_receives_live_notification_even_when_followers_not_notified() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let before_count = creator_notification_delivery_count(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator.id,
         "creator_live",
         &broadcast.id,
     )
     .await?;
 
-    transition_broadcast_to_live(&state.pool, &creator, &broadcast, false, true).await?;
+    transition_broadcast_to_live(state.db.sqlite_adapter(), &creator, &broadcast, false, true)
+        .await?;
 
     let after_count = creator_notification_delivery_count(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator.id,
         "creator_live",
         &broadcast.id,
     )
     .await?;
-    let notifications = fetch_notifications_rows(&state.pool, &creator.id).await?;
+    let notifications = fetch_notifications_rows(state.db.sqlite_adapter(), &creator.id).await?;
 
     assert_eq!(after_count, before_count + 1);
     assert!(notifications.iter().any(|item| {
@@ -37,14 +38,18 @@ async fn creator_receives_live_notification_even_when_followers_not_notified() -
 #[tokio::test]
 async fn notification_delivery_attempt_claim_is_exclusive() -> AppResult<()> {
     let (state, _) = setup_test_state().await?;
-    let delivery_id = insert_test_notification_delivery(&state.pool, "usr-2", "inbox").await?;
+    let delivery_id =
+        insert_test_notification_delivery(state.db.sqlite_adapter(), "usr-2", "inbox").await?;
     let attempted_at = Utc::now().to_rfc3339();
 
     let first_claim =
-        claim_notification_delivery_attempt(&state.pool, &delivery_id, &attempted_at).await?;
+        claim_notification_delivery_attempt(state.db.sqlite_adapter(), &delivery_id, &attempted_at)
+            .await?;
     let second_claim =
-        claim_notification_delivery_attempt(&state.pool, &delivery_id, &attempted_at).await?;
-    let delivery = fetch_notification_delivery_by_id(&state.pool, &delivery_id).await?;
+        claim_notification_delivery_attempt(state.db.sqlite_adapter(), &delivery_id, &attempted_at)
+            .await?;
+    let delivery =
+        fetch_notification_delivery_by_id(state.db.sqlite_adapter(), &delivery_id).await?;
 
     assert!(first_claim);
     assert!(!second_claim);
@@ -90,15 +95,17 @@ async fn request_origin_validation_rejects_unconfigured_origin() -> AppResult<()
 async fn concurrent_notification_dispatch_only_records_one_attempt() -> AppResult<()> {
     let (state, _) = setup_test_state().await?;
     let delivery_id =
-        insert_test_notification_delivery(&state.pool, "usr-2", "unsupported").await?;
+        insert_test_notification_delivery(state.db.sqlite_adapter(), "usr-2", "unsupported")
+            .await?;
 
     let (first, second) = tokio::join!(
-        dispatch_notification_delivery(&state.pool, &delivery_id),
-        dispatch_notification_delivery(&state.pool, &delivery_id)
+        dispatch_notification_delivery(state.db.sqlite_adapter(), &delivery_id),
+        dispatch_notification_delivery(state.db.sqlite_adapter(), &delivery_id)
     );
     let first = first?;
     let second = second?;
-    let delivery = fetch_notification_delivery_by_id(&state.pool, &delivery_id).await?;
+    let delivery =
+        fetch_notification_delivery_by_id(state.db.sqlite_adapter(), &delivery_id).await?;
 
     assert_eq!(delivery.retry_count, 1);
     assert_eq!(delivery.state, "retrying");
@@ -113,10 +120,12 @@ async fn concurrent_notification_dispatch_only_records_one_attempt() -> AppResul
 #[tokio::test]
 async fn user_notification_read_dispatches_due_pending_delivery() -> AppResult<()> {
     let (state, _) = setup_test_state().await?;
-    let delivery_id = insert_test_notification_delivery(&state.pool, "usr-2", "inbox").await?;
+    let delivery_id =
+        insert_test_notification_delivery(state.db.sqlite_adapter(), "usr-2", "inbox").await?;
 
-    let notifications = fetch_user_notifications(&state.pool, "usr-2").await?;
-    let delivery = fetch_notification_delivery_by_id_raw(&state.pool, &delivery_id).await?;
+    let notifications = fetch_user_notifications(state.db.sqlite_adapter(), "usr-2").await?;
+    let delivery =
+        fetch_notification_delivery_by_id_raw(state.db.sqlite_adapter(), &delivery_id).await?;
 
     assert!(
         notifications
@@ -131,7 +140,8 @@ async fn user_notification_read_dispatches_due_pending_delivery() -> AppResult<(
 #[tokio::test]
 async fn admin_notification_delivery_read_dispatches_due_retrying_delivery() -> AppResult<()> {
     let (state, _) = setup_test_state().await?;
-    let delivery_id = insert_test_notification_delivery(&state.pool, "usr-2", "email").await?;
+    let delivery_id =
+        insert_test_notification_delivery(state.db.sqlite_adapter(), "usr-2", "email").await?;
     sqlx::query(
         "UPDATE notification_deliveries SET state = 'retrying', retry_count = 2, failed_at = ?, last_error = ?, last_attempted_at = ?, next_attempt_at = ? WHERE id = ?",
     )
@@ -140,10 +150,11 @@ async fn admin_notification_delivery_read_dispatches_due_retrying_delivery() -> 
     .bind("2026-08-18T00:00:00Z")
     .bind("2026-08-18T00:00:01Z")
     .bind(&delivery_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let deliveries = fetch_notification_deliveries(&state.pool, None, None, 100).await?;
+    let deliveries =
+        fetch_notification_deliveries(state.db.sqlite_adapter(), None, None, 100).await?;
     let record = deliveries
         .into_iter()
         .find(|item| item.id == delivery_id)
@@ -163,9 +174,10 @@ async fn admin_notification_delivery_read_dispatches_due_retrying_delivery() -> 
 #[tokio::test]
 async fn admin_can_inspect_and_reconcile_notification_delivery_by_id() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let delivery_id = insert_test_notification_delivery(&state.pool, "usr-2", "email").await?;
+    let delivery_id =
+        insert_test_notification_delivery(state.db.sqlite_adapter(), "usr-2", "email").await?;
 
     sqlx::query(
         "UPDATE notification_deliveries SET state = 'retrying', retry_count = 2, failed_at = ?, last_error = ?, last_attempted_at = ?, next_attempt_at = ? WHERE id = ?",
@@ -175,7 +187,7 @@ async fn admin_can_inspect_and_reconcile_notification_delivery_by_id() -> AppRes
     .bind("2026-08-18T00:00:00Z")
     .bind("2026-08-18T00:00:01Z")
     .bind(&delivery_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let inspected = get_admin_notification_delivery(
@@ -216,7 +228,7 @@ async fn admin_can_inspect_and_reconcile_notification_delivery_by_id() -> AppRes
 #[tokio::test]
 async fn terminating_ingest_creates_creator_broadcast_end_notification() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -229,7 +241,7 @@ async fn terminating_ingest_creates_creator_broadcast_end_notification() -> AppR
     .await?
     .0;
     let before_count = creator_notification_delivery_count(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator.id,
         "creator_live_ended",
         &connected.session.broadcast_id,
@@ -238,7 +250,7 @@ async fn terminating_ingest_creates_creator_broadcast_end_notification() -> AppR
 
     let _ = terminate_creator_live_ingest(
         State(state.clone()),
-        auth_headers(&insert_creator_auth_session(&state.pool, &creator).await?),
+        auth_headers(&insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?),
         Path(connected.session.id.clone()),
         Json(TerminateLiveIngestRequest {
             reason: Some("creator validation shutdown".to_string()),
@@ -247,15 +259,19 @@ async fn terminating_ingest_creates_creator_broadcast_end_notification() -> AppR
     .await?;
 
     let after_count = creator_notification_delivery_count(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator.id,
         "creator_live_ended",
         &connected.session.broadcast_id,
     )
     .await?;
-    let notifications = fetch_notifications_rows(&state.pool, &creator.id).await?;
-    let ended_broadcast =
-        fetch_broadcast_by_id(&state.pool, &creator.id, &connected.session.broadcast_id).await?;
+    let notifications = fetch_notifications_rows(state.db.sqlite_adapter(), &creator.id).await?;
+    let ended_broadcast = fetch_broadcast_by_id(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.broadcast_id,
+    )
+    .await?;
 
     assert_eq!(after_count, before_count + 1);
     assert!(notifications.iter().any(|item| {

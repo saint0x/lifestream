@@ -5,7 +5,7 @@ pub(crate) async fn begin_media_processing_attempt(
     creator_id: &str,
     job_id: &str,
 ) -> AppResult<Option<MediaProcessingAttempt>> {
-    let job = fetch_upload_job_by_id(&state.pool, creator_id, job_id).await?;
+    let job = fetch_upload_job_by_id(state.db.sqlite_adapter(), creator_id, job_id).await?;
     if job.status != "uploaded" {
         return Ok(None);
     }
@@ -17,16 +17,22 @@ pub(crate) async fn begin_media_processing_attempt(
     .bind(&now)
     .bind(job_id)
     .bind(creator_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     if claimed.rows_affected() == 0 {
         return Ok(None);
     }
 
-    let job = fetch_upload_job_by_id(&state.pool, creator_id, job_id).await?;
-    let session = fetch_upload_ingest_session(&state.pool, creator_id, job_id).await?;
-    let asset =
-        ensure_media_asset_shell(&state.pool, creator_id, &job, &session.relative_path).await?;
+    let job = fetch_upload_job_by_id(state.db.sqlite_adapter(), creator_id, job_id).await?;
+    let session =
+        fetch_upload_ingest_session(state.db.sqlite_adapter(), creator_id, job_id).await?;
+    let asset = ensure_media_asset_shell(
+        state.db.sqlite_adapter(),
+        creator_id,
+        &job,
+        &session.relative_path,
+    )
+    .await?;
     let source_path = media_path_for_relative(state, &session.relative_path);
 
     sqlx::query(
@@ -35,7 +41,7 @@ pub(crate) async fn begin_media_processing_attempt(
     .bind(&now)
     .bind(job_id)
     .bind(creator_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     Ok(Some(MediaProcessingAttempt {

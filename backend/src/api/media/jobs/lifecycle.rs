@@ -4,9 +4,9 @@ pub(crate) async fn list_upload_jobs(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<Vec<UploadJob>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    Ok(Json(fetch_upload_jobs(&state.pool, creator_id).await?))
+    Ok(Json(list_creator_upload_jobs(&state.db, creator_id).await?))
 }
 
 pub(crate) async fn create_upload_job(
@@ -14,7 +14,7 @@ pub(crate) async fn create_upload_job(
     headers: HeaderMap,
     Json(input): Json<CreateUploadJobRequest>,
 ) -> AppResult<Json<UploadJob>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     enforce_rate_limit(
         &state,
         &format!("creator-upload-job-create:{}", identity.user_id),
@@ -23,7 +23,51 @@ pub(crate) async fn create_upload_job(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_upload_ingest_enabled(&state.pool, creator_id).await?;
+    ensure_creator_upload_ingest_enabled_for_jobs(&state.db, creator_id).await?;
+    Ok(Json(
+        create_creator_upload_job(&state.db, creator_id, input).await?,
+    ))
+}
+
+pub(crate) async fn update_upload_job(
+    State(state): State<SharedState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(input): Json<UpdateUploadJobRequest>,
+) -> AppResult<Json<UploadJob>> {
+    let identity = require_identity(&state.db, &headers).await?;
+    enforce_rate_limit(
+        &state,
+        &format!("creator-upload-job-update:{}", identity.user_id),
+        60,
+        Duration::from_secs(60),
+    )
+    .await?;
+    let creator_id = identity.require_creator_scope()?;
+    Ok(Json(
+        update_creator_upload_job(&state.db, creator_id, &id, input).await?,
+    ))
+}
+
+pub(crate) async fn list_creator_upload_jobs(
+    database: &crate::db::Database,
+    creator_id: &str,
+) -> AppResult<Vec<UploadJob>> {
+    fetch_upload_jobs(database.sqlite_adapter(), creator_id).await
+}
+
+pub(crate) async fn ensure_creator_upload_ingest_enabled_for_jobs(
+    database: &crate::db::Database,
+    creator_id: &str,
+) -> AppResult<()> {
+    ensure_creator_upload_ingest_enabled(database.sqlite_adapter(), creator_id).await
+}
+
+pub(crate) async fn create_creator_upload_job(
+    database: &crate::db::Database,
+    creator_id: &str,
+    input: CreateUploadJobRequest,
+) -> AppResult<UploadJob> {
     if input.title.trim().is_empty() || input.kind.trim().is_empty() {
         return Err(AppError::BadRequest(
             "title and kind are required".to_string(),
@@ -76,30 +120,19 @@ pub(crate) async fn create_upload_job(
     .bind(0_i64)
     .bind(Option::<String>::None)
     .bind(Option::<String>::None)
-    .execute(&state.pool)
+    .execute(database.sqlite_adapter())
     .await?;
 
-    Ok(Json(
-        fetch_upload_job_by_id(&state.pool, creator_id, &id).await?,
-    ))
+    fetch_upload_job_by_id(database.sqlite_adapter(), creator_id, &id).await
 }
 
-pub(crate) async fn update_upload_job(
-    State(state): State<SharedState>,
-    headers: HeaderMap,
-    Path(id): Path<String>,
-    Json(input): Json<UpdateUploadJobRequest>,
-) -> AppResult<Json<UploadJob>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    enforce_rate_limit(
-        &state,
-        &format!("creator-upload-job-update:{}", identity.user_id),
-        60,
-        Duration::from_secs(60),
-    )
-    .await?;
-    let creator_id = identity.require_creator_scope()?;
-    let current = fetch_upload_job_by_id(&state.pool, creator_id, &id).await?;
+pub(crate) async fn update_creator_upload_job(
+    database: &crate::db::Database,
+    creator_id: &str,
+    id: &str,
+    input: UpdateUploadJobRequest,
+) -> AppResult<UploadJob> {
+    let current = fetch_upload_job_by_id(database.sqlite_adapter(), creator_id, id).await?;
     if current.status == "processing" {
         return Err(AppError::BadRequest(
             "processing upload jobs cannot be edited".to_string(),
@@ -139,7 +172,7 @@ pub(crate) async fn update_upload_job(
 
     let series_id = match input.series_id {
         Some(series_id) => {
-            if fetch_creator_series_title(&state.pool, creator_id, &series_id)
+            if fetch_creator_series_title(database.sqlite_adapter(), creator_id, &series_id)
                 .await?
                 .is_none()
             {
@@ -164,12 +197,10 @@ pub(crate) async fn update_upload_job(
     .bind(series_id)
     .bind(mime_type)
     .bind(Utc::now().to_rfc3339())
-    .bind(&id)
+    .bind(id)
     .bind(creator_id)
-    .execute(&state.pool)
+    .execute(database.sqlite_adapter())
     .await?;
 
-    Ok(Json(
-        fetch_upload_job_by_id(&state.pool, creator_id, &id).await?,
-    ))
+    fetch_upload_job_by_id(database.sqlite_adapter(), creator_id, id).await
 }

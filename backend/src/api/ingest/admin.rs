@@ -12,10 +12,11 @@ pub(crate) async fn get_admin_live_ingest_overview(
     headers: HeaderMap,
     Query(query): Query<AdminLiveIngestOverviewQuery>,
 ) -> AppResult<Json<AdminLiveIngestOverview>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
     Ok(Json(
-        fetch_admin_live_ingest_overview(&state.pool, query.creator_id.as_deref()).await?,
+        fetch_admin_live_ingest_overview(state.db.sqlite_adapter(), query.creator_id.as_deref())
+            .await?,
     ))
 }
 
@@ -24,10 +25,10 @@ pub(crate) async fn list_admin_live_ingest_sessions(
     headers: HeaderMap,
     Query(query): Query<AdminLiveIngestQuery>,
 ) -> AppResult<Json<Vec<AdminLiveIngestSessionRecord>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
     let records = fetch_admin_live_ingest_sessions(
-        &state.pool,
+        state.db.sqlite_adapter(),
         query.creator_id.as_deref(),
         query.status.as_deref(),
         query.limit.unwrap_or(100),
@@ -45,11 +46,13 @@ pub(crate) async fn get_admin_live_ingest_session(
     headers: HeaderMap,
     Path(session_id): Path<String>,
 ) -> AppResult<Json<AdminLiveIngestSessionRecord>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
-    let session = fetch_live_ingest_session_by_id_global(&state.pool, &session_id).await?;
+    let session =
+        fetch_live_ingest_session_by_id_global(state.db.sqlite_adapter(), &session_id).await?;
     let _ = reconcile_live_runtime_output_artifacts(&state, &session).await?;
-    let record = fetch_admin_live_ingest_session_record(&state.pool, &session_id).await?;
+    let record =
+        fetch_admin_live_ingest_session_record(state.db.sqlite_adapter(), &session_id).await?;
     Ok(Json(
         build_authoritative_admin_live_ingest_record(&state, record).await?,
     ))
@@ -60,9 +63,10 @@ pub(crate) async fn reconcile_admin_live_ingest_session(
     headers: HeaderMap,
     Path(session_id): Path<String>,
 ) -> AppResult<Json<LiveIngestReconciliationReport>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
-    fetch_live_ingest_session_by_id_global_unreconciled(&state.pool, &session_id).await?;
+    fetch_live_ingest_session_by_id_global_unreconciled(state.db.sqlite_adapter(), &session_id)
+        .await?;
     Ok(Json(
         reconcile_single_live_ingest_session(state, &session_id).await?,
     ))
@@ -74,9 +78,10 @@ pub(crate) async fn terminate_admin_live_ingest_session(
     Path(session_id): Path<String>,
     Json(input): Json<TerminateLiveIngestRequest>,
 ) -> AppResult<Json<AdminLiveIngestSessionRecord>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
-    let session = fetch_live_ingest_session_by_id_global(&state.pool, &session_id).await?;
+    let session =
+        fetch_live_ingest_session_by_id_global(state.db.sqlite_adapter(), &session_id).await?;
     if session.status != "connected" {
         return Err(AppError::BadRequest(
             "only connected live ingest sessions can be terminated by operators".to_string(),
@@ -93,7 +98,8 @@ pub(crate) async fn terminate_admin_live_ingest_session(
         }),
     )
     .await?;
-    let record = fetch_admin_live_ingest_session_record(&state.pool, &session_id).await?;
+    let record =
+        fetch_admin_live_ingest_session_record(state.db.sqlite_adapter(), &session_id).await?;
     Ok(Json(
         build_authoritative_admin_live_ingest_record(&state, record).await?,
     ))
@@ -105,9 +111,10 @@ pub(crate) async fn repair_admin_live_runtime_output(
     Path(session_id): Path<String>,
     Json(input): Json<RepairLiveRuntimeOutputRequest>,
 ) -> AppResult<Json<LiveRuntimeRepairReport>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     identity.require_admin_scope()?;
-    let session = fetch_live_ingest_session_by_id_global(&state.pool, &session_id).await?;
+    let session =
+        fetch_live_ingest_session_by_id_global(state.db.sqlite_adapter(), &session_id).await?;
     Ok(Json(
         super::repair::repair_runtime_output_authoritatively(
             state,
@@ -126,7 +133,9 @@ async fn build_authoritative_admin_live_ingest_record(
 ) -> AppResult<AdminLiveIngestSessionRecord> {
     if record.session.status == "connected" || record.session.status == "stale" {
         let _ = reconcile_live_runtime_output_artifacts(state, &record.session).await?;
-        record = fetch_admin_live_ingest_session_record(&state.pool, &record.session.id).await?;
+        record =
+            fetch_admin_live_ingest_session_record(state.db.sqlite_adapter(), &record.session.id)
+                .await?;
     }
     if let Some(output) = record.runtime_output.as_ref() {
         record.artifact_health =

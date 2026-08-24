@@ -1,6 +1,6 @@
 const BASE = "http://127.0.0.1:8080";
-const HOST = "Bearer lifestream-local-dev-token";
-const COLLAB = "Bearer lifestream-local-collaborator-token";
+const HOST = "Bearer vanta-local-dev-token";
+const COLLAB = "Bearer vanta-local-collaborator-token";
 const SUFFIX = String(Date.now());
 
 async function req(path, { method = "GET", token = null, body = null, headers = {} } = {}) {
@@ -191,10 +191,10 @@ async function main() {
   }
 
   const hostSocket = createSocketClient(
-    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=lifestream-local-dev-token`,
+    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=vanta-local-dev-token`,
   );
   const guestSocket = createSocketClient(
-    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=lifestream-local-collaborator-token`,
+    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=vanta-local-collaborator-token`,
   );
   await hostSocket.open();
   await guestSocket.open();

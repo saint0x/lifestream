@@ -1,0 +1,9 @@
+/target
+/lifestream.db
+/lifestream.db-shm
+/lifestream.db-wal
+/artifacts
+/.fozzy
+/tests
+/docs
+/vendor

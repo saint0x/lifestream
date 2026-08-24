@@ -20,9 +20,12 @@ pub(crate) async fn fetch_current_collaboration_socket_session_view(
     identity: &RequestIdentity,
 ) -> AppResult<CollaborationSessionView> {
     reconcile_collaboration_session_expiry_for_read(state, session_id).await?;
-    if let Ok(session) =
-        fetch_collaboration_session_for_participant(&state.pool, &identity.user_id, session_id)
-            .await
+    if let Ok(session) = fetch_collaboration_session_for_participant(
+        state.db.sqlite_adapter(),
+        &identity.user_id,
+        session_id,
+    )
+    .await
     {
         validate_collaboration_socket_access(&session)?;
         return Ok(session);
@@ -30,8 +33,11 @@ pub(crate) async fn fetch_current_collaboration_socket_session_view(
 
     let creator_id = identity.creator_id.as_deref().ok_or(AppError::Forbidden)?;
     let host_session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, session_id).await?;
-    let host = fetch_collaboration_host_summary(&state.pool, &host_session.host_creator_id).await?;
+        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, session_id)
+            .await?;
+    let host =
+        fetch_collaboration_host_summary(state.db.sqlite_adapter(), &host_session.host_creator_id)
+            .await?;
     let host_view = collaboration_session_view_for_host(host_session, host)?;
     validate_collaboration_socket_access(&host_view)?;
     Ok(host_view)
@@ -41,7 +47,12 @@ pub(crate) async fn reconcile_collaboration_session_expiry_for_read(
     state: &SharedState,
     session_id: &str,
 ) -> AppResult<()> {
-    if !collaboration_session_requires_reconciliation_for_read(&state.pool, session_id).await? {
+    if !collaboration_session_requires_reconciliation_for_read(
+        state.db.sqlite_adapter(),
+        session_id,
+    )
+    .await?
+    {
         return Ok(());
     }
     let _ = reconcile_single_collaboration_session(state.clone(), session_id).await?;
@@ -104,7 +115,7 @@ pub(crate) async fn reconcile_collaboration_expiry_for_host_read(
     .bind(creator_id)
     .bind(&cutoff)
     .bind(creator_id)
-    .fetch_optional(&state.pool)
+    .fetch_optional(state.db.sqlite_adapter())
     .await?;
     if expired_exists.is_none() {
         return Ok(());
@@ -151,7 +162,7 @@ pub(crate) async fn reconcile_collaboration_expiry_for_host_read(
     .bind(creator_id)
     .bind(&cutoff)
     .bind(creator_id)
-    .fetch_all(&state.pool)
+    .fetch_all(state.db.sqlite_adapter())
     .await?;
     for row in rows {
         let session_id: String = row.get("session_id");
@@ -206,7 +217,7 @@ pub(crate) async fn reconcile_collaboration_expiry_for_participant_read(
     .bind(user_id)
     .bind(&cutoff)
     .bind(user_id)
-    .fetch_all(&state.pool)
+    .fetch_all(state.db.sqlite_adapter())
     .await?;
     for row in rows {
         let session_id: String = row.get("session_id");

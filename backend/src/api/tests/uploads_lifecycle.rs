@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn scheduled_publish_keeps_media_asset_scheduled_until_release() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let row = sqlx::query(
         r#"
@@ -20,7 +20,7 @@ async fn scheduled_publish_keeps_media_asset_scheduled_until_release() -> AppRes
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let job_id: String = row.get("id");
     let release_at = (Utc::now() + chrono::Duration::hours(6)).to_rfc3339();
@@ -48,7 +48,8 @@ async fn scheduled_publish_keeps_media_asset_scheduled_until_release() -> AppRes
     .await?
     .0;
 
-    let asset = fetch_media_asset_by_upload_job(&state.pool, &creator.id, &job_id).await?;
+    let asset =
+        fetch_media_asset_by_upload_job(state.db.sqlite_adapter(), &creator.id, &job_id).await?;
     let thumbnail_variant = asset
         .variants
         .iter()
@@ -80,7 +81,7 @@ async fn overdue_scheduled_upload_materializes_on_creator_read() -> AppResult<()
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let upload_id: String = row.get("id");
     let release_at = (Utc::now() - chrono::Duration::minutes(10)).to_rfc3339();
@@ -90,7 +91,7 @@ async fn overdue_scheduled_upload_materializes_on_creator_read() -> AppResult<()
     .bind(&release_at)
     .bind(&upload_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'scheduled', visibility = 'public', updated_at = ? WHERE upload_id = ? AND creator_id = ?",
@@ -98,11 +99,12 @@ async fn overdue_scheduled_upload_materializes_on_creator_read() -> AppResult<()
     .bind(&release_at)
     .bind(&upload_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let upload = fetch_upload_by_id(&state.pool, &creator.id, &upload_id).await?;
-    let asset = fetch_media_asset_by_upload_id(&state.pool, &creator.id, &upload_id).await?;
+    let upload = fetch_upload_by_id(state.db.sqlite_adapter(), &creator.id, &upload_id).await?;
+    let asset =
+        fetch_media_asset_by_upload_id(state.db.sqlite_adapter(), &creator.id, &upload_id).await?;
 
     assert_eq!(upload.status, "published");
     assert_eq!(upload.visibility, "public");
@@ -131,7 +133,7 @@ async fn overdue_scheduled_catalog_film_materializes_on_read() -> AppResult<()> 
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let upload_id: String = row.get("id");
     let release_at = (Utc::now() - chrono::Duration::minutes(10)).to_rfc3339();
@@ -141,7 +143,7 @@ async fn overdue_scheduled_catalog_film_materializes_on_read() -> AppResult<()> 
     .bind(&release_at)
     .bind(&upload_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'scheduled', visibility = 'public', updated_at = ? WHERE upload_id = ? AND creator_id = ?",
@@ -149,11 +151,12 @@ async fn overdue_scheduled_catalog_film_materializes_on_read() -> AppResult<()> 
     .bind(&release_at)
     .bind(&upload_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let film = fetch_creator_catalog_film_by_id(&state.pool, &upload_id, false).await?;
-    let upload = fetch_upload_by_id(&state.pool, &creator.id, &upload_id).await?;
+    let film =
+        fetch_creator_catalog_film_by_id(state.db.sqlite_adapter(), &upload_id, false).await?;
+    let upload = fetch_upload_by_id(state.db.sqlite_adapter(), &creator.id, &upload_id).await?;
 
     assert_eq!(film.id, upload_id);
     assert_eq!(upload.status, "published");
@@ -164,7 +167,7 @@ async fn overdue_scheduled_catalog_film_materializes_on_read() -> AppResult<()> 
 #[tokio::test]
 async fn unpublish_upload_moves_media_asset_back_to_draft() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let row = sqlx::query(
         r#"
@@ -180,7 +183,7 @@ async fn unpublish_upload_moves_media_asset_back_to_draft() -> AppResult<()> {
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let upload_id: String = row.get("id");
 
@@ -188,7 +191,8 @@ async fn unpublish_upload_moves_media_asset_back_to_draft() -> AppResult<()> {
         .await?
         .0;
 
-    let asset = fetch_media_asset_by_upload_id(&state.pool, &creator.id, &upload_id).await?;
+    let asset =
+        fetch_media_asset_by_upload_id(state.db.sqlite_adapter(), &creator.id, &upload_id).await?;
 
     assert_eq!(upload.status, "draft");
     assert_eq!(upload.visibility, "private");
@@ -201,7 +205,7 @@ async fn unpublish_upload_moves_media_asset_back_to_draft() -> AppResult<()> {
 #[tokio::test]
 async fn update_upload_syncs_media_asset_lifecycle_state() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let row = sqlx::query(
         r#"
@@ -217,7 +221,7 @@ async fn update_upload_syncs_media_asset_lifecycle_state() -> AppResult<()> {
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let upload_id: String = row.get("id");
     let release_at = (Utc::now() + chrono::Duration::hours(3)).to_rfc3339();
@@ -242,7 +246,8 @@ async fn update_upload_syncs_media_asset_lifecycle_state() -> AppResult<()> {
     .await?
     .0;
 
-    let asset = fetch_media_asset_by_upload_id(&state.pool, &creator.id, &upload_id).await?;
+    let asset =
+        fetch_media_asset_by_upload_id(state.db.sqlite_adapter(), &creator.id, &upload_id).await?;
 
     assert_eq!(updated.status, "scheduled");
     assert_eq!(updated.visibility, "public");
@@ -255,7 +260,7 @@ async fn update_upload_syncs_media_asset_lifecycle_state() -> AppResult<()> {
 #[tokio::test]
 async fn taken_down_upload_rejects_lifecycle_changes_via_general_update() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let row = sqlx::query(
         r#"
@@ -271,7 +276,7 @@ async fn taken_down_upload_rejects_lifecycle_changes_via_general_update() -> App
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let upload_id: String = row.get("id");
 
@@ -311,8 +316,9 @@ async fn taken_down_upload_rejects_lifecycle_changes_via_general_update() -> App
         other => panic!("unexpected error: {other:?}"),
     }
 
-    let upload = fetch_upload_by_id(&state.pool, &creator.id, &upload_id).await?;
-    let asset = fetch_media_asset_by_upload_id(&state.pool, &creator.id, &upload_id).await?;
+    let upload = fetch_upload_by_id(state.db.sqlite_adapter(), &creator.id, &upload_id).await?;
+    let asset =
+        fetch_media_asset_by_upload_id(state.db.sqlite_adapter(), &creator.id, &upload_id).await?;
     assert_eq!(upload.status, "taken_down");
     assert_eq!(upload.visibility, "private");
     assert_eq!(asset.status, "taken_down");
@@ -326,7 +332,7 @@ async fn expired_purchase_reconciliation_expires_invalid_playback_session() -> A
     let now = Utc::now();
     let purchased_at = (now - chrono::Duration::hours(2)).to_rfc3339();
     seed_content_purchase_for_user(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "usr-viewer",
         "crt-deepsaint",
         "upl-57fd50bbb54a44f58fe10605f97eeead",
@@ -339,7 +345,7 @@ async fn expired_purchase_reconciliation_expires_invalid_playback_session() -> A
     )
     .await?;
     let (session_id, _token, _asset) = insert_playback_session_for_upload(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "upl-57fd50bbb54a44f58fe10605f97eeead",
         Some("usr-viewer"),
         None,
@@ -352,14 +358,15 @@ async fn expired_purchase_reconciliation_expires_invalid_playback_session() -> A
     .bind((Utc::now() - chrono::Duration::minutes(1)).to_rfc3339())
     .bind("usr-viewer")
     .bind("upl-57fd50bbb54a44f58fe10605f97eeead")
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     reconcile_expired_user_entitlements(state.clone()).await?;
 
-    let session = fetch_playback_session_record_by_id(&state.pool, &session_id).await?;
+    let session =
+        fetch_playback_session_record_by_id(state.db.sqlite_adapter(), &session_id).await?;
     let purchase = fetch_current_content_purchase(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "usr-viewer",
         "upl-57fd50bbb54a44f58fe10605f97eeead",
     )
@@ -374,7 +381,7 @@ async fn expired_membership_keeps_session_when_purchase_still_grants_access() ->
     let (state, _creator) = setup_test_state().await?;
     let upload_id = "upl-6f378951e0ee4526b13333f470db77e3";
     let (session_id, _token, _asset) = insert_playback_session_for_upload(
-        &state.pool,
+        state.db.sqlite_adapter(),
         upload_id,
         Some("usr-viewer"),
         None,
@@ -399,7 +406,7 @@ async fn expired_membership_keeps_session_when_purchase_still_grants_access() ->
     .bind("USD")
     .bind(&now_rfc3339)
     .bind((now + chrono::Duration::hours(24)).to_rfc3339())
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE creator_memberships SET renews_at = ?, ends_at = NULL, status = 'active' WHERE user_id = ? AND creator_id = ?",
@@ -407,14 +414,18 @@ async fn expired_membership_keeps_session_when_purchase_still_grants_access() ->
     .bind((now - chrono::Duration::minutes(1)).to_rfc3339())
     .bind("usr-viewer")
     .bind("crt-deepsaint")
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     reconcile_expired_user_entitlements(state.clone()).await?;
 
-    let session = fetch_playback_session_record_by_id(&state.pool, &session_id).await?;
+    let session =
+        fetch_playback_session_record_by_id(state.db.sqlite_adapter(), &session_id).await?;
     assert!(session.expires_at > Utc::now().to_rfc3339());
-    assert!(validate_existing_playback_session_access(&state.pool, &session, None).await?);
+    assert!(
+        validate_existing_playback_session_access(state.db.sqlite_adapter(), &session, None)
+            .await?
+    );
     Ok(())
 }
 
@@ -424,7 +435,7 @@ async fn user_entitlements_read_self_heals_expired_membership_and_purchase() -> 
     let now = Utc::now();
     let expired_at = (now - chrono::Duration::minutes(1)).to_rfc3339();
     seed_content_purchase_for_user(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "usr-viewer",
         "crt-deepsaint",
         "upl-57fd50bbb54a44f58fe10605f97eeead",
@@ -443,7 +454,7 @@ async fn user_entitlements_read_self_heals_expired_membership_and_purchase() -> 
     .bind(&expired_at)
     .bind("usr-viewer")
     .bind("crt-deepsaint")
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE content_purchases SET status = 'active', expires_at = ? WHERE user_id = ? AND upload_id = ?",
@@ -451,10 +462,10 @@ async fn user_entitlements_read_self_heals_expired_membership_and_purchase() -> 
     .bind(&expired_at)
     .bind("usr-viewer")
     .bind("upl-57fd50bbb54a44f58fe10605f97eeead")
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let entitlements = fetch_user_entitlements(&state.pool, "usr-viewer").await?;
+    let entitlements = fetch_user_entitlements(state.db.sqlite_adapter(), "usr-viewer").await?;
 
     assert!(
         entitlements
@@ -479,7 +490,8 @@ async fn user_entitlements_read_self_heals_expired_membership_and_purchase() -> 
 async fn user_can_inspect_and_reconcile_membership_and_purchase_entitlements_by_id() -> AppResult<()>
 {
     let (state, _creator) = setup_test_state().await?;
-    let token = insert_user_auth_session(&state.pool, "usr-viewer", &["user"]).await?;
+    let token =
+        insert_user_auth_session(state.db.sqlite_adapter(), "usr-viewer", &["user"]).await?;
     let headers = auth_headers(&token);
     let expired_at = (Utc::now() - chrono::Duration::minutes(1)).to_rfc3339();
     let purchase_id = format!("pur-test-{}", Uuid::new_v4().simple());
@@ -493,7 +505,7 @@ async fn user_can_inspect_and_reconcile_membership_and_purchase_entitlements_by_
     .bind(&expired_at)
     .bind("usr-viewer")
     .bind("crt-deepsaint")
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         r#"
@@ -511,7 +523,7 @@ async fn user_can_inspect_and_reconcile_membership_and_purchase_entitlements_by_
     .bind("USD")
     .bind(&purchased_at)
     .bind(&expired_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let membership = get_my_membership_entitlement(
@@ -582,7 +594,7 @@ async fn user_entitlements_read_expires_invalid_playback_session_without_backgro
     let now = Utc::now();
     let purchased_at = (now - chrono::Duration::hours(2)).to_rfc3339();
     seed_content_purchase_for_user(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "usr-viewer",
         "crt-deepsaint",
         "upl-57fd50bbb54a44f58fe10605f97eeead",
@@ -595,7 +607,7 @@ async fn user_entitlements_read_expires_invalid_playback_session_without_backgro
     )
     .await?;
     let (session_id, _token, _asset) = insert_playback_session_for_upload(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "upl-57fd50bbb54a44f58fe10605f97eeead",
         Some("usr-viewer"),
         None,
@@ -608,11 +620,12 @@ async fn user_entitlements_read_expires_invalid_playback_session_without_backgro
     .bind((Utc::now() - chrono::Duration::minutes(1)).to_rfc3339())
     .bind("usr-viewer")
     .bind("upl-57fd50bbb54a44f58fe10605f97eeead")
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let _ = fetch_user_entitlements(&state.pool, "usr-viewer").await?;
-    let session = fetch_playback_session_record_by_id(&state.pool, &session_id).await?;
+    let _ = fetch_user_entitlements(state.db.sqlite_adapter(), "usr-viewer").await?;
+    let session =
+        fetch_playback_session_record_by_id(state.db.sqlite_adapter(), &session_id).await?;
 
     assert!(session.expires_at <= Utc::now().to_rfc3339());
     Ok(())
@@ -627,19 +640,26 @@ async fn admin_playback_listing_filters_after_reconciling_invalid_newer_sessions
         "UPDATE uploads SET status = 'published', visibility = 'public', access_policy = 'free', access_tier_id = NULL, price_cents = NULL, currency = NULL, rental_window_hours = NULL WHERE id = ?",
     )
     .bind(upload_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
-    let (older_valid_session_id, _token, _asset) =
-        insert_playback_session_for_upload(&state.pool, upload_id, None, None, "free").await?;
+    let (older_valid_session_id, _token, _asset) = insert_playback_session_for_upload(
+        state.db.sqlite_adapter(),
+        upload_id,
+        None,
+        None,
+        "free",
+    )
+    .await?;
     tokio::time::sleep(Duration::from_millis(5)).await;
-    let revoked_auth_token = insert_user_auth_session(&state.pool, "usr-viewer", &["user"]).await?;
+    let revoked_auth_token =
+        insert_user_auth_session(state.db.sqlite_adapter(), "usr-viewer", &["user"]).await?;
     let revoked_auth_session_id = sqlx::query("SELECT id FROM auth_sessions WHERE token_hash = ?")
         .bind(hash_token(&revoked_auth_token))
-        .fetch_one(&state.pool)
+        .fetch_one(state.db.sqlite_adapter())
         .await?
         .get::<String, _>("id");
     let (newer_invalid_session_id, _token, _asset) = insert_playback_session_for_upload(
-        &state.pool,
+        state.db.sqlite_adapter(),
         upload_id,
         Some("usr-viewer"),
         Some(&revoked_auth_session_id),
@@ -651,23 +671,23 @@ async fn admin_playback_listing_filters_after_reconciling_invalid_newer_sessions
         .bind((Utc::now() - chrono::Duration::hours(2)).to_rfc3339())
         .bind((Utc::now() - chrono::Duration::hours(2)).to_rfc3339())
         .bind(&older_valid_session_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
     sqlx::query("UPDATE playback_sessions SET created_at = ?, last_used_at = ? WHERE id = ?")
         .bind(Utc::now().to_rfc3339())
         .bind(Utc::now().to_rfc3339())
         .bind(&newer_invalid_session_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     sqlx::query("UPDATE auth_sessions SET revoked_at = ? WHERE id = ?")
         .bind(Utc::now().to_rfc3339())
         .bind(&revoked_auth_session_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     let sessions = fetch_admin_playback_sessions(
-        &state.pool,
+        &state.db,
         Some(&creator.id),
         Some(upload_id),
         Some("active"),
@@ -681,7 +701,7 @@ async fn admin_playback_listing_filters_after_reconciling_invalid_newer_sessions
     assert!(sessions[0].valid_access);
 
     let invalid = fetch_admin_playback_sessions(
-        &state.pool,
+        &state.db,
         Some(&creator.id),
         Some(upload_id),
         Some("invalid"),

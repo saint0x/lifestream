@@ -5,7 +5,7 @@ pub(super) async fn subscribe_to_creator_tier(
     headers: HeaderMap,
     Path((creator_id, tier_id)): Path<(String, String)>,
 ) -> AppResult<Json<CreatorMembership>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     enforce_rate_limit(
         &state,
         &format!("creator-subscription:{}", identity.user_id),
@@ -13,8 +13,10 @@ pub(super) async fn subscribe_to_creator_tier(
         Duration::from_secs(60),
     )
     .await?;
-    ensure_creator_can_accept_paid_transactions(&state.pool, &creator_id).await?;
-    let tier = fetch_creator_subscriber_tier_by_id(&state.pool, &creator_id, &tier_id).await?;
+    ensure_creator_can_accept_paid_transactions(state.db.sqlite_adapter(), &creator_id).await?;
+    let tier =
+        fetch_creator_subscriber_tier_by_id(state.db.sqlite_adapter(), &creator_id, &tier_id)
+            .await?;
     if tier.status != "active" {
         return Err(AppError::BadRequest(
             "subscriber tier is not available for new subscriptions".to_string(),
@@ -43,11 +45,11 @@ pub(super) async fn subscribe_to_creator_tier(
     .bind(&tier.id)
     .bind(&started_at)
     .bind(&renews_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
-    let subscriber = fetch_user(&state.pool, &identity.user_id).await?;
+    let subscriber = fetch_user(state.db.sqlite_adapter(), &identity.user_id).await?;
     enqueue_notification_event(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "creator_subscription",
         &format!(
             "{} subscribed to {}.",
@@ -69,7 +71,7 @@ pub(super) async fn subscribe_to_creator_tier(
     .await?;
 
     Ok(Json(
-        fetch_creator_membership(&state.pool, &identity.user_id, &creator_id).await?,
+        fetch_creator_membership(state.db.sqlite_adapter(), &identity.user_id, &creator_id).await?,
     ))
 }
 
@@ -78,7 +80,7 @@ pub(super) async fn cancel_creator_subscription(
     headers: HeaderMap,
     Path(creator_id): Path<String>,
 ) -> AppResult<StatusCode> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let now = Utc::now().to_rfc3339();
     let result = sqlx::query(
         r#"
@@ -91,7 +93,7 @@ pub(super) async fn cancel_creator_subscription(
     .bind(&now)
     .bind(&identity.user_id)
     .bind(&creator_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     if result.rows_affected() == 0 {

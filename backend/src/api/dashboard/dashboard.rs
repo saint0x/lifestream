@@ -1,16 +1,17 @@
 use super::analytics::{
-    fetch_analytics, fetch_revenue_entries, fetch_top_content, fetch_traffic_sources,
-    summarize_creator_analytics, summarize_creator_revenue,
+    empty_creator_attention_score, fetch_analytics, fetch_creator_attention_score,
+    fetch_revenue_entries, fetch_top_content, fetch_traffic_sources, summarize_creator_analytics,
+    summarize_creator_revenue,
 };
 use super::content::{
     fetch_creator_content_summary, fetch_filtered_uploads_unreconciled, fetch_uploads,
 };
 use super::*;
-use crate::api::creator::fetch_creator_profile_persisted;
 use crate::api::control::{
     build_live_runtime_advisory, describe_declared_live_runtime_artifact_health,
     fetch_live_runtime_output_for_session,
 };
+use crate::api::creator::fetch_creator_profile_persisted;
 use crate::api::notifications::fetch_notifications_rows_limited;
 use crate::models::LiveRuntimeTelemetrySummary;
 
@@ -107,6 +108,7 @@ fn creator_dashboard_payload_for_app_state_from_parts(
         recent_broadcasts: contract_broadcasts(recent_broadcasts),
         analytics: Vec::new(),
         traffic_sources: Vec::new(),
+        attention_score: empty_creator_attention_score(),
         top_content: Vec::new(),
         revenue: Vec::new(),
         analytics_summary: CreatorAnalyticsSummary {
@@ -421,6 +423,7 @@ pub(crate) async fn creator_dashboard_payload(
     let analytics = fetch_analytics(pool, creator_id).await?;
     let analytics_summary = summarize_creator_analytics(&analytics);
     let traffic_sources = fetch_traffic_sources(pool, creator_id).await?;
+    let attention_score = fetch_creator_attention_score(pool, creator_id).await?;
     let top_content = fetch_top_content(pool, creator_id).await?;
     let revenue = fetch_revenue_entries(pool, creator_id).await?;
     let subscriber_tiers = fetch_creator_subscriber_tiers(pool, creator_id).await?;
@@ -458,6 +461,7 @@ pub(crate) async fn creator_dashboard_payload(
             .rev()
             .collect(),
         traffic_sources,
+        attention_score,
         top_content,
         revenue: revenue
             .into_iter()
@@ -501,7 +505,7 @@ pub(crate) async fn fetch_creator_app_state(
     content_query: &CreatorContentQuery,
 ) -> AppResult<CreatorAppState> {
     let creator_id = identity.require_creator_scope()?;
-    let pool = &state.pool;
+    let pool = state.db.sqlite_adapter();
     let (
         profile,
         broadcasts,
@@ -521,7 +525,12 @@ pub(crate) async fn fetch_creator_app_state(
         ),
         fetch_creator_live_settings(pool, creator_id),
         fetch_creator_content_summary(pool, creator_id, content_query),
-        fetch_filtered_uploads_unreconciled(pool, creator_id, content_query, Some(CREATOR_APP_STATE_UPLOADS_LIMIT)),
+        fetch_filtered_uploads_unreconciled(
+            pool,
+            creator_id,
+            content_query,
+            Some(CREATOR_APP_STATE_UPLOADS_LIMIT)
+        ),
         fetch_creator_upload_operations_summary(pool, creator_id),
         fetch_active_live_ingest_session_unreconciled(pool, creator_id),
     )?;
@@ -532,11 +541,8 @@ pub(crate) async fn fetch_creator_app_state(
         &broadcasts,
         notifications,
     );
-    let snapshot = build_creator_live_snapshot_for_app_state_from_parts(
-        profile,
-        &broadcasts,
-        active_session,
-    );
+    let snapshot =
+        build_creator_live_snapshot_for_app_state_from_parts(profile, &broadcasts, active_session);
     let health = fetch_creator_live_health_for_app_state(pool, creator_id).await?;
     let collaboration =
         fetch_creator_live_collaboration_summary_for_app_state(pool, creator_id, &snapshot).await?;
@@ -570,9 +576,9 @@ pub(crate) async fn fetch_creator_app_state(
         Some(&telemetry_summary),
     );
     let artifact_health = match (active_session.as_ref(), active_runtime_output.as_ref()) {
-        (Some(session), Some(output)) => {
-            Some(describe_declared_live_runtime_artifact_health(session, output))
-        }
+        (Some(session), Some(output)) => Some(describe_declared_live_runtime_artifact_health(
+            session, output,
+        )),
         _ => None,
     };
     let mut live_runtime = CreatorLiveRuntimeResponse {

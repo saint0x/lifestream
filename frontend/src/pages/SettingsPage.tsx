@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   User as UserIcon,
   Monitor,
@@ -14,6 +15,7 @@ import { useAppStore } from "@/lib/store";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import type { UserSettingsBundle } from "@/types";
 import "./SettingsPage.css";
 
 interface SectionDef {
@@ -33,12 +35,69 @@ const sections: ReadonlyArray<SectionDef> = [
   { key: "language", label: "Language & Region", Icon: Globe },
 ];
 
+function settingsSectionFromParam(value: string | null): string {
+  return sections.some((item) => item.key === value) ? value ?? "account" : "account";
+}
+
 export function SettingsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const user = useAppStore((s) => s.user);
   const profile = useAppStore((s) => s.profile);
   const settings = useAppStore((s) => s.settings);
   const plan = useAppStore((s) => s.plan);
-  const [section, setSection] = useState<string>("account");
+  const sessions = useAppStore((s) => s.sessions);
+  const signOut = useAppStore((s) => s.signOut);
+  const updateProfile = useAppStore((s) => s.updateProfile);
+  const updateSettings = useAppStore((s) => s.updateSettings);
+  const revokeSession = useAppStore((s) => s.revokeSession);
+  const [section, setSection] = useState<string>(
+    settingsSectionFromParam(searchParams.get("section")),
+  );
+  const [draft, setDraft] = useState<UserSettingsBundle>(settings);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(user.displayName);
+  const [email, setEmail] = useState(profile.email);
+
+  useEffect(() => {
+    setDraft(settings);
+  }, [settings]);
+
+  useEffect(() => {
+    setSection(settingsSectionFromParam(searchParams.get("section")));
+    setProfileOpen(searchParams.get("edit") === "profile");
+  }, [searchParams]);
+
+  const saveSettings = async () => {
+    setSaving(true);
+    setStatus(null);
+    try {
+      await updateSettings(draft);
+      setStatus("Settings saved.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Unable to save settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    setSaving(true);
+    setStatus(null);
+    try {
+      await updateProfile({
+        displayName: displayName.trim(),
+        email: email.trim(),
+      });
+      setProfileOpen(false);
+      setStatus("Profile saved.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Unable to save profile.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="ls-settings">
@@ -58,14 +117,18 @@ export function SettingsPage() {
               key={key}
               type="button"
               className={`ls-settings__nav-item ${section === key ? "is-active" : ""}`}
-              onClick={() => setSection(key)}
+              onClick={() => setSearchParams({ section: key })}
             >
               <Icon size={14} strokeWidth={1.75} />
               <span>{label}</span>
             </button>
           ))}
           <div className="ls-settings__nav-sep" />
-          <button type="button" className="ls-settings__nav-item ls-settings__nav-item--danger">
+          <button
+            type="button"
+            className="ls-settings__nav-item ls-settings__nav-item--danger"
+            onClick={signOut}
+          >
             <LogOut size={14} strokeWidth={1.75} />
             <span>Sign out</span>
           </button>
@@ -79,8 +142,35 @@ export function SettingsPage() {
                   <h2 className="ls-settings__sec-title">Account</h2>
                   <p className="ls-settings__sec-sub">Identity, email and authentication.</p>
                 </div>
-                <Button variant="outline" size="sm">Edit profile</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setProfileOpen((open) => !open)}
+                >
+                  Edit profile
+                </Button>
               </div>
+
+              {status ? <div className="ls-settings__notice">{status}</div> : null}
+
+              {profileOpen ? (
+                <div className="ls-settings__edit">
+                  <label>
+                    <span className="mono">Display name</span>
+                    <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+                  </label>
+                  <label>
+                    <span className="mono">Email</span>
+                    <input value={email} onChange={(event) => setEmail(event.target.value)} />
+                  </label>
+                  <div className="ls-settings__plan-actions">
+                    <Button variant="outline" onClick={() => setProfileOpen(false)} disabled={saving}>Cancel</Button>
+                    <Button variant="primary" onClick={() => void saveProfile()} disabled={saving}>
+                      {saving ? "Saving…" : "Save profile"}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="ls-settings__account">
                 <Avatar src={user.avatar} alt={user.displayName} size={64} />
@@ -102,12 +192,11 @@ export function SettingsPage() {
                 value={profile.email}
                 badge={profile.emailVerified ? "verified" : "unverified"}
               />
-              <Field label="Password" value="•••••••••••" action="Change" />
+              <Field label="Password" value="•••••••••••" />
               <Field
                 label="Two-factor"
                 value="Authenticator app"
                 badge="enabled"
-                action="Manage"
               />
               <Field
                 label="Connected accounts"
@@ -116,8 +205,40 @@ export function SettingsPage() {
                     ? profile.connectedAccounts.map((account) => account.displayName).join(", ")
                     : "None connected"
                 }
-                action="Manage"
               />
+              <div className="ls-settings__sessions">
+                <div className="ls-settings__field-label mono">Sessions</div>
+                {sessions.map((session) => (
+                  <div key={session.id} className="ls-settings__session-row">
+                    <div>
+                      <div className="ls-settings__session-title">
+                        {session.label}
+                        {session.isCurrent ? <Badge tone="new">CURRENT</Badge> : null}
+                      </div>
+                      <div className="ls-settings__session-meta mono">
+                        {session.scopes.join(" / ")} · {session.lastUsedAt ?? session.createdAt}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={session.isCurrent || saving}
+                      onClick={() => {
+                        setSaving(true);
+                        setStatus(null);
+                        void revokeSession(session.id)
+                          .then(() => setStatus("Session revoked."))
+                          .catch((error) => {
+                            setStatus(error instanceof Error ? error.message : "Unable to revoke session.");
+                          })
+                          .finally(() => setSaving(false));
+                      }}
+                    >
+                      Revoke
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -131,14 +252,15 @@ export function SettingsPage() {
                   </p>
                 </div>
               </div>
-              <Select label="Default quality" value={settings.playback.defaultQuality} options={[settings.playback.defaultQuality, "1080p", "720p", "Data saver"]} />
-              <Select label="Audio" value={settings.playback.audioLanguage} options={[settings.playback.audioLanguage, "Original language"]} />
-              <Select label="Subtitles" value={settings.playback.subtitleStyle} options={[settings.playback.subtitleStyle, "Off"]} />
-              <Switch label="Autoplay next episode" defaultOn={settings.playback.autoplayNextEpisode} />
-              <Switch label="Autoplay trailers on hover" defaultOn={settings.playback.autoplayTrailers} />
-              <Switch label="Reduced motion" defaultOn={settings.playback.reducedMotion} />
-              <Switch label="Prefer dubbed over subtitles" defaultOn={settings.playback.preferDubbed} />
-              <Select label="Playback speed default" value={settings.playback.playbackSpeed} options={[settings.playback.playbackSpeed, "1× (normal)", "1.25×", "1.5×", "1.75×", "2×"]} />
+              <Select label="Default quality" value={draft.playback.defaultQuality} options={[draft.playback.defaultQuality, "1080p", "720p", "Data saver"]} onChange={(value) => setDraft({ ...draft, playback: { ...draft.playback, defaultQuality: value } })} />
+              <Select label="Audio" value={draft.playback.audioLanguage} options={[draft.playback.audioLanguage, "Original language"]} onChange={(value) => setDraft({ ...draft, playback: { ...draft.playback, audioLanguage: value } })} />
+              <Select label="Subtitles" value={draft.playback.subtitleStyle} options={[draft.playback.subtitleStyle, "Off"]} onChange={(value) => setDraft({ ...draft, playback: { ...draft.playback, subtitleStyle: value } })} />
+              <Switch label="Autoplay next episode" on={draft.playback.autoplayNextEpisode} onChange={(value) => setDraft({ ...draft, playback: { ...draft.playback, autoplayNextEpisode: value } })} />
+              <Switch label="Autoplay trailers on hover" on={draft.playback.autoplayTrailers} onChange={(value) => setDraft({ ...draft, playback: { ...draft.playback, autoplayTrailers: value } })} />
+              <Switch label="Reduced motion" on={draft.playback.reducedMotion} onChange={(value) => setDraft({ ...draft, playback: { ...draft.playback, reducedMotion: value } })} />
+              <Switch label="Prefer dubbed over subtitles" on={draft.playback.preferDubbed} onChange={(value) => setDraft({ ...draft, playback: { ...draft.playback, preferDubbed: value } })} />
+              <Select label="Playback speed default" value={draft.playback.playbackSpeed} options={[draft.playback.playbackSpeed, "1× (normal)", "1.25×", "1.5×", "1.75×", "2×"]} onChange={(value) => setDraft({ ...draft, playback: { ...draft.playback, playbackSpeed: value } })} />
+              <SettingsSaveBar saving={saving} status={status} onReset={() => setDraft(settings)} onSave={() => void saveSettings()} />
             </div>
           )}
 
@@ -152,12 +274,23 @@ export function SettingsPage() {
                   </p>
                 </div>
               </div>
-              <ChannelRow label={settings.notifications.seriesReleases.label} push={settings.notifications.seriesReleases.push} email={settings.notifications.seriesReleases.email} lock={settings.notifications.seriesReleases.lock} />
-              <ChannelRow label={settings.notifications.liveStreams.label} push={settings.notifications.liveStreams.push} email={settings.notifications.liveStreams.email} lock={settings.notifications.liveStreams.lock} />
-              <ChannelRow label={settings.notifications.originals.label} push={settings.notifications.originals.push} email={settings.notifications.originals.email} lock={settings.notifications.originals.lock} />
-              <ChannelRow label={settings.notifications.watchlistUpdates.label} push={settings.notifications.watchlistUpdates.push} email={settings.notifications.watchlistUpdates.email} lock={settings.notifications.watchlistUpdates.lock} />
-              <ChannelRow label={settings.notifications.creatorUpdates.label} push={settings.notifications.creatorUpdates.push} email={settings.notifications.creatorUpdates.email} lock={settings.notifications.creatorUpdates.lock} />
-              <ChannelRow label={settings.notifications.securityAlerts.label} push={settings.notifications.securityAlerts.push} email={settings.notifications.securityAlerts.email} lock={settings.notifications.securityAlerts.lock} />
+              {Object.entries(draft.notifications).map(([key, channel]) => (
+                <ChannelRow
+                  key={key}
+                  label={channel.label}
+                  push={channel.push}
+                  email={channel.email}
+                  lock={channel.lock}
+                  onChange={(next) => setDraft({
+                    ...draft,
+                    notifications: {
+                      ...draft.notifications,
+                      [key]: { ...channel, ...next },
+                    },
+                  })}
+                />
+              ))}
+              <SettingsSaveBar saving={saving} status={status} onReset={() => setDraft(settings)} onSave={() => void saveSettings()} />
             </div>
           )}
 
@@ -171,12 +304,13 @@ export function SettingsPage() {
                   </p>
                 </div>
               </div>
-              <Switch label="Show my activity in 'what your friends are watching'" defaultOn={settings.privacy.showFriendActivity} />
-              <Switch label="Use my viewing history to improve recommendations" defaultOn={settings.privacy.improveRecommendations} />
-              <Switch label="Allow personalized ads on live streams" defaultOn={settings.privacy.personalizedAds} />
-              <Switch label="Participate in anonymous A/B tests" defaultOn={settings.privacy.abTests} />
-              <Field label="Download my data" value={`ZIP export, ~${settings.privacy.dataExportSizeMb} MB`} action="Request" />
-              <Field label="Delete account" value={`Permanent · ${settings.privacy.deleteCooldownDays} day cooldown`} action="Delete" />
+              <Switch label="Show my activity in 'what your friends are watching'" on={draft.privacy.showFriendActivity} onChange={(value) => setDraft({ ...draft, privacy: { ...draft.privacy, showFriendActivity: value } })} />
+              <Switch label="Use my viewing history to improve recommendations" on={draft.privacy.improveRecommendations} onChange={(value) => setDraft({ ...draft, privacy: { ...draft.privacy, improveRecommendations: value } })} />
+              <Switch label="Allow personalized ads on live streams" on={draft.privacy.personalizedAds} onChange={(value) => setDraft({ ...draft, privacy: { ...draft.privacy, personalizedAds: value } })} />
+              <Switch label="Participate in anonymous A/B tests" on={draft.privacy.abTests} onChange={(value) => setDraft({ ...draft, privacy: { ...draft.privacy, abTests: value } })} />
+              <Field label="Download my data" value={`ZIP export, ~${settings.privacy.dataExportSizeMb} MB`} />
+              <Field label="Delete account" value={`Permanent · ${settings.privacy.deleteCooldownDays} day cooldown`} />
+              <SettingsSaveBar saving={saving} status={status} onReset={() => setDraft(settings)} onSave={() => void saveSettings()} />
             </div>
           )}
 
@@ -191,11 +325,12 @@ export function SettingsPage() {
                 </div>
                 <Badge tone="new">{settings.parental.pinSet ? "PIN SET" : "PIN OFF"}</Badge>
               </div>
-              <Select label="Maximum maturity rating" value={settings.parental.maxRating} options={[settings.parental.maxRating, "G", "PG", "PG-13", "TV-14", "TV-MA / R"]} />
-              <Switch label="Require PIN for mature content" defaultOn={settings.parental.requirePinForMature} />
-              <Switch label="Hide live chat for kids profiles" defaultOn={settings.parental.hideLiveChatForKids} />
-              <Switch label="Block live streams tagged 'mature'" defaultOn={settings.parental.blockMatureLiveStreams} />
-              <Field label="PIN" value="•••• " action="Change" />
+              <Select label="Maximum maturity rating" value={draft.parental.maxRating} options={[draft.parental.maxRating, "G", "PG", "PG-13", "TV-14", "TV-MA / R"]} onChange={(value) => setDraft({ ...draft, parental: { ...draft.parental, maxRating: value } })} />
+              <Switch label="Require PIN for mature content" on={draft.parental.requirePinForMature} onChange={(value) => setDraft({ ...draft, parental: { ...draft.parental, requirePinForMature: value } })} />
+              <Switch label="Hide live chat for kids profiles" on={draft.parental.hideLiveChatForKids} onChange={(value) => setDraft({ ...draft, parental: { ...draft.parental, hideLiveChatForKids: value } })} />
+              <Switch label="Block live streams tagged 'mature'" on={draft.parental.blockMatureLiveStreams} onChange={(value) => setDraft({ ...draft, parental: { ...draft.parental, blockMatureLiveStreams: value } })} />
+              <Field label="PIN" value="•••• " />
+              <SettingsSaveBar saving={saving} status={status} onReset={() => setDraft(settings)} onSave={() => void saveSettings()} />
             </div>
           )}
 
@@ -209,11 +344,12 @@ export function SettingsPage() {
                   </p>
                 </div>
               </div>
-              <Select label="Video quality" value={settings.downloads.videoQuality} options={[settings.downloads.videoQuality, "Standard (720p)", "High (1080p)", "Ultra (4K)"]} />
-              <Switch label="Only download over Wi-Fi" defaultOn={settings.downloads.wifiOnly} />
-              <Switch label="Smart downloads — keep next 3 episodes ready" defaultOn={settings.downloads.smartDownloads} />
-              <Field label="Storage used" value={`${settings.downloads.storageUsedGb} GB of ${settings.downloads.storageLimitGb} GB`} action="Clear" />
-              <Field label="Device limit" value={`${settings.downloads.activeDevices} of ${settings.downloads.deviceLimit} devices`} action="Manage" />
+              <Select label="Video quality" value={draft.downloads.videoQuality} options={[draft.downloads.videoQuality, "Standard (720p)", "High (1080p)", "Ultra (4K)"]} onChange={(value) => setDraft({ ...draft, downloads: { ...draft.downloads, videoQuality: value } })} />
+              <Switch label="Only download over Wi-Fi" on={draft.downloads.wifiOnly} onChange={(value) => setDraft({ ...draft, downloads: { ...draft.downloads, wifiOnly: value } })} />
+              <Switch label="Smart downloads — keep next 3 episodes ready" on={draft.downloads.smartDownloads} onChange={(value) => setDraft({ ...draft, downloads: { ...draft.downloads, smartDownloads: value } })} />
+              <Field label="Storage used" value={`${settings.downloads.storageUsedGb} GB of ${settings.downloads.storageLimitGb} GB`} />
+              <Field label="Device limit" value={`${settings.downloads.activeDevices} of ${settings.downloads.deviceLimit} devices`} />
+              <SettingsSaveBar saving={saving} status={status} onReset={() => setDraft(settings)} onSave={() => void saveSettings()} />
             </div>
           )}
 
@@ -239,14 +375,9 @@ export function SettingsPage() {
                 </div>
               </div>
               <Field label="Next renewal" value={plan.nextRenewalDate} />
-              <Field label="Payment method" value={`${plan.paymentBrand} •••• ${plan.paymentLast4}`} action="Update" />
-              <Field label="Billing address" value={`${plan.billingCity}, ${plan.billingRegion} · ${plan.billingCountry}`} action="Edit" />
-              <Field label="Invoices" value={`${plan.invoicesCount} on file`} action="Download" />
-              <div className="ls-settings__plan-actions">
-                <Button variant="ghost">Downgrade</Button>
-                <Button variant="ghost">Pause membership</Button>
-                <Button variant="ghost">Cancel subscription</Button>
-              </div>
+              <Field label="Payment method" value={`${plan.paymentBrand} •••• ${plan.paymentLast4}`} />
+              <Field label="Billing address" value={`${plan.billingCity}, ${plan.billingRegion} · ${plan.billingCountry}`} />
+              <Field label="Invoices" value={`${plan.invoicesCount} on file`} />
             </div>
           )}
 
@@ -260,11 +391,12 @@ export function SettingsPage() {
                   </p>
                 </div>
               </div>
-              <Select label="Interface language" value={settings.language.interfaceLanguage} options={[settings.language.interfaceLanguage, "English (UK)", "Français", "Deutsch", "Español", "日本語", "한국어"]} />
-              <Select label="Preferred subtitle language" value={settings.language.subtitleLanguage} options={[settings.language.subtitleLanguage, "French", "German", "Spanish", "Japanese", "Korean"]} />
-              <Select label="Catalog region" value={settings.language.catalogRegion} options={[settings.language.catalogRegion, "United Kingdom", "Canada", "Germany", "Japan"]} />
-              <Select label="Date format" value={settings.language.dateFormat} options={[settings.language.dateFormat, "D MMM YYYY", "YYYY-MM-DD"]} />
-              <Select label="24-hour clock" value={settings.language.clockFormat} options={[settings.language.clockFormat, "12 hour", "24 hour"]} />
+              <Select label="Interface language" value={draft.language.interfaceLanguage} options={[draft.language.interfaceLanguage, "English (UK)", "Français", "Deutsch", "Español", "日本語", "한국어"]} onChange={(value) => setDraft({ ...draft, language: { ...draft.language, interfaceLanguage: value } })} />
+              <Select label="Preferred subtitle language" value={draft.language.subtitleLanguage} options={[draft.language.subtitleLanguage, "French", "German", "Spanish", "Japanese", "Korean"]} onChange={(value) => setDraft({ ...draft, language: { ...draft.language, subtitleLanguage: value } })} />
+              <Select label="Catalog region" value={draft.language.catalogRegion} options={[draft.language.catalogRegion, "United Kingdom", "Canada", "Germany", "Japan"]} onChange={(value) => setDraft({ ...draft, language: { ...draft.language, catalogRegion: value } })} />
+              <Select label="Date format" value={draft.language.dateFormat} options={[draft.language.dateFormat, "D MMM YYYY", "YYYY-MM-DD"]} onChange={(value) => setDraft({ ...draft, language: { ...draft.language, dateFormat: value } })} />
+              <Select label="24-hour clock" value={draft.language.clockFormat} options={[draft.language.clockFormat, "12 hour", "24 hour"]} onChange={(value) => setDraft({ ...draft, language: { ...draft.language, clockFormat: value } })} />
+              <SettingsSaveBar saving={saving} status={status} onReset={() => setDraft(settings)} onSave={() => void saveSettings()} />
             </div>
           )}
         </div>
@@ -276,12 +408,10 @@ export function SettingsPage() {
 function Field({
   label,
   value,
-  action,
   badge,
 }: {
   readonly label: string;
   readonly value: string;
-  readonly action?: string;
   readonly badge?: string;
 }) {
   return (
@@ -293,11 +423,6 @@ function Field({
           <span className="ls-settings__field-badge mono">{badge}</span>
         )}
       </div>
-      {action !== undefined && (
-        <button type="button" className="ls-settings__field-action">
-          {action}
-        </button>
-      )}
     </div>
   );
 }
@@ -306,22 +431,24 @@ function Select({
   label,
   value,
   options,
+  onChange,
 }: {
   readonly label: string;
   readonly value: string;
   readonly options: ReadonlyArray<string>;
+  readonly onChange: (value: string) => void;
 }) {
-  const [current, setCurrent] = useState(value);
+  const uniqueOptions = Array.from(new Set(options));
   return (
     <div className="ls-settings__field">
       <div className="ls-settings__field-label mono">{label}</div>
       <div className="ls-settings__field-value">
         <select
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
           className="ls-settings__select"
         >
-          {options.map((o) => (
+          {uniqueOptions.map((o) => (
             <option key={o} value={o}>
               {o}
             </option>
@@ -334,17 +461,18 @@ function Select({
 
 function Switch({
   label,
-  defaultOn = false,
+  on,
+  onChange,
 }: {
   readonly label: string;
-  readonly defaultOn?: boolean;
+  readonly on: boolean;
+  readonly onChange: (value: boolean) => void;
 }) {
-  const [on, setOn] = useState(defaultOn);
   return (
     <label className="ls-settings__switch-row">
       <span className="ls-settings__field-label mono">{label}</span>
       <span className="ls-settings__switch">
-        <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} />
+        <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} />
         <span className="ls-settings__switch-track">
           <span className="ls-settings__switch-dot" />
         </span>
@@ -358,14 +486,14 @@ function ChannelRow({
   push,
   email,
   lock = false,
+  onChange,
 }: {
   readonly label: string;
   readonly push: boolean;
   readonly email: boolean;
   readonly lock?: boolean;
+  readonly onChange: (value: { readonly push?: boolean; readonly email?: boolean }) => void;
 }) {
-  const [p, setP] = useState(push);
-  const [e, setE] = useState(email);
   return (
     <div className="ls-settings__channel">
       <div className="ls-settings__field-label mono">
@@ -373,9 +501,31 @@ function ChannelRow({
         {lock && <Lock size={10} style={{ marginLeft: 6, verticalAlign: -1 }} />}
       </div>
       <div className="ls-settings__channel-controls">
-        <SmallSwitch label="PUSH" on={p} onChange={setP} locked={lock} />
-        <SmallSwitch label="EMAIL" on={e} onChange={setE} locked={lock} />
+        <SmallSwitch label="PUSH" on={push} onChange={(value) => onChange({ push: value })} locked={lock} />
+        <SmallSwitch label="EMAIL" on={email} onChange={(value) => onChange({ email: value })} locked={lock} />
       </div>
+    </div>
+  );
+}
+
+function SettingsSaveBar({
+  saving,
+  status,
+  onReset,
+  onSave,
+}: {
+  readonly saving: boolean;
+  readonly status: string | null;
+  readonly onReset: () => void;
+  readonly onSave: () => void;
+}) {
+  return (
+    <div className="ls-settings__save">
+      {status ? <span className="ls-settings__save-status">{status}</span> : <span />}
+      <Button variant="outline" onClick={onReset} disabled={saving}>Reset</Button>
+      <Button variant="primary" onClick={onSave} disabled={saving}>
+        {saving ? "Saving…" : "Save changes"}
+      </Button>
     </div>
   );
 }

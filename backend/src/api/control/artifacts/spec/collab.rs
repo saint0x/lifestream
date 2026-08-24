@@ -17,9 +17,11 @@ pub(super) async fn sync_runtime_target_dependents(
     state: &SharedState,
     session: &LiveIngestSession,
 ) -> AppResult<()> {
-    let Some(collaboration_session) =
-        fetch_active_collaboration_session_for_broadcast(&state.pool, &session.broadcast_id)
-            .await?
+    let Some(collaboration_session) = fetch_active_collaboration_session_for_broadcast(
+        state.db.sqlite_adapter(),
+        &session.broadcast_id,
+    )
+    .await?
     else {
         return Ok(());
     };
@@ -35,14 +37,19 @@ pub(super) async fn build_live_runtime_collaboration_spec(
     state: &SharedState,
     session: &LiveIngestSession,
 ) -> AppResult<Option<LiveRuntimeCollaborationSpec>> {
-    let Some(collaboration_session) =
-        fetch_active_collaboration_session_for_broadcast(&state.pool, &session.broadcast_id)
-            .await?
+    let Some(collaboration_session) = fetch_active_collaboration_session_for_broadcast(
+        state.db.sqlite_adapter(),
+        &session.broadcast_id,
+    )
+    .await?
     else {
         return Ok(None);
     };
-    let runtime =
-        build_collaboration_runtime_response_for_host(&state.pool, collaboration_session).await?;
+    let runtime = build_collaboration_runtime_response_for_host(
+        state.db.sqlite_adapter(),
+        collaboration_session,
+    )
+    .await?;
     let topology = runtime.topology;
     let bundle = build_collaboration_runtime_bundle(session, &topology)?;
     let media = build_collaboration_media_runtime(&bundle)?;
@@ -248,14 +255,20 @@ pub(crate) fn collaboration_route_relative_path(
             .as_ref()
             .zip(route.target_broadcast_id.as_ref())
             .map(|(creator_id, broadcast_id)| {
-                format!("live/{creator_id}/{broadcast_id}/{}/master.m3u8", route.id)
+                format!(
+                    "{}/master.m3u8",
+                    live_mirror_playback_artifact_prefix(creator_id, broadcast_id, &route.id)
+                )
             }),
         "archive" => route
             .target_creator_id
             .as_ref()
             .zip(route.target_broadcast_id.as_ref())
             .map(|(creator_id, broadcast_id)| {
-                format!("archive/{creator_id}/{broadcast_id}/{}/final.mp4", route.id)
+                format!(
+                    "{}/final.mp4",
+                    live_mirror_archive_artifact_prefix(creator_id, broadcast_id, &route.id)
+                )
             }),
         _ => route
             .target_creator_id
@@ -272,8 +285,9 @@ pub(in crate::api::control::artifacts) fn collaboration_program_relative_path(
     program: &CollaborationProgramRoute,
 ) -> String {
     format!(
-        "runtime/{}/{}/{}/collaboration/programs/{}.json",
-        session.creator_id, session.broadcast_id, session.id, program.id
+        "{}/collaboration/programs/{}.json",
+        live_runtime_workspace_prefix(session),
+        program.id
     )
 }
 
@@ -282,8 +296,9 @@ pub(in crate::api::control::artifacts) fn collaboration_audio_relative_path(
     route: &CollaborationAudioRoute,
 ) -> String {
     format!(
-        "runtime/{}/{}/{}/collaboration/audio/{}.json",
-        session.creator_id, session.broadcast_id, session.id, route.participant_id
+        "{}/collaboration/audio/{}.json",
+        live_runtime_workspace_prefix(session),
+        route.participant_id
     )
 }
 
@@ -292,8 +307,9 @@ pub(in crate::api::control::artifacts) fn collaboration_return_relative_path(
     route: &crate::models::CollaborationMediaReturn,
 ) -> String {
     format!(
-        "runtime/{}/{}/{}/collaboration/returns/{}.json",
-        session.creator_id, session.broadcast_id, session.id, route.participant_id
+        "{}/collaboration/returns/{}.json",
+        live_runtime_workspace_prefix(session),
+        route.participant_id
     )
 }
 
@@ -301,8 +317,8 @@ pub(in crate::api::control::artifacts) fn collaboration_engine_relative_path(
     session: &LiveIngestSession,
 ) -> String {
     format!(
-        "runtime/{}/{}/{}/collaboration/engine.json",
-        session.creator_id, session.broadcast_id, session.id
+        "{}/collaboration/engine.json",
+        live_runtime_workspace_prefix(session)
     )
 }
 
@@ -310,8 +326,8 @@ pub(in crate::api::control::artifacts) fn collaboration_bundle_relative_path(
     session: &LiveIngestSession,
 ) -> String {
     format!(
-        "runtime/{}/{}/{}/collaboration/runtime.json",
-        session.creator_id, session.broadcast_id, session.id
+        "{}/collaboration/runtime.json",
+        live_runtime_workspace_prefix(session)
     )
 }
 
@@ -319,14 +335,14 @@ pub(in crate::api::control::artifacts) fn collaboration_media_relative_path(
     session: &LiveIngestSession,
 ) -> String {
     format!(
-        "runtime/{}/{}/{}/collaboration/media.json",
-        session.creator_id, session.broadcast_id, session.id
+        "{}/collaboration/media.json",
+        live_runtime_workspace_prefix(session)
     )
 }
 
 pub(crate) fn collaboration_launch_relative_path(session: &LiveIngestSession) -> String {
     format!(
-        "runtime/{}/{}/{}/collaboration/launch.json",
-        session.creator_id, session.broadcast_id, session.id
+        "{}/collaboration/launch.json",
+        live_runtime_workspace_prefix(session)
     )
 }

@@ -1,5 +1,5 @@
 const BASE = "http://127.0.0.1:8080";
-const HOST = "Bearer lifestream-local-dev-token";
+const HOST = "Bearer vanta-local-dev-token";
 const SUFFIX = String(Date.now());
 
 async function req(path, { method = "GET", token = null, body = null, headers = {} } = {}) {
@@ -130,7 +130,7 @@ async function main() {
   };
 
   const socket = createSocketClient(
-    "ws://127.0.0.1:8080/ws/creator/live?accessToken=lifestream-local-dev-token",
+    "ws://127.0.0.1:8080/ws/creator/live?accessToken=vanta-local-dev-token",
   );
   await socket.open();
 
@@ -149,7 +149,7 @@ async function main() {
   await new Promise((resolve) => setTimeout(resolve, 150));
 
   const resumedSocket = createSocketClient(
-    `ws://127.0.0.1:8080/ws/creator/live?accessToken=lifestream-local-dev-token&sessionToken=${encodeURIComponent(
+    `ws://127.0.0.1:8080/ws/creator/live?accessToken=vanta-local-dev-token&sessionToken=${encodeURIComponent(
       ready.sessionToken,
     )}`,
   );

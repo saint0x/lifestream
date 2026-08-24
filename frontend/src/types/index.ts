@@ -1,4 +1,4 @@
-// Core domain types for the LIFESTREAM platform.
+// Core domain types for the VANTA platform.
 // Everything downstream (repository, components, pages) consumes these.
 
 export type ID = string;
@@ -10,7 +10,8 @@ export type MaturityRating = "G" | "PG" | "PG-13" | "TV-14" | "R" | "TV-MA";
 export type Genre =
   | "Drama"
   | "Thriller"
-  | "Sci-Fi"
+  | "Science Fiction"
+  | "Cinematic Tech"
   | "Comedy"
   | "Documentary"
   | "Action"
@@ -28,9 +29,23 @@ export type Genre =
 
 export interface Credit {
   readonly id: ID;
+  readonly personId?: ID | null;
+  readonly personSlug?: string | null;
   readonly name: string;
-  readonly role: "creator" | "director" | "writer" | "cast" | "host";
-  readonly character?: string;
+  readonly role: string;
+  readonly character?: string | null;
+  readonly avatar?: string | null;
+}
+
+export interface ProjectCreditInput {
+  readonly personId?: ID | null;
+  readonly personSlug?: string | null;
+  readonly role: string;
+  readonly character?: string | null;
+}
+
+export interface UpdateProjectCreditsRequest {
+  readonly credits: ReadonlyArray<ProjectCreditInput>;
 }
 
 export interface ImageSet {
@@ -128,6 +143,53 @@ export interface Category {
   readonly liveViewers: number;
   readonly liveChannels: number;
   readonly tags: ReadonlyArray<string>;
+}
+
+export interface PersonCredit {
+  readonly contentId: ID;
+  readonly contentSlug: string;
+  readonly contentKind: "series" | "film";
+  readonly title: string;
+  readonly year: number;
+  readonly role: string;
+  readonly character?: string | null;
+  readonly poster: string;
+}
+
+export interface PersonProfile {
+  readonly id: ID;
+  readonly userId?: ID | null;
+  readonly slug: string;
+  readonly profileUrlPath: string;
+  readonly displayName: string;
+  readonly avatar: string;
+  readonly heroImage: string;
+  readonly headline: string;
+  readonly location: string;
+  readonly about: string;
+  readonly knownFor: ReadonlyArray<string>;
+  readonly websiteUrl?: string | null;
+  readonly instagramUrl?: string | null;
+  readonly xUrl?: string | null;
+  readonly imdbUrl?: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly credits: ReadonlyArray<PersonCredit>;
+}
+
+export interface UpdatePersonProfileRequest {
+  readonly slug?: string;
+  readonly displayName?: string;
+  readonly avatar?: string;
+  readonly heroImage?: string;
+  readonly headline?: string;
+  readonly location?: string;
+  readonly about?: string;
+  readonly knownFor?: ReadonlyArray<string>;
+  readonly websiteUrl?: string | null;
+  readonly instagramUrl?: string | null;
+  readonly xUrl?: string | null;
+  readonly imdbUrl?: string | null;
 }
 
 export interface User {
@@ -464,6 +526,24 @@ export interface TrafficSource {
   readonly share: number; // 0..1
 }
 
+export interface CreatorAttentionScore {
+  readonly algorithmVersion: string;
+  readonly qualifiedViewers: number;
+  readonly verifiedViewerScore: number;
+  readonly creatorAttentionValue: number;
+  readonly baselineValuePerQualifiedViewer: number;
+  readonly averageWatchMinutes: number;
+  readonly attentionMultiplier: number;
+  readonly engagementMultiplier: number;
+  readonly retentionMultiplier: number;
+  readonly audienceQualityMultiplier: number;
+  readonly dataConfidenceMultiplier: number;
+  readonly qualifiedViewerRate: number;
+  readonly returningViewerRate: number;
+  readonly measuredSessions: number;
+  readonly measuredViewers: number;
+}
+
 export interface ViewerPreview {
   readonly totalViewers: number;
   readonly sampleUsers: ReadonlyArray<string>;
@@ -571,11 +651,22 @@ export interface PlaybackPreviewTrack {
   readonly published: boolean;
 }
 
+export interface PlaybackMediaAuthorization {
+  readonly strategy: string;
+  readonly manifestAuthorization: string;
+  readonly assetAuthorization: string;
+  readonly cacheStrategy: string;
+  readonly cdnCookieUrl?: string | null;
+  readonly cdnCookieName?: string | null;
+  readonly cdnCookieDomain?: string | null;
+}
+
 export interface PlaybackGrant {
   readonly session: PlaybackSession;
   readonly playbackToken: string;
   readonly manifestUrl: string;
   readonly posterUrl?: string | null;
+  readonly mediaAuthorization: PlaybackMediaAuthorization;
   readonly contentTitle: string;
   readonly contentKind: string;
   readonly visibility: string;
@@ -617,6 +708,49 @@ export interface CreatorNotification {
   readonly sentAt: string;
   readonly amount?: number;
   readonly actor?: string;
+  readonly deliveryState?: string | null;
+  readonly readAt?: string | null;
+}
+
+export interface CreatorRevenueBreakdownEntry {
+  readonly source: string;
+  readonly amount: number;
+  readonly share: number;
+}
+
+export interface CreatorRevenueSummary {
+  readonly totalEarnings30d: number;
+  readonly totalSubscribers: number;
+  readonly blendedMonthlyPrice: number;
+  readonly estimatedNextPayout: number;
+  readonly breakdown: ReadonlyArray<CreatorRevenueBreakdownEntry>;
+}
+
+export interface CreatorSubscriberTier {
+  readonly id: ID;
+  readonly tierName: string;
+  readonly rank: number;
+  readonly monthlyPrice: number;
+  readonly subscriberCount: number;
+  readonly accentColor: string;
+  readonly status: string;
+  readonly retiredAt?: string | null;
+}
+
+export interface CreatorDashboardPayload {
+  readonly profile: CreatorProfile;
+  readonly currentBroadcast: Broadcast | null;
+  readonly scheduledBroadcasts: ReadonlyArray<Broadcast>;
+  readonly recentBroadcasts: ReadonlyArray<Broadcast>;
+  readonly analytics: ReadonlyArray<AnalyticsPoint>;
+  readonly trafficSources: ReadonlyArray<TrafficSource>;
+  readonly attentionScore: CreatorAttentionScore;
+  readonly topContent: ReadonlyArray<TopContent>;
+  readonly revenue: ReadonlyArray<RevenueEntry>;
+  readonly revenueSummary: CreatorRevenueSummary;
+  readonly subscriberTiers: ReadonlyArray<CreatorSubscriberTier>;
+  readonly notifications: ReadonlyArray<CreatorNotification>;
+  readonly uploads: ReadonlyArray<Upload>;
 }
 
 export interface CreatorScene {
@@ -933,4 +1067,89 @@ export interface CreatorContentSummary {
 export interface CreatorContentResponse {
   readonly summary: CreatorContentSummary;
   readonly uploads: ReadonlyArray<Upload>;
+}
+
+export interface UploadJob {
+  readonly id: ID;
+  readonly uploadId?: ID | null;
+  readonly seriesId?: ID | null;
+  readonly kind: string;
+  readonly sourceType: string;
+  readonly status: string;
+  readonly title: string;
+  readonly intendedVisibility: Visibility;
+  readonly bytesExpected: number;
+  readonly bytesReceived: number;
+  readonly storageKey: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly publishedContentId?: ID | null;
+  readonly mimeType: string;
+  readonly checksumSha256?: string | null;
+  readonly completedAt?: string | null;
+  readonly processingAttemptCount: number;
+  readonly lastProcessingError?: string | null;
+  readonly lastFailedAt?: string | null;
+}
+
+export interface UploadIngestSession {
+  readonly jobId: ID;
+  readonly relativePath: string;
+  readonly status: string;
+  readonly mimeType: string;
+  readonly bytesReceived: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly completedAt?: string | null;
+}
+
+export interface UploadIngestTicket {
+  readonly session: UploadIngestSession;
+  readonly uploadToken: string;
+}
+
+export interface CreatorSeriesProject {
+  readonly id: ID;
+  readonly slug: string;
+  readonly title: string;
+  readonly synopsis: string;
+  readonly rating: string;
+  readonly genres: ReadonlyArray<string>;
+  readonly heroColor: string;
+  readonly posterUrl: string;
+  readonly backdropUrl: string;
+  readonly status: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface CreatorUploadOperationRecord {
+  readonly uploadJob: UploadJob;
+  readonly ingestSession?: UploadIngestSession | null;
+  readonly mediaAsset?: unknown | null;
+  readonly publishedUpload?: Upload | null;
+}
+
+export interface CreatorUploadOperationsSummary {
+  readonly totalJobs: number;
+  readonly createdJobs: number;
+  readonly uploadedJobs: number;
+  readonly processingJobs: number;
+  readonly readyJobs: number;
+  readonly failedJobs: number;
+  readonly publishedJobs: number;
+  readonly activeIngestSessions: number;
+  readonly completedIngestSessions: number;
+  readonly readyAssets: number;
+  readonly processingAssets: number;
+  readonly failedAssets: number;
+  readonly publishedAssets: number;
+  readonly totalBytesExpected: number;
+  readonly totalBytesReceived: number;
+  readonly totalAssetBytes: number;
+}
+
+export interface CreatorUploadOperationsResponse {
+  readonly summary: CreatorUploadOperationsSummary;
+  readonly records: ReadonlyArray<CreatorUploadOperationRecord>;
 }

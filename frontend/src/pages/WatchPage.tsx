@@ -5,8 +5,9 @@ import { repository } from "@/lib/repository";
 import { VideoPlayer } from "@/components/player/VideoPlayer";
 import { useAppStore } from "@/lib/store";
 import { formatDuration } from "@/lib/format";
-import { getApiBaseUrl, requestJson } from "@/lib/api";
-import type { PlaybackGrant } from "@/types";
+import { requestJson, resolveApiUrl } from "@/lib/api";
+import { preparePlaybackGrantMediaAuthorization } from "@/lib/playback";
+import type { Episode, Film, PlaybackGrant, Series } from "@/types";
 import "./WatchPage.css";
 
 interface WatchPageProps {
@@ -19,15 +20,63 @@ export function WatchPage({ kind }: WatchPageProps) {
   const [playbackGrant, setPlaybackGrant] = useState<PlaybackGrant | null>(null);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [playbackLoading, setPlaybackLoading] = useState(false);
-  const episode = kind === "episode" && id ? repository.getEpisode(id) : undefined;
-  const series = kind === "episode" && episode ? repository.getSeriesById(episode.seriesId) : undefined;
-  const film = kind === "film" && id ? repository.getFilmById(id) : undefined;
+  const [episode, setEpisode] = useState<Episode | undefined>(
+    kind === "episode" && id && repository.hasState() ? repository.getEpisode(id) : undefined,
+  );
+  const [series, setSeries] = useState<Series | undefined>(
+    kind === "episode" && episode && repository.hasState()
+      ? repository.getSeriesById(episode.seriesId)
+      : undefined,
+  );
+  const [film, setFilm] = useState<Film | undefined>(
+    kind === "film" && id && repository.hasState() ? repository.getFilmById(id) : undefined,
+  );
+  const [contextLoading, setContextLoading] = useState(true);
+  const [contextError, setContextError] = useState<string | null>(null);
   const playbackSessionUrl =
     kind === "episode"
       ? episode?.playbackSessionUrl
       : film?.playbackSessionUrl;
 
   useEffect(() => {
+    if (!id) return;
+    const controller = new AbortController();
+    setContextLoading(true);
+    setContextError(null);
+    setEpisode(undefined);
+    setSeries(undefined);
+    setFilm(undefined);
+
+    const loadContext =
+      kind === "episode"
+        ? repository.fetchSeriesForEpisode(id, controller.signal).then((item) => {
+            const found = item.seasons
+              .flatMap((season) => season.episodes)
+              .find((candidate) => candidate.id === id);
+            if (!found) throw new Error("Episode is unavailable.");
+            setSeries(item);
+            setEpisode(found);
+          })
+        : repository.fetchContentById(id, controller.signal).then((item) => {
+            if (item.kind !== "film") throw new Error("Title is unavailable.");
+            setFilm(item);
+          });
+
+    void loadContext
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          setContextError(error instanceof Error ? error.message : "Unable to load playback.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setContextLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [id, kind]);
+
+  useEffect(() => {
+    if (contextLoading) return;
     if (!playbackSessionUrl) {
       setPlaybackGrant(null);
       setPlaybackError("Playback is not available for this title yet.");
@@ -37,22 +86,36 @@ export function WatchPage({ kind }: WatchPageProps) {
 
     setPlaybackLoading(true);
     setPlaybackError(null);
-    void requestJson<PlaybackGrant>(playbackSessionUrl, { method: "POST" })
-      .then((grant) => {
+    const controller = new AbortController();
+    void requestJson<PlaybackGrant>(playbackSessionUrl, { method: "POST", signal: controller.signal })
+      .then(async (grant) => {
+        await preparePlaybackGrantMediaAuthorization(grant, controller.signal);
         setPlaybackGrant(grant);
       })
       .catch((error) => {
+        if (controller.signal.aborted) return;
         setPlaybackGrant(null);
         setPlaybackError(error instanceof Error ? error.message : "Unable to start playback.");
       })
       .finally(() => {
+        if (controller.signal.aborted) return;
         setPlaybackLoading(false);
       });
-  }, [playbackSessionUrl]);
+
+    return () => controller.abort();
+  }, [contextLoading, playbackSessionUrl]);
 
   if (kind === "episode") {
-    if (!episode) return <Navigate to="/" replace />;
-    if (!series) return <Navigate to="/" replace />;
+    if (!id) return <Navigate to="/" replace />;
+    if (!episode || !series) {
+      return (
+        <div className="ls-watch">
+          <div className="ls-watch__state">
+            {contextLoading ? "Loading playback…" : contextError ?? "Playback is unavailable."}
+          </div>
+        </div>
+      );
+    }
 
     const season = series.seasons.find((s) => s.seasonNumber === episode.seasonNumber);
     const idxInSeason = season?.episodes.findIndex((e) => e.id === episode.id) ?? -1;
@@ -80,12 +143,12 @@ export function WatchPage({ kind }: WatchPageProps) {
           {playbackLoading ? <div className="ls-watch__state">Preparing playback session…</div> : null}
           {playbackError ? <div className="ls-watch__state ls-watch__state--error">{playbackError}</div> : null}
           <VideoPlayer
-            poster={playbackGrant?.posterUrl ? `${getApiBaseUrl()}${playbackGrant.posterUrl}` : series.images.backdrop}
+            poster={playbackGrant?.posterUrl ? resolveApiUrl(playbackGrant.posterUrl) : series.images.backdrop}
             title={`${series.title} — ${episode.title}`}
             subtitle="[ they don't know the signal is a song ]"
             durationSec={episode.durationSec}
             initialProgressSec={episode.progressSec ?? 0}
-            sourceUrl={playbackGrant ? `${getApiBaseUrl()}${playbackGrant.manifestUrl}` : null}
+            sourceUrl={playbackGrant ? resolveApiUrl(playbackGrant.manifestUrl) : null}
             onProgress={(sec) => {
               recordProgress({
                 contentId: series.id,
@@ -132,7 +195,16 @@ export function WatchPage({ kind }: WatchPageProps) {
     );
   }
 
-  if (!film) return <Navigate to="/" replace />;
+  if (!id) return <Navigate to="/" replace />;
+  if (!film) {
+    return (
+      <div className="ls-watch">
+        <div className="ls-watch__state">
+          {contextLoading ? "Loading playback…" : contextError ?? "Playback is unavailable."}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ls-watch">
@@ -141,7 +213,7 @@ export function WatchPage({ kind }: WatchPageProps) {
           <ChevronLeft size={14} /> Back to {film.title}
         </Link>
         <div className="ls-watch__crumbs mono">
-          <span>LIFESTREAM</span>
+          <span>VANTA</span>
           <span>/</span>
           <span>FILM</span>
         </div>
@@ -151,11 +223,11 @@ export function WatchPage({ kind }: WatchPageProps) {
         {playbackLoading ? <div className="ls-watch__state">Preparing playback session…</div> : null}
         {playbackError ? <div className="ls-watch__state ls-watch__state--error">{playbackError}</div> : null}
         <VideoPlayer
-          poster={playbackGrant?.posterUrl ? `${getApiBaseUrl()}${playbackGrant.posterUrl}` : film.images.backdrop}
+          poster={playbackGrant?.posterUrl ? resolveApiUrl(playbackGrant.posterUrl) : film.images.backdrop}
           title={film.title}
           durationSec={film.durationSec}
           initialProgressSec={film.progressSec ?? 0}
-          sourceUrl={playbackGrant ? `${getApiBaseUrl()}${playbackGrant.manifestUrl}` : null}
+          sourceUrl={playbackGrant ? resolveApiUrl(playbackGrant.manifestUrl) : null}
           onProgress={(sec) => {
             recordProgress({
               contentId: film.id,

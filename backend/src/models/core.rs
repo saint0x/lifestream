@@ -4,9 +4,12 @@ use super::*;
 #[serde(rename_all = "camelCase")]
 pub struct Credit {
     pub id: Id,
+    pub person_id: Option<Id>,
+    pub person_slug: Option<String>,
     pub name: String,
     pub role: String,
     pub character: Option<String>,
+    pub avatar: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -130,6 +133,42 @@ pub struct Category {
     pub live_viewers: i64,
     pub live_channels: i64,
     pub tags: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PersonCredit {
+    pub content_id: Id,
+    pub content_slug: String,
+    pub content_kind: String,
+    pub title: String,
+    pub year: i64,
+    pub role: String,
+    pub character: Option<String>,
+    pub poster: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PersonProfile {
+    pub id: Id,
+    pub user_id: Option<Id>,
+    pub slug: String,
+    pub profile_url_path: String,
+    pub display_name: String,
+    pub avatar: String,
+    pub hero_image: String,
+    pub headline: String,
+    pub location: String,
+    pub about: String,
+    pub known_for: Vec<String>,
+    pub website_url: Option<String>,
+    pub instagram_url: Option<String>,
+    pub x_url: Option<String>,
+    pub imdb_url: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub credits: Vec<PersonCredit>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

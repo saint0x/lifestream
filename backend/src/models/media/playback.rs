@@ -93,11 +93,24 @@ pub struct PlaybackReconciliationReport {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct PlaybackMediaAuthorization {
+    pub strategy: String,
+    pub manifest_authorization: String,
+    pub asset_authorization: String,
+    pub cache_strategy: String,
+    pub cdn_cookie_url: Option<String>,
+    pub cdn_cookie_name: Option<String>,
+    pub cdn_cookie_domain: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlaybackGrant {
     pub session: PlaybackSession,
     pub playback_token: String,
     pub manifest_url: String,
     pub poster_url: Option<String>,
+    pub media_authorization: PlaybackMediaAuthorization,
     pub content_title: String,
     pub content_kind: String,
     pub visibility: String,

@@ -1,19 +1,26 @@
+import { useEffect, useState } from "react";
 import { HeroCarousel } from "@/components/content/HeroCarousel";
 import { ContentRow } from "@/components/content/ContentRow";
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
-import type { Film, Series } from "@/types";
+import type { Film, LiveStream, Series } from "@/types";
 import "./HomePage.css";
 
 export function HomePage() {
   const continueWatching = useAppStore((s) => s.continueWatching);
-
-  const trending = repository.listTrending();
-  const originals = repository.listOriginals();
-  const liveNow = repository.listLiveStreams();
-  const series = repository.listSeries();
-  const films = repository.listFilms();
-  const sciFi = repository.listByGenre("Sci-Fi");
+  const [trending, setTrending] = useState<
+    ReadonlyArray<Series | Film | LiveStream>
+  >([]);
+  const [originals, setOriginals] = useState<ReadonlyArray<Series | Film>>([]);
+  const [liveNow, setLiveNow] = useState<ReadonlyArray<LiveStream>>([]);
+  const [series, setSeries] = useState<ReadonlyArray<Series>>([]);
+  const [films, setFilms] = useState<ReadonlyArray<Film>>([]);
+  const [sciFi, setSciFi] = useState<ReadonlyArray<Series | Film>>([]);
+  const [continueItems, setContinueItems] = useState<
+    ReadonlyArray<Series | Film>
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const heroItems = originals.slice(0, 4);
 
@@ -21,12 +28,84 @@ export function HomePage() {
     continueWatching.map((c) => [c.contentId, c.progressSec / c.durationSec]),
   );
 
-  const continueItems = continueWatching
-    .map((c) => repository.getByAnyId(c.contentId))
-    .filter((x): x is Series | Film => x !== undefined && x.kind !== "live");
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+
+    void Promise.all([
+      repository.fetchHome(controller.signal),
+      repository.fetchSeriesPage(
+        { originalsOnly: true, limit: 6 },
+        controller.signal,
+      ),
+      repository.fetchFilmsPage(
+        { originalsOnly: true, limit: 6 },
+        controller.signal,
+      ),
+      repository.fetchSeriesPage({ limit: 12 }, controller.signal),
+      repository.fetchFilmsPage({ limit: 12 }, controller.signal),
+      repository.fetchSeriesPage(
+        { genre: "Science Fiction", limit: 6 },
+        controller.signal,
+      ),
+      repository.fetchFilmsPage(
+        { genre: "Science Fiction", limit: 6 },
+        controller.signal,
+      ),
+      Promise.all(
+        continueWatching.map((entry) =>
+          repository.fetchContentById(entry.contentId, controller.signal),
+        ),
+      ),
+    ])
+      .then(
+        ([
+          home,
+          originalSeries,
+          originalFilms,
+          seriesPage,
+          filmsPage,
+          sciFiSeries,
+          sciFiFilms,
+          continued,
+        ]) => {
+          setTrending([
+            ...home.trendingSeries,
+            ...home.trendingFilms,
+            ...home.featuredLive,
+          ]);
+          setOriginals(
+            [...originalSeries.items, ...originalFilms.items].slice(0, 10),
+          );
+          setLiveNow(home.featuredLive);
+          setSeries(seriesPage.items);
+          setFilms(filmsPage.items);
+          setSciFi([...sciFiSeries.items, ...sciFiFilms.items]);
+          setContinueItems(
+            continued.filter(
+              (item): item is Series | Film =>
+                item.kind === "series" || item.kind === "film",
+            ),
+          );
+        },
+      )
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setError(err instanceof Error ? err.message : "Unable to load home.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [continueWatching]);
 
   return (
     <div className="ls-home">
+      {loading ? <div className="ls-home__state">Loading home…</div> : null}
+      {error ? <div className="ls-home__state">{error}</div> : null}
       <HeroCarousel items={heroItems} />
 
       <div className="ls-home__rows">
@@ -43,7 +122,7 @@ export function HomePage() {
 
         <ContentRow
           kicker="02 / Right now"
-          title="Live on LIFESTREAM"
+          title="Live on VANTA"
           items={liveNow}
           layout="landscape"
           seeAllHref="/live"
@@ -54,15 +133,15 @@ export function HomePage() {
           title="Everyone is watching"
           items={trending}
           layout="poster"
-          seeAllHref="/browse"
+          seeAllHref="/live"
         />
 
         <ContentRow
           kicker="04 / Originals"
-          title="LIFESTREAM Originals"
+          title="VANTA Originals"
           items={originals}
           layout="poster"
-          seeAllHref="/browse/originals"
+          seeAllHref="/originals"
         />
 
         <ContentRow
@@ -86,7 +165,7 @@ export function HomePage() {
           title="Hard science fiction"
           items={sciFi}
           layout="poster"
-          seeAllHref="/category/sci-fi"
+          seeAllHref="/series?genre=Science%20Fiction"
         />
       </div>
     </div>

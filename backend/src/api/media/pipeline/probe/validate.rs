@@ -152,6 +152,7 @@ pub(crate) fn classify_media_processing_error(error: &AppError) -> (String, bool
         ),
         AppError::Unauthorized => ("unauthorized media processing attempt".to_string(), false),
         AppError::Forbidden => ("forbidden media processing attempt".to_string(), false),
+        AppError::Conflict(message) => (message.clone(), false),
         AppError::PaymentRequired(message) => (message.clone(), false),
         AppError::RateLimited => ("media processing rate limited".to_string(), true),
         AppError::Database(error) => (

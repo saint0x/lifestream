@@ -4,9 +4,20 @@ pub(crate) async fn get_my_plan(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<BillingPlan>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    if state.database_kind == crate::config::DatabaseKind::Postgres {
+        return Ok(Json(
+            super::state::build_postgres_viewer_app_state(
+                &state.db,
+                &identity.user_id,
+                &identity.session_id,
+            )
+            .await?
+            .plan,
+        ));
+    }
     Ok(Json(
-        fetch_billing_plan(&state.pool, &identity.user_id).await?,
+        fetch_billing_plan(state.db.sqlite_adapter(), &identity.user_id).await?,
     ))
 }
 
@@ -14,9 +25,12 @@ pub(crate) async fn list_sessions(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<Vec<AuthSession>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     Ok(Json(
-        fetch_auth_sessions(&state.pool, &identity.user_id, &identity.session_id).await?,
+        state
+            .db
+            .list_auth_sessions(&identity.user_id, &identity.session_id, None)
+            .await?,
     ))
 }
 
@@ -25,7 +39,7 @@ pub(crate) async fn create_session(
     headers: HeaderMap,
     Json(input): Json<CreateSessionRequest>,
 ) -> AppResult<Json<SessionTokenResponse>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let label = input.label.trim();
     if label.is_empty() {
         return Err(AppError::BadRequest("label is required".to_string()));
@@ -64,22 +78,20 @@ pub(crate) async fn create_session(
     );
     let created_at = Utc::now().to_rfc3339();
 
-    sqlx::query(
-        r#"
-        INSERT INTO auth_sessions (
-            id, user_id, label, token_hash, scopes_json, created_at, expires_at, revoked_at, last_used_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL)
-        "#,
-    )
-    .bind(&session_id)
-    .bind(&identity.user_id)
-    .bind(label)
-    .bind(crate::auth::hash_token(&access_token))
-    .bind(to_json(&scopes)?)
-    .bind(&created_at)
-    .bind(&expires_at)
-    .execute(&state.pool)
-    .await?;
+    let token_hash = crate::auth::hash_token(&access_token);
+    let scopes_json = to_json(&scopes)?;
+    state
+        .db
+        .create_auth_session(crate::db::NewAuthSession {
+            id: &session_id,
+            user_id: &identity.user_id,
+            label,
+            token_hash: &token_hash,
+            scopes_json: &scopes_json,
+            created_at: &created_at,
+            expires_at: expires_at.as_deref(),
+        })
+        .await?;
 
     Ok(Json(SessionTokenResponse {
         session: AuthSession {
@@ -101,22 +113,21 @@ pub(crate) async fn revoke_session(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> AppResult<StatusCode> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let revoked_at = Utc::now().to_rfc3339();
-    let result = sqlx::query(
-        "UPDATE auth_sessions SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
-    )
-    .bind(&revoked_at)
-    .bind(&id)
-    .bind(&identity.user_id)
-    .execute(&state.pool)
-    .await?;
-
-    if result.rows_affected() == 0 {
+    if state
+        .db
+        .revoke_auth_session(&id, &identity.user_id, &revoked_at)
+        .await?
+        == 0
+    {
         return Err(AppError::NotFound);
     }
 
-    expire_playback_sessions_for_auth_session(&state.pool, &id).await?;
+    state
+        .db
+        .expire_playback_sessions_for_auth_session(&id, &revoked_at)
+        .await?;
 
     state
         .realtime

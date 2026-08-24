@@ -5,10 +5,10 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-HOST = "Bearer lifestream-local-dev-token"
-VIEWER = "Bearer lifestream-viewer-token"
-OUTSIDER = "Bearer lifestream-local-collaborator-token"
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+HOST = "Bearer vanta-local-dev-token"
+VIEWER = "Bearer vanta-viewer-token"
+OUTSIDER = "Bearer vanta-local-collaborator-token"
 
 
 def req(path, method="GET", token=None, body=None, extra_headers=None):

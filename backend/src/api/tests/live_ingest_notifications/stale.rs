@@ -4,7 +4,7 @@ use crate::api::control::fetch_live_runtime_targets_for_session;
 #[tokio::test]
 async fn stale_ingest_reconcile_preserves_broadcast_for_reconnect() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let response = connect_live_ingest(
         State(state.clone()),
@@ -21,16 +21,20 @@ async fn stale_ingest_reconcile_preserves_broadcast_for_reconnect() -> AppResult
     sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
         .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
         .bind(&response.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     reconcile_stale_live_ingest_sessions(state.clone()).await?;
 
-    let session =
-        fetch_live_ingest_session_by_id(&state.pool, &creator.id, &response.session.id).await?;
+    let session = fetch_live_ingest_session_by_id(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &response.session.id,
+    )
+    .await?;
     let refreshed_broadcast =
-        fetch_broadcast_by_id(&state.pool, &creator.id, &broadcast.id).await?;
-    let refreshed_creator = fetch_creator_profile(&state.pool, &creator.id).await?;
+        fetch_broadcast_by_id(state.db.sqlite_adapter(), &creator.id, &broadcast.id).await?;
+    let refreshed_creator = fetch_creator_profile(state.db.sqlite_adapter(), &creator.id).await?;
 
     assert_eq!(session.status, "stale");
     assert_eq!(refreshed_broadcast.status, "ready");
@@ -43,7 +47,7 @@ async fn stale_ingest_reconcile_preserves_broadcast_for_reconnect() -> AppResult
     assert!(
         sqlx::query("SELECT 1 FROM live_streams WHERE id = ?")
             .bind(format!("lv-{}-live", creator.handle))
-            .fetch_optional(&state.pool)
+            .fetch_optional(state.db.sqlite_adapter())
             .await?
             .is_none()
     );
@@ -54,7 +58,7 @@ async fn stale_ingest_reconcile_preserves_broadcast_for_reconnect() -> AppResult
 #[tokio::test]
 async fn stale_reconciliation_updates_runtime_spec_artifact() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let response = connect_live_ingest(
         State(state.clone()),
@@ -71,7 +75,7 @@ async fn stale_reconciliation_updates_runtime_spec_artifact() -> AppResult<()> {
     sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
         .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
         .bind(&response.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     reconcile_stale_live_ingest_sessions(state.clone()).await?;
@@ -94,7 +98,7 @@ async fn stale_reconciliation_updates_runtime_spec_artifact() -> AppResult<()> {
 #[tokio::test]
 async fn stale_live_reads_hide_stream_and_self_heal_creator_snapshot() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let response = connect_live_ingest(
         State(state.clone()),
@@ -111,19 +115,26 @@ async fn stale_live_reads_hide_stream_and_self_heal_creator_snapshot() -> AppRes
     sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
         .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
         .bind(&response.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
-    let public_stream =
-        fetch_live_stream_by_id(&state.pool, &format!("lv-{}-live", creator.handle)).await;
+    let public_stream = fetch_live_stream_by_id(
+        state.db.sqlite_adapter(),
+        &format!("lv-{}-live", creator.handle),
+    )
+    .await;
     assert!(matches!(public_stream, Err(AppError::NotFound)));
 
-    let snapshot = build_creator_live_snapshot(&state.pool, &creator.id).await?;
+    let snapshot = build_creator_live_snapshot(state.db.sqlite_adapter(), &creator.id).await?;
     let refreshed_broadcast =
-        fetch_broadcast_by_id(&state.pool, &creator.id, &broadcast.id).await?;
-    let refreshed_creator = fetch_creator_profile(&state.pool, &creator.id).await?;
-    let refreshed_session =
-        fetch_live_ingest_session_by_id(&state.pool, &creator.id, &response.session.id).await?;
+        fetch_broadcast_by_id(state.db.sqlite_adapter(), &creator.id, &broadcast.id).await?;
+    let refreshed_creator = fetch_creator_profile(state.db.sqlite_adapter(), &creator.id).await?;
+    let refreshed_session = fetch_live_ingest_session_by_id(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &response.session.id,
+    )
+    .await?;
 
     assert!(snapshot.current_broadcast.is_none());
     assert_eq!(
@@ -140,7 +151,7 @@ async fn stale_live_reads_hide_stream_and_self_heal_creator_snapshot() -> AppRes
     assert!(
         sqlx::query("SELECT 1 FROM live_streams WHERE id = ?")
             .bind(format!("lv-{}-live", creator.handle))
-            .fetch_optional(&state.pool)
+            .fetch_optional(state.db.sqlite_adapter())
             .await?
             .is_none()
     );
@@ -151,7 +162,7 @@ async fn stale_live_reads_hide_stream_and_self_heal_creator_snapshot() -> AppRes
 #[tokio::test]
 async fn direct_live_ingest_read_self_heals_stale_session() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let response = connect_live_ingest(
         State(state.clone()),
@@ -168,14 +179,18 @@ async fn direct_live_ingest_read_self_heals_stale_session() -> AppResult<()> {
     sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
         .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
         .bind(&response.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
-    let refreshed_session =
-        fetch_live_ingest_session_by_id(&state.pool, &creator.id, &response.session.id).await?;
+    let refreshed_session = fetch_live_ingest_session_by_id(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &response.session.id,
+    )
+    .await?;
     let refreshed_broadcast =
-        fetch_broadcast_by_id(&state.pool, &creator.id, &broadcast.id).await?;
-    let refreshed_creator = fetch_creator_profile(&state.pool, &creator.id).await?;
+        fetch_broadcast_by_id(state.db.sqlite_adapter(), &creator.id, &broadcast.id).await?;
+    let refreshed_creator = fetch_creator_profile(state.db.sqlite_adapter(), &creator.id).await?;
 
     assert_eq!(refreshed_session.status, "stale");
     assert_eq!(refreshed_broadcast.status, "ready");
@@ -183,7 +198,7 @@ async fn direct_live_ingest_read_self_heals_stale_session() -> AppResult<()> {
     assert!(
         sqlx::query("SELECT 1 FROM live_streams WHERE id = ?")
             .bind(format!("lv-{}-live", creator.handle))
-            .fetch_optional(&state.pool)
+            .fetch_optional(state.db.sqlite_adapter())
             .await?
             .is_none()
     );
@@ -195,7 +210,7 @@ async fn direct_live_ingest_read_self_heals_stale_session() -> AppResult<()> {
 async fn active_live_ingest_read_omits_stale_session_without_waiting_for_background_loop()
 -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let response = connect_live_ingest(
         State(state.clone()),
@@ -212,12 +227,16 @@ async fn active_live_ingest_read_omits_stale_session_without_waiting_for_backgro
     sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
         .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
         .bind(&response.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
-    let active = fetch_active_live_ingest_session(&state.pool, &creator.id).await?;
-    let refreshed_session =
-        fetch_live_ingest_session_by_id(&state.pool, &creator.id, &response.session.id).await?;
+    let active = fetch_active_live_ingest_session(state.db.sqlite_adapter(), &creator.id).await?;
+    let refreshed_session = fetch_live_ingest_session_by_id(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &response.session.id,
+    )
+    .await?;
 
     assert!(active.is_none());
     assert_eq!(refreshed_session.status, "stale");
@@ -227,8 +246,8 @@ async fn active_live_ingest_read_omits_stale_session_without_waiting_for_backgro
 #[tokio::test]
 async fn reconnect_after_stale_does_not_duplicate_live_notification() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
-    let before_count = creator_live_event_count(&state.pool, &broadcast.id).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
+    let before_count = creator_live_event_count(state.db.sqlite_adapter(), &broadcast.id).await?;
 
     let first = connect_live_ingest(
         State(state.clone()),
@@ -241,13 +260,14 @@ async fn reconnect_after_stale_does_not_duplicate_live_notification() -> AppResu
     )
     .await?
     .0;
-    let after_first_connect = creator_live_event_count(&state.pool, &broadcast.id).await?;
+    let after_first_connect =
+        creator_live_event_count(state.db.sqlite_adapter(), &broadcast.id).await?;
     assert_eq!(after_first_connect, before_count + 1);
 
     sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
         .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
         .bind(&first.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
     reconcile_stale_live_ingest_sessions(state.clone()).await?;
 
@@ -262,16 +282,18 @@ async fn reconnect_after_stale_does_not_duplicate_live_notification() -> AppResu
     )
     .await?
     .0;
-    let after_reconnect = creator_live_event_count(&state.pool, &broadcast.id).await?;
+    let after_reconnect =
+        creator_live_event_count(state.db.sqlite_adapter(), &broadcast.id).await?;
     let refreshed_broadcast =
-        fetch_broadcast_by_id(&state.pool, &creator.id, &broadcast.id).await?;
+        fetch_broadcast_by_id(state.db.sqlite_adapter(), &creator.id, &broadcast.id).await?;
     let reconnect_spec_path = media_path_for_relative(&state, &runtime_spec_path(&second.session));
     let reconnect_spec: Value = serde_json::from_str(
         &tokio::fs::read_to_string(&reconnect_spec_path)
             .await
             .map_err(AppError::Io)?,
     )?;
-    let runtime = fetch_creator_live_runtime_response(&state.pool, &creator.id).await?;
+    let runtime =
+        fetch_creator_live_runtime_response(state.db.sqlite_adapter(), &creator.id).await?;
 
     assert_ne!(first.session.id, second.session.id);
     assert_eq!(
@@ -306,7 +328,7 @@ async fn reconnect_after_stale_does_not_duplicate_live_notification() -> AppResu
 #[tokio::test]
 async fn connect_live_ingest_self_reconciles_stale_active_session() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let first = connect_live_ingest(
         State(state.clone()),
@@ -323,7 +345,7 @@ async fn connect_live_ingest_self_reconciles_stale_active_session() -> AppResult
     sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
         .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
         .bind(&first.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     let second = connect_live_ingest(
@@ -339,10 +361,11 @@ async fn connect_live_ingest_self_reconciles_stale_active_session() -> AppResult
     .0;
 
     let first_session =
-        fetch_live_ingest_session_by_id(&state.pool, &creator.id, &first.session.id).await?;
+        fetch_live_ingest_session_by_id(state.db.sqlite_adapter(), &creator.id, &first.session.id)
+            .await?;
     let refreshed_broadcast =
-        fetch_broadcast_by_id(&state.pool, &creator.id, &broadcast.id).await?;
-    let refreshed_creator = fetch_creator_profile(&state.pool, &creator.id).await?;
+        fetch_broadcast_by_id(state.db.sqlite_adapter(), &creator.id, &broadcast.id).await?;
+    let refreshed_creator = fetch_creator_profile(state.db.sqlite_adapter(), &creator.id).await?;
 
     assert_eq!(first_session.status, "stale");
     assert_ne!(first.session.id, second.session.id);
@@ -360,8 +383,13 @@ async fn connect_live_ingest_self_reconciles_stale_active_session() -> AppResult
 async fn reconnect_with_active_collaboration_session_preserves_runtime_and_grants() -> AppResult<()>
 {
     let (state, creator) = setup_test_state().await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
 
     let first = connect_live_ingest(
         State(state.clone()),
@@ -382,7 +410,7 @@ async fn reconnect_with_active_collaboration_session_preserves_runtime_and_grant
     sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
         .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
         .bind(&first.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     let second = connect_live_ingest(
@@ -398,11 +426,15 @@ async fn reconnect_with_active_collaboration_session_preserves_runtime_and_grant
     .0;
 
     let first_session =
-        fetch_live_ingest_session_by_id(&state.pool, &creator.id, &first.session.id).await?;
+        fetch_live_ingest_session_by_id(state.db.sqlite_adapter(), &creator.id, &first.session.id)
+            .await?;
     let second_targets =
-        fetch_live_runtime_targets_for_session(&state.pool, &second.session.id).await?;
-    let refreshed_grant = fetch_collaboration_mirror_grant_by_id(&state.pool, &grant.id).await?;
-    let runtime = fetch_creator_live_runtime_response(&state.pool, &creator.id).await?;
+        fetch_live_runtime_targets_for_session(state.db.sqlite_adapter(), &second.session.id)
+            .await?;
+    let refreshed_grant =
+        fetch_collaboration_mirror_grant_by_id(state.db.sqlite_adapter(), &grant.id).await?;
+    let runtime =
+        fetch_creator_live_runtime_response(state.db.sqlite_adapter(), &creator.id).await?;
 
     assert_eq!(first_session.status, "stale");
     assert_eq!(

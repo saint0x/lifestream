@@ -1,4 +1,5 @@
 use super::*;
+use crate::config::StorageKind;
 
 pub(crate) async fn health(State(state): State<SharedState>) -> AppResult<Json<HealthResponse>> {
     let runtime = check_runtime_dependencies(state.as_ref()).await;
@@ -38,8 +39,8 @@ pub(crate) async fn check_runtime_dependencies_with_binaries(
     ffmpeg_binary: &str,
     ffprobe_binary: &str,
 ) -> RuntimeHealthStatus {
-    let database = check_database(&state.pool).await.unwrap_or(false);
-    let media_root = check_media_root_writable(&state.media_root).await;
+    let database = state.db.check().await.unwrap_or(false);
+    let media_root = check_storage_writable(state).await;
     let ffmpeg = check_cached_binary_available(state, ffmpeg_binary).await;
     let ffprobe = check_cached_binary_available(state, ffprobe_binary).await;
     let background_worker = check_background_worker_ready(state).await;
@@ -61,10 +62,7 @@ pub(crate) async fn check_runtime_dependencies_with_binaries(
     }
 }
 
-async fn check_cached_binary_available(
-    state: &AppState,
-    binary: &str,
-) -> HealthDependencyStatus {
+async fn check_cached_binary_available(state: &AppState, binary: &str) -> HealthDependencyStatus {
     if let Some(status) = state.binary_probe_cache.get(binary).await {
         return status;
     }
@@ -105,6 +103,32 @@ async fn check_background_worker_ready(state: &AppState) -> HealthDependencyStat
             "background worker last succeeded {}s ago with {} consecutive failures",
             last_success_age_seconds, snapshot.consecutive_failures
         ),
+    }
+}
+
+async fn check_storage_writable(state: &AppState) -> HealthDependencyStatus {
+    match state.storage.kind() {
+        StorageKind::Local => {
+            let Some(media_root) = state.storage.local_media_root() else {
+                return HealthDependencyStatus {
+                    ready: false,
+                    detail: "local storage provider is missing a media root".to_string(),
+                };
+            };
+            check_media_root_writable(media_root).await
+        }
+        StorageKind::Object => {
+            let status = check_media_root_writable(state.storage.scratch_root()).await;
+            let bucket_detail = state
+                .storage
+                .object_bucket()
+                .map(|bucket| format!("; object bucket {bucket} configured"))
+                .unwrap_or_default();
+            HealthDependencyStatus {
+                ready: status.ready,
+                detail: format!("scratch storage check: {}{}", status.detail, bucket_detail),
+            }
+        }
     }
 }
 

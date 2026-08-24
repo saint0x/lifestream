@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "name": "people-profiles-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/v1/people/mara-vale')); print(f\"{data['slug']}|{data['displayName']}|{len(data['credits'])}|{data['credits'][0]['title']}\")"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/v1/people/mara-vale')); print(f\"{data['slug']}|{data['displayName']}|{len(data['credits'])}|{data['credits'][0]['title']}\")"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "mara-vale|Mara Vale|1|Northlight\n"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/v1/catalog/series/northlight')); credit=data['credits'][0]; print(f\"{credit['name']}|{credit['role']}|{credit['personSlug']}\")"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "python3",
+      "args": [
+        "-c",
+        "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/v1/catalog/series/northlight')); credit=data['credits'][0]; print(f\"{credit['name']}|{credit['role']}|{credit['personSlug']}\")"
+      ],
+      "expect_exit": 0,
+      "expect_stdout": "Mara Vale|Creator|mara-vale\n"
+    }
+  ]
+}

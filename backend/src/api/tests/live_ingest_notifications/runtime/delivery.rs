@@ -4,10 +4,10 @@ use super::*;
 async fn ll_hls_delivery_profile_persists_into_runtime_output_spec_and_telemetry() -> AppResult<()>
 {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     sqlx::query("UPDATE creator_live_settings SET delivery_class = 'll_hls' WHERE creator_id = ?")
         .bind(&creator.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     let connected = connect_live_ingest(
@@ -128,7 +128,8 @@ async fn ll_hls_delivery_profile_persists_into_runtime_output_spec_and_telemetry
         )
     );
 
-    let runtime = fetch_creator_live_runtime_response(&state.pool, &creator.id).await?;
+    let runtime =
+        fetch_creator_live_runtime_response(state.db.sqlite_adapter(), &creator.id).await?;
     assert!(runtime.telemetry_summary.ll_hls_samples >= 1);
     assert_eq!(runtime.telemetry_summary.peak_discontinuity_sequence, 0);
     assert_eq!(
@@ -162,10 +163,10 @@ async fn ll_hls_delivery_profile_persists_into_runtime_output_spec_and_telemetry
 async fn live_media_playlist_rewrites_tokenized_ll_hls_uris_and_honors_blocking_reload()
 -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     sqlx::query("UPDATE creator_live_settings SET delivery_class = 'll_hls' WHERE creator_id = ?")
         .bind(&creator.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     let connected = connect_live_ingest(
@@ -352,7 +353,7 @@ async fn live_media_playlist_rewrites_tokenized_ll_hls_uris_and_honors_blocking_
 #[tokio::test]
 async fn runtime_report_emits_backend_owned_hls_and_archive_artifacts() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {

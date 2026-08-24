@@ -6,10 +6,11 @@ use std::{
 
 use axum::http::HeaderMap;
 use chrono::Utc;
+use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};
-use sqlx::{Row, SqlitePool};
 use tokio::sync::Mutex;
 
+use crate::db::Database;
 use crate::error::{AppError, AppResult};
 
 const AUTH_SESSION_TOUCH_MIN_INTERVAL: Duration = Duration::from_secs(30);
@@ -70,69 +71,86 @@ impl RequestIdentity {
 }
 
 pub async fn optional_identity(
-    pool: &SqlitePool,
+    database: &Database,
     headers: &HeaderMap,
 ) -> AppResult<Option<RequestIdentity>> {
     let Some(token) = extract_bearer_token(headers)? else {
         return Ok(None);
     };
 
-    lookup_identity(pool, &token).await.map(Some)
+    lookup_identity(database, &token).await.map(Some)
 }
 
 pub async fn require_identity(
-    pool: &SqlitePool,
+    database: &Database,
     headers: &HeaderMap,
 ) -> AppResult<RequestIdentity> {
     let token = extract_bearer_token(headers)?.ok_or(AppError::Unauthorized)?;
-    lookup_identity(pool, &token).await
+    lookup_identity(database, &token).await
 }
 
-pub async fn lookup_identity(pool: &SqlitePool, token: &str) -> AppResult<RequestIdentity> {
+pub async fn lookup_identity(database: &Database, token: &str) -> AppResult<RequestIdentity> {
     let token_hash = hash_token(token);
     let now = Utc::now().to_rfc3339();
 
-    let row = sqlx::query(
-        r#"
-        SELECT
-            auth_sessions.id,
-            auth_sessions.user_id,
-            auth_sessions.scopes_json,
-            creator_profiles.id AS creator_id
-        FROM auth_sessions
-        LEFT JOIN creator_profiles ON creator_profiles.user_id = auth_sessions.user_id
-        WHERE auth_sessions.token_hash = ?
-          AND auth_sessions.revoked_at IS NULL
-          AND (auth_sessions.expires_at IS NULL OR auth_sessions.expires_at > ?)
-        "#,
-    )
-    .bind(&token_hash)
-    .bind(&now)
-    .fetch_optional(pool)
-    .await?
-    .ok_or(AppError::Unauthorized)?;
-
-    let session_id: String = row.get("id");
-    if should_touch_auth_session(&session_id).await {
-        sqlx::query("UPDATE auth_sessions SET last_used_at = ? WHERE id = ?")
-            .bind(&now)
-            .bind(&session_id)
-            .execute(pool)
+    let identity = database.lookup_identity(&token_hash, &now).await?;
+    if should_touch_auth_session(&identity.session_id).await {
+        database
+            .touch_auth_session(&identity.session_id, &now)
             .await?;
     }
 
-    Ok(RequestIdentity {
-        session_id,
-        user_id: row.get("user_id"),
-        creator_id: row.get("creator_id"),
-        scopes: serde_json::from_str(&row.get::<String, _>("scopes_json"))?,
-    })
+    Ok(identity)
 }
 
 pub fn hash_token(token: &str) -> String {
+    hash_token_with_secret(
+        token,
+        std::env::var("VANTA_TOKEN_HASH_SECRET").ok().as_deref(),
+    )
+}
+
+pub(crate) fn hash_token_with_secret(token: &str, secret: Option<&str>) -> String {
+    if let Some(secret) = secret.filter(|value| !value.trim().is_empty()) {
+        type HmacSha256 = Hmac<Sha256>;
+        let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
+            .expect("HMAC-SHA256 accepts any key length");
+        mac.update(token.as_bytes());
+        return format!("{:x}", mac.finalize().into_bytes());
+    }
+
     let mut hasher = Sha256::new();
     hasher.update(token.as_bytes());
     format!("{:x}", hasher.finalize())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::hash_token_with_secret;
+
+    #[test]
+    fn token_hash_uses_legacy_sha256_without_secret() {
+        assert_eq!(
+            hash_token_with_secret("session-token", None),
+            "c101e911469c969171040b50d70543313cf968fdef5bacc780776f8fb399ab36"
+        );
+    }
+
+    #[test]
+    fn token_hash_uses_secret_hmac_when_configured() {
+        let legacy = hash_token_with_secret("session-token", None);
+        let keyed =
+            hash_token_with_secret("session-token", Some("0123456789abcdef0123456789abcdef"));
+        let other_secret =
+            hash_token_with_secret("session-token", Some("fedcba9876543210fedcba9876543210"));
+
+        assert_ne!(keyed, legacy);
+        assert_ne!(keyed, other_secret);
+        assert_eq!(
+            keyed,
+            hash_token_with_secret("session-token", Some("0123456789abcdef0123456789abcdef")),
+        );
+    }
 }
 
 pub fn extract_bearer_token(headers: &HeaderMap) -> AppResult<Option<String>> {

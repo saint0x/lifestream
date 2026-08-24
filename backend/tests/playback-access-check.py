@@ -3,7 +3,7 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-AUTH = "Bearer lifestream-local-dev-token"
+AUTH = "Bearer vanta-local-dev-token"
 UPLOAD_ID = "upl-0228ae47576448f78a3cdaec06a8465b"
 MANIFEST_PATH = "processed/crt-deepsaint/7b3542fb-6783-4cc7-9a20-bb33014c4645/hls/master.m3u8"
 

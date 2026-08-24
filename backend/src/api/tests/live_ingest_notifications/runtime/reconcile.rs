@@ -22,12 +22,14 @@ fn collaboration_topology_changes_rebuild_runtime_artifacts_for_active_ingest() 
 async fn collaboration_topology_changes_rebuild_runtime_artifacts_for_active_ingest_async()
 -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let host_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let host_headers = auth_headers(&host_token);
-    let guest_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    let guest_token = insert_creator_auth_session(&state.pool, &guest_creator).await?;
+    let guest_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    let guest_token =
+        insert_creator_auth_session(state.db.sqlite_adapter(), &guest_creator).await?;
     let guest_headers = auth_headers(&guest_token);
-    let broadcast = insert_ready_collaboration_broadcast(&state.pool, &creator).await?;
+    let broadcast =
+        insert_ready_collaboration_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -178,7 +180,7 @@ async fn collaboration_topology_changes_rebuild_runtime_artifacts_for_active_ing
     }
 
     let refreshed_output = crate::api::control::fetch_live_runtime_output_for_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &connected.session.id,
     )
     .await?;
@@ -209,7 +211,7 @@ fn runtime_reconcile_detects_missing_collaboration_engine_artifact() -> AppResul
 
 async fn runtime_reconcile_detects_missing_collaboration_engine_artifact_async() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -232,7 +234,7 @@ async fn runtime_reconcile_detects_missing_collaboration_engine_artifact_async()
 
     let (collaboration_session, collaboration_participant) =
         insert_shared_chat_collaboration_for_current_broadcast(
-            &state.pool,
+            state.db.sqlite_adapter(),
             &creator,
             "crt-atlas",
             "usr-2",
@@ -277,8 +279,12 @@ async fn runtime_reconcile_detects_missing_collaboration_engine_artifact_async()
         .await
         .map_err(AppError::Io)?;
 
-    let session =
-        fetch_live_ingest_session_by_id(&state.pool, &creator.id, &connected.session.id).await?;
+    let session = fetch_live_ingest_session_by_id(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.id,
+    )
+    .await?;
     let reconciled = reconcile_live_runtime_output_artifacts(&state, &session)
         .await?
         .expect("reconciled runtime output");
@@ -291,9 +297,12 @@ async fn runtime_reconcile_detects_missing_collaboration_engine_artifact_async()
             .is_some_and(|error| error.contains("collaboration engine artifact missing"))
     );
 
-    let record =
-        fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
-            .await?;
+    let record = fetch_creator_live_ingest_session_record(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.id,
+    )
+    .await?;
     assert!(
         record
             .artifact_health
@@ -314,7 +323,7 @@ async fn runtime_reconcile_detects_missing_collaboration_engine_artifact_async()
 #[tokio::test]
 async fn runtime_report_reconciles_missing_manifest_into_packaging_drift() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -358,8 +367,12 @@ async fn runtime_report_reconciles_missing_manifest_into_packaging_drift() -> Ap
     assert_eq!(runtime_output.packaging_status, "ready");
     assert!(runtime_output.last_error.is_none());
 
-    let session =
-        fetch_live_ingest_session_by_id(&state.pool, &creator.id, &connected.session.id).await?;
+    let session = fetch_live_ingest_session_by_id(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.id,
+    )
+    .await?;
     let reconciled = reconcile_live_runtime_output_artifacts(&state, &session)
         .await?
         .expect("reconciled runtime output");
@@ -372,9 +385,12 @@ async fn runtime_report_reconciles_missing_manifest_into_packaging_drift() -> Ap
             .is_some_and(|error| error.contains(manifest_relative_path.as_str()))
     );
 
-    let record =
-        fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
-            .await?;
+    let record = fetch_creator_live_ingest_session_record(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.id,
+    )
+    .await?;
     assert!(
         record
             .recent_events
@@ -413,7 +429,7 @@ async fn runtime_report_reconciles_missing_manifest_into_packaging_drift() -> Ap
 #[tokio::test]
 async fn runtime_report_rejects_ready_packaging_without_manifest() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -458,8 +474,8 @@ async fn runtime_report_rejects_ready_packaging_without_manifest() -> AppResult<
 #[tokio::test]
 async fn runtime_report_rejects_recovery_to_healthy_after_termination() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -535,7 +551,7 @@ async fn runtime_report_rejects_recovery_to_healthy_after_termination() -> AppRe
 #[tokio::test]
 async fn runtime_report_allows_archive_completion_after_disconnect() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -615,7 +631,7 @@ async fn runtime_report_allows_archive_completion_after_disconnect() -> AppResul
 async fn background_runtime_reconciliation_promotes_archive_finalizing_to_complete() -> AppResult<()>
 {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -673,7 +689,7 @@ async fn background_runtime_reconciliation_promotes_archive_finalizing_to_comple
     .bind(Utc::now().to_rfc3339())
     .bind(Utc::now().to_rfc3339())
     .bind(&connected.session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let (mut subscription, _) = state
@@ -684,9 +700,12 @@ async fn background_runtime_reconciliation_promotes_archive_finalizing_to_comple
     let reconciled = reconcile_live_runtime_output_artifacts_background(state.clone()).await?;
     assert!(reconciled >= 1);
 
-    let record =
-        fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
-            .await?;
+    let record = fetch_creator_live_ingest_session_record(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.id,
+    )
+    .await?;
     let output = record.runtime_output.expect("runtime output should exist");
     assert_eq!(output.runtime_state, "archive_complete");
     assert_eq!(output.packaging_status, "ready");
@@ -754,7 +773,7 @@ async fn background_runtime_reconciliation_promotes_archive_finalizing_to_comple
 #[tokio::test]
 async fn runtime_termination_closes_session_with_distinct_terminal_event() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -785,9 +804,12 @@ async fn runtime_termination_closes_session_with_distinct_terminal_event() -> Ap
 
     assert_eq!(terminated.status, "terminated");
 
-    let record =
-        fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
-            .await?;
+    let record = fetch_creator_live_ingest_session_record(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.id,
+    )
+    .await?;
     let runtime_output = record.runtime_output.expect("runtime output should exist");
 
     assert_eq!(runtime_output.runtime_state, "disconnected");
@@ -814,7 +836,7 @@ async fn runtime_termination_closes_session_with_distinct_terminal_event() -> Ap
 async fn background_runtime_artifact_reconciliation_repairs_missing_manifest_without_reads()
 -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -857,15 +879,18 @@ async fn background_runtime_artifact_reconciliation_repairs_missing_manifest_wit
         "UPDATE live_runtime_outputs SET runtime_state = 'healthy', packaging_status = 'ready', archive_status = 'not_started', last_error = NULL WHERE session_id = ?",
     )
     .bind(&connected.session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let reconciled = reconcile_live_runtime_output_artifacts_background(state.clone()).await?;
     assert!(reconciled >= 1);
 
-    let record =
-        fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
-            .await?;
+    let record = fetch_creator_live_ingest_session_record(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.id,
+    )
+    .await?;
     let output = record.runtime_output.expect("runtime output should exist");
     assert_eq!(output.runtime_state, "packaging_degraded");
     assert_eq!(output.packaging_status, "degraded");

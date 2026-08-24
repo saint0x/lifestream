@@ -4,11 +4,11 @@ pub(crate) async fn list_creator_collaboration_sessions(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<Vec<CollaborationSession>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     reconcile_collaboration_expiry_for_host_read(&state, creator_id).await?;
     Ok(Json(
-        fetch_collaboration_sessions_for_host(&state.pool, creator_id).await?,
+        fetch_collaboration_sessions_for_host(state.db.sqlite_adapter(), creator_id).await?,
     ))
 }
 
@@ -17,7 +17,7 @@ pub(crate) async fn create_collaboration_session(
     headers: HeaderMap,
     Json(input): Json<CreateCollaborationSessionRequest>,
 ) -> AppResult<Json<CollaborationSession>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     enforce_rate_limit(
         &state,
         &format!("creator-collab-session:{}", identity.user_id),
@@ -26,12 +26,16 @@ pub(crate) async fn create_collaboration_session(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_collaboration_enabled(&state.pool, creator_id).await?;
-    let broadcast =
-        resolve_collaboration_broadcast(&state.pool, creator_id, input.broadcast_id.as_deref())
-            .await?;
+    ensure_creator_collaboration_enabled(state.db.sqlite_adapter(), creator_id).await?;
+    let broadcast = resolve_collaboration_broadcast(
+        state.db.sqlite_adapter(),
+        creator_id,
+        input.broadcast_id.as_deref(),
+    )
+    .await?;
     if let Some(existing) =
-        fetch_active_collaboration_session_for_broadcast(&state.pool, &broadcast.id).await?
+        fetch_active_collaboration_session_for_broadcast(state.db.sqlite_adapter(), &broadcast.id)
+            .await?
     {
         return Err(AppError::BadRequest(format!(
             "a collaboration session is already active for broadcast {}",
@@ -67,7 +71,7 @@ pub(crate) async fn create_collaboration_session(
     .bind(&recording_policy)
     .bind(&now)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let participant_id = format!("colp-{}", Uuid::new_v4().simple());
@@ -86,7 +90,7 @@ pub(crate) async fn create_collaboration_session(
     .bind(&now)
     .bind(&now)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     sqlx::query(
@@ -95,7 +99,7 @@ pub(crate) async fn create_collaboration_session(
     .bind(&now)
     .bind(&now)
     .bind(&session_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     publish_collaboration_event(
         &state,
@@ -114,7 +118,8 @@ pub(crate) async fn create_collaboration_session(
     .await?;
 
     Ok(Json(
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?,
+        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
+            .await?,
     ))
 }
 
@@ -123,11 +128,12 @@ pub(crate) async fn get_creator_collaboration_session(
     headers: HeaderMap,
     Path(session_id): Path<String>,
 ) -> AppResult<Json<CollaborationSession>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
     Ok(Json(
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?,
+        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
+            .await?,
     ))
 }
 
@@ -136,13 +142,14 @@ pub(crate) async fn get_creator_collaboration_runtime(
     headers: HeaderMap,
     Path(session_id): Path<String>,
 ) -> AppResult<Json<CollaborationRuntimeResponse>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
     let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
+        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
+            .await?;
     Ok(Json(
-        build_collaboration_runtime_response_for_host(&state.pool, session).await?,
+        build_collaboration_runtime_response_for_host(state.db.sqlite_adapter(), session).await?,
     ))
 }
 
@@ -151,13 +158,15 @@ pub(crate) async fn get_creator_collaboration_control(
     headers: HeaderMap,
     Path(session_id): Path<String>,
 ) -> AppResult<Json<CreatorCollaborationControlResponse>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
     let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
+        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
+            .await?;
     Ok(Json(
-        build_creator_collaboration_control_response_for_host(&state.pool, session).await?,
+        build_creator_collaboration_control_response_for_host(state.db.sqlite_adapter(), session)
+            .await?,
     ))
 }
 
@@ -166,12 +175,17 @@ pub(crate) async fn get_creator_collaboration_socket_session(
     headers: HeaderMap,
     Path((session_id, socket_id)): Path<(String, String)>,
 ) -> AppResult<Json<CollaborationSocketPresence>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    let socket_session =
-        fetch_collaboration_socket_presence_by_id_raw(&state.pool, &session.id, &socket_id).await?;
+        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
+            .await?;
+    let socket_session = fetch_collaboration_socket_presence_by_id_raw(
+        state.db.sqlite_adapter(),
+        &session.id,
+        &socket_id,
+    )
+    .await?;
     Ok(Json(socket_session))
 }
 
@@ -180,12 +194,17 @@ pub(crate) async fn reconcile_creator_collaboration_socket_session(
     headers: HeaderMap,
     Path((session_id, socket_id)): Path<(String, String)>,
 ) -> AppResult<Json<CollaborationSocketPresenceReconciliationReport>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
-    let socket_session =
-        fetch_collaboration_socket_presence_by_id_raw(&state.pool, &session.id, &socket_id).await?;
+        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
+            .await?;
+    let socket_session = fetch_collaboration_socket_presence_by_id_raw(
+        state.db.sqlite_adapter(),
+        &session.id,
+        &socket_id,
+    )
+    .await?;
     if socket_session.session_id != session.id {
         return Err(AppError::NotFound);
     }
@@ -199,9 +218,10 @@ pub(crate) async fn reconcile_creator_collaboration_session(
     headers: HeaderMap,
     Path(session_id): Path<String>,
 ) -> AppResult<Json<CollaborationReconciliationReport>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
+    fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
+        .await?;
     Ok(Json(
         reconcile_single_collaboration_session(state, &session_id).await?,
     ))
@@ -213,13 +233,14 @@ pub(crate) async fn list_creator_collaboration_events(
     Path(session_id): Path<String>,
     Query(query): Query<CollaborationEventsQuery>,
 ) -> AppResult<Json<Vec<CollaborationEvent>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     reconcile_collaboration_session_expiry_for_read(&state, &session_id).await?;
-    fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
+    fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
+        .await?;
     Ok(Json(
         fetch_collaboration_events(
-            &state.pool,
+            state.db.sqlite_adapter(),
             &session_id,
             query.after_seq.unwrap_or(0),
             query.limit.unwrap_or(100),
@@ -233,10 +254,11 @@ pub(crate) async fn end_collaboration_session(
     headers: HeaderMap,
     Path(session_id): Path<String>,
 ) -> AppResult<Json<CollaborationSession>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     let session =
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?;
+        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
+            .await?;
     end_collaboration_session_internal(
         &state,
         &session,
@@ -249,6 +271,7 @@ pub(crate) async fn end_collaboration_session(
     .await?;
 
     Ok(Json(
-        fetch_collaboration_session_for_host(&state.pool, creator_id, &session_id).await?,
+        fetch_collaboration_session_for_host(state.db.sqlite_adapter(), creator_id, &session_id)
+            .await?,
     ))
 }

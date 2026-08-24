@@ -20,8 +20,8 @@ fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions() -> AppResul
 
 async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions_async() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let auth_token = insert_creator_auth_session(&state.pool, &creator).await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let auth_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -157,7 +157,7 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions_async()
 
     let (collaboration_session, collaboration_participant) =
         insert_shared_chat_collaboration_for_current_broadcast(
-            &state.pool,
+            state.db.sqlite_adapter(),
             &creator,
             "crt-atlas",
             "usr-2",
@@ -382,7 +382,8 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions_async()
                         })
             })
     );
-    let runtime = fetch_creator_live_runtime_response(&state.pool, &creator.id).await?;
+    let runtime =
+        fetch_creator_live_runtime_response(state.db.sqlite_adapter(), &creator.id).await?;
     assert!(runtime.telemetry_summary.probe_samples >= 1);
     assert!(runtime.telemetry_summary.collaboration_samples >= 1);
     assert!(runtime.telemetry_summary.mix_minus_samples >= 1);
@@ -1186,9 +1187,12 @@ async fn runtime_spec_is_provisioned_and_tracks_live_runtime_transitions_async()
             .iter()
             .any(|edge| edge["edgeKind"] == "program_to_audio_return")
     );
-    let record =
-        fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
-            .await?;
+    let record = fetch_creator_live_ingest_session_record(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.id,
+    )
+    .await?;
     assert!(
         record
             .recent_events

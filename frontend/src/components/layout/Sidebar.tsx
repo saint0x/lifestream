@@ -4,15 +4,12 @@ import {
   Radio,
   Film,
   Tv,
-  Compass,
   Bookmark,
   Users,
   Library,
   Settings,
-  Sparkles,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { repository } from "@/lib/repository";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatViewers } from "@/lib/format";
 import "./Sidebar.css";
@@ -22,7 +19,6 @@ const primary = [
   { to: "/live", label: "Live", Icon: Radio, end: false },
   { to: "/series", label: "Series", Icon: Tv, end: false },
   { to: "/films", label: "Films", Icon: Film, end: false },
-  { to: "/browse", label: "Browse", Icon: Compass, end: false },
 ] as const;
 
 const secondary = [
@@ -32,7 +28,6 @@ const secondary = [
 ] as const;
 
 const studio = [
-  { to: "/creator", label: "Creator", Icon: Sparkles },
   { to: "/settings", label: "Settings", Icon: Settings },
 ] as const;
 
@@ -42,9 +37,9 @@ export function Sidebar() {
   return (
     <aside className="ls-sidebar">
       <div className="ls-sidebar__brand">
-        <NavLink to="/" className="ls-sidebar__logo" aria-label="LIFESTREAM home">
+        <NavLink to="/" className="ls-sidebar__logo" aria-label="VANTA home">
           <span className="ls-sidebar__logo-mark" />
-          <span className="ls-sidebar__logo-text">LIFESTREAM</span>
+          <span className="ls-sidebar__logo-text">VANTA</span>
         </NavLink>
         <div className="ls-sidebar__wordmark mono">
           <span>v0.1.0</span>
@@ -98,9 +93,6 @@ export function Sidebar() {
           >
             <Icon size={16} strokeWidth={1.75} />
             <span>{label}</span>
-            {to === "/creator" && (
-              <span className="ls-sidebar__creator-dot" aria-hidden />
-            )}
           </NavLink>
         ))}
       </nav>
@@ -131,7 +123,7 @@ export function Sidebar() {
       )}
 
       <div className="ls-sidebar__footer mono">
-        <span>© LIFESTREAM</span>
+        <span>© VANTA</span>
         <span>/ 2026</span>
       </div>
     </aside>

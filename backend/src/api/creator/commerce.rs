@@ -194,7 +194,7 @@ pub(crate) async fn reconcile_single_membership_entitlement(
     user_id: &str,
     creator_id: &str,
 ) -> AppResult<CreatorMembershipReconciliationReport> {
-    let before = fetch_creator_membership(&state.pool, user_id, creator_id).await?;
+    let before = fetch_creator_membership(state.db.sqlite_adapter(), user_id, creator_id).await?;
     let now = Utc::now().to_rfc3339();
     let mut actions = Vec::new();
 
@@ -220,7 +220,7 @@ pub(crate) async fn reconcile_single_membership_entitlement(
         .bind(user_id)
         .bind(creator_id)
         .bind(&now)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
         if updated.rows_affected() > 0 {
             actions.push(UserEntitlementReconciliationAction {
@@ -231,12 +231,18 @@ pub(crate) async fn reconcile_single_membership_entitlement(
                 reason: "creator membership exceeded its renewal or end boundary".to_string(),
                 occurred_at: now.clone(),
             });
-            reconcile_playback_sessions_for_user(&state.pool, user_id, Some(creator_id), None)
-                .await?;
+            reconcile_playback_sessions_for_user(
+                state.db.sqlite_adapter(),
+                user_id,
+                Some(creator_id),
+                None,
+            )
+            .await?;
         }
     }
 
-    let membership = fetch_creator_membership(&state.pool, user_id, creator_id).await?;
+    let membership =
+        fetch_creator_membership(state.db.sqlite_adapter(), user_id, creator_id).await?;
     Ok(CreatorMembershipReconciliationReport {
         creator_id: creator_id.to_string(),
         user_id: user_id.to_string(),
@@ -251,7 +257,7 @@ pub(crate) async fn reconcile_single_purchase_entitlement(
     user_id: &str,
     purchase_id: &str,
 ) -> AppResult<ContentPurchaseReconciliationReport> {
-    let before = fetch_content_purchase_by_id(&state.pool, purchase_id).await?;
+    let before = fetch_content_purchase_by_id(state.db.sqlite_adapter(), purchase_id).await?;
     let now = Utc::now().to_rfc3339();
     let mut actions = Vec::new();
 
@@ -273,7 +279,7 @@ pub(crate) async fn reconcile_single_purchase_entitlement(
         .bind(purchase_id)
         .bind(user_id)
         .bind(&now)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
         if updated.rows_affected() > 0 {
             actions.push(UserEntitlementReconciliationAction {
@@ -285,7 +291,7 @@ pub(crate) async fn reconcile_single_purchase_entitlement(
                 occurred_at: now.clone(),
             });
             reconcile_playback_sessions_for_user(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 user_id,
                 Some(&before.creator_id),
                 Some(&before.upload_id),
@@ -294,7 +300,7 @@ pub(crate) async fn reconcile_single_purchase_entitlement(
         }
     }
 
-    let purchase = fetch_content_purchase_by_id(&state.pool, purchase_id).await?;
+    let purchase = fetch_content_purchase_by_id(state.db.sqlite_adapter(), purchase_id).await?;
     Ok(ContentPurchaseReconciliationReport {
         purchase_id: purchase_id.to_string(),
         user_id: user_id.to_string(),

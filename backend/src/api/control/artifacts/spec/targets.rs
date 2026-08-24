@@ -154,6 +154,7 @@ fn build_collaboration_program_targets(
     collaboration
         .programs
         .iter()
+        .filter(|program| program.target_broadcast_id.is_some())
         .map(|program| LiveRuntimeTarget {
             id: format!("lrt-program-{}-{}", session.id, program.id),
             session_id: session.id.clone(),

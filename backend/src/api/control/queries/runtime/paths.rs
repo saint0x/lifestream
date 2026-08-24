@@ -1,33 +1,67 @@
 use super::*;
 
-pub(crate) fn canonical_live_runtime_manifest_relative_path(session: &LiveIngestSession) -> String {
+pub(crate) const LIVE_RUNTIME_SPEC_RETENTION_DAYS: i64 = 30;
+pub(crate) const LIVE_PLAYBACK_ARTIFACT_RETENTION_HOURS: i64 = 24;
+pub(crate) const LIVE_MIRROR_ARTIFACT_RETENTION_HOURS: i64 = 24;
+pub(crate) const LIVE_ARCHIVE_RETENTION_DAYS: i64 = 3650;
+pub(crate) const LIVE_ARCHIVE_STAGING_RETENTION_HOURS: i64 = 24;
+
+pub(crate) fn live_playback_artifact_prefix(session: &LiveIngestSession) -> String {
     format!(
-        "live/{}/{}/{}/master.m3u8",
+        "live/{}/{}/{}",
         session.creator_id, session.broadcast_id, session.id
     )
 }
 
-pub(crate) fn canonical_live_runtime_archive_relative_path(session: &LiveIngestSession) -> String {
+pub(crate) fn live_archive_artifact_prefix(session: &LiveIngestSession) -> String {
     format!(
-        "archive/{}/{}/{}/final.mp4",
+        "archive/{}/{}/{}",
         session.creator_id, session.broadcast_id, session.id
     )
+}
+
+pub(crate) fn live_runtime_workspace_prefix(session: &LiveIngestSession) -> String {
+    format!(
+        "runtime/{}/{}/{}",
+        session.creator_id, session.broadcast_id, session.id
+    )
+}
+
+pub(crate) fn live_mirror_playback_artifact_prefix(
+    creator_id: &str,
+    broadcast_id: &str,
+    route_id: &str,
+) -> String {
+    format!("live/{creator_id}/{broadcast_id}/{route_id}")
+}
+
+pub(crate) fn live_mirror_archive_artifact_prefix(
+    creator_id: &str,
+    broadcast_id: &str,
+    route_id: &str,
+) -> String {
+    format!("archive/{creator_id}/{broadcast_id}/{route_id}")
+}
+
+pub(crate) fn canonical_live_runtime_manifest_relative_path(session: &LiveIngestSession) -> String {
+    format!("{}/master.m3u8", live_playback_artifact_prefix(session))
+}
+
+pub(crate) fn canonical_live_runtime_archive_relative_path(session: &LiveIngestSession) -> String {
+    format!("{}/final.mp4", live_archive_artifact_prefix(session))
 }
 
 pub(crate) fn canonical_live_runtime_archive_staging_relative_path(
     session: &LiveIngestSession,
 ) -> String {
     format!(
-        "archive/{}/{}/{}/staging/final.partial.mp4",
-        session.creator_id, session.broadcast_id, session.id
+        "{}/staging/final.partial.mp4",
+        live_archive_artifact_prefix(session)
     )
 }
 
 pub(crate) fn canonical_live_runtime_spec_relative_path(session: &LiveIngestSession) -> String {
-    format!(
-        "runtime/{}/{}/{}/spec.json",
-        session.creator_id, session.broadcast_id, session.id
-    )
+    format!("{}/spec.json", live_runtime_workspace_prefix(session))
 }
 
 pub(super) fn normalize_optional_path(value: Option<&str>) -> AppResult<Option<String>> {

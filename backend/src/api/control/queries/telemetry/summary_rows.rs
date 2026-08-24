@@ -46,11 +46,13 @@ pub(super) async fn fetch_summary_row(
                 THEN 1 ELSE 0 END
             ) AS repairable_validation_samples,
             SUM(CASE
-                WHEN json_extract(detail_json, '$.advisory.status') = 'critical'
+                WHEN sample_kind != 'session_connected'
+                  AND json_extract(detail_json, '$.advisory.status') = 'critical'
                 THEN 1 ELSE 0 END
             ) AS advisory_critical_samples,
             SUM(CASE
-                WHEN json_extract(detail_json, '$.advisory.status') = 'repairable'
+                WHEN sample_kind != 'session_connected'
+                  AND json_extract(detail_json, '$.advisory.status') = 'repairable'
                 THEN 1 ELSE 0 END
             ) AS advisory_repairable_samples,
             SUM(CASE

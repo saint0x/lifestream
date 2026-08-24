@@ -25,6 +25,71 @@ pub(crate) async fn fetch_series(
     Ok(items)
 }
 
+pub(crate) async fn fetch_series_page(
+    pool: &SqlitePool,
+    genre: Option<&str>,
+    originals_only: bool,
+    sort: &str,
+    limit: i64,
+    offset: i64,
+) -> AppResult<(Vec<Series>, i64)> {
+    let mut filters = Vec::new();
+    if genre.is_some() {
+        filters.push(
+            r#"EXISTS (
+                SELECT 1
+                FROM json_each(series.genres_json)
+                WHERE json_each.value = ?
+            )"#,
+        );
+    }
+    if originals_only {
+        filters.push("is_original = 1");
+    }
+    let where_clause = if filters.is_empty() {
+        String::new()
+    } else {
+        format!(" WHERE {}", filters.join(" AND "))
+    };
+    let order_clause = match sort {
+        "newest" => "year DESC, score DESC",
+        "score" => "score DESC, year DESC",
+        "title" => "title COLLATE NOCASE ASC",
+        _ => "trending DESC, score DESC, year DESC",
+    };
+    let select_query = format!(
+        r#"
+        SELECT id, slug, title, tagline, synopsis, year, rating, genres_json,
+               images_json, credits_json, score, is_original, trending, hero_color,
+               status, total_episodes
+        FROM series
+        {where_clause}
+        ORDER BY {order_clause}
+        LIMIT ? OFFSET ?
+        "#
+    );
+    let count_query = format!("SELECT COUNT(*) AS total FROM series {where_clause}");
+
+    let mut count_statement = sqlx::query(&count_query);
+    let mut select_statement = sqlx::query(&select_query);
+    if let Some(genre) = genre {
+        count_statement = count_statement.bind(genre);
+        select_statement = select_statement.bind(genre);
+    }
+    let total: i64 = count_statement.fetch_one(pool).await?.get("total");
+    let rows = select_statement
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(pool)
+        .await?;
+
+    let mut items = Vec::with_capacity(rows.len());
+    for row in rows {
+        items.push(series_from_row(pool, row, None).await?);
+    }
+    Ok((items, total))
+}
+
 pub(crate) async fn fetch_series_by_genre(
     pool: &SqlitePool,
     genre: &str,
@@ -83,6 +148,28 @@ pub(crate) async fn fetch_series_by_id(
     series_from_row(pool, row, progress).await
 }
 
+pub(crate) async fn fetch_series_by_episode_id(
+    pool: &SqlitePool,
+    episode_id: &str,
+    progress: Option<&ContinueWatchingEntry>,
+) -> AppResult<Series> {
+    let row = sqlx::query(
+        r#"
+        SELECT s.id, s.slug, s.title, s.tagline, s.synopsis, s.year, s.rating,
+               s.genres_json, s.images_json, s.credits_json, s.score, s.is_original,
+               s.trending, s.hero_color, s.status, s.total_episodes
+        FROM series s
+        INNER JOIN episodes e ON e.series_id = s.id
+        WHERE e.id = ?
+        "#,
+    )
+    .bind(episode_id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    series_from_row(pool, row, progress).await
+}
+
 pub(crate) async fn fetch_series_previews_by_ids(
     pool: &SqlitePool,
     ids: &[String],
@@ -114,42 +201,6 @@ pub(crate) async fn fetch_series_previews_by_ids(
         }
     }
     Ok(ordered)
-}
-
-pub(crate) async fn fetch_episode_by_id(pool: &SqlitePool, episode_id: &str) -> AppResult<Episode> {
-    let row = sqlx::query(
-        r#"
-        SELECT id, series_id, season_number, episode_number, title, synopsis, duration_sec, aired_at, thumbnail,
-               CASE WHEN EXISTS (
-                    SELECT 1
-                    FROM media_assets ma
-                    WHERE ma.upload_id = episodes.id
-                      AND ma.status IN ('ready', 'published')
-               ) THEN 1 ELSE 0 END AS playback_ready
-        FROM episodes
-        WHERE id = ?
-        "#,
-    )
-    .bind(episode_id)
-    .fetch_optional(pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
-
-    Ok(Episode {
-        id: row.get("id"),
-        series_id: row.get("series_id"),
-        season_number: row.get("season_number"),
-        episode_number: row.get("episode_number"),
-        title: row.get("title"),
-        synopsis: row.get("synopsis"),
-        duration_sec: row.get("duration_sec"),
-        aired_at: row.get("aired_at"),
-        thumbnail: row.get("thumbnail"),
-        progress_sec: None,
-        playback_session_url: (row.get::<i64, _>("playback_ready") == 1)
-            .then(|| playback_content_session_api_url(&row.get::<String, _>("id"))),
-        playback_ready: row.get::<i64, _>("playback_ready") == 1,
-    })
 }
 
 async fn series_from_row(

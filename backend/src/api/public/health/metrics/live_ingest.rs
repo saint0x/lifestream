@@ -7,192 +7,192 @@ pub(super) fn write_live_ingest_metrics(
 ) {
     write_gauge(
         body,
-        "lifestream_live_ingest_active_sessions",
+        "vanta_live_ingest_active_sessions",
         live_ingest_overview.active_sessions,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_stale_sessions",
+        "vanta_live_ingest_stale_sessions",
         live_ingest_overview.stale_sessions,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_terminal_sessions",
+        "vanta_live_ingest_terminal_sessions",
         live_ingest_overview.terminal_sessions,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_ready_outputs",
+        "vanta_live_ingest_ready_outputs",
         live_ingest_overview.ready_outputs,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_degraded_outputs",
+        "vanta_live_ingest_degraded_outputs",
         live_ingest_overview.degraded_outputs,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_failed_outputs",
+        "vanta_live_ingest_failed_outputs",
         live_ingest_overview.failed_outputs,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_archive_finalizing_outputs",
+        "vanta_live_ingest_archive_finalizing_outputs",
         live_ingest_overview.archive_finalizing_outputs,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_archive_complete_outputs",
+        "vanta_live_ingest_archive_complete_outputs",
         live_ingest_overview.archive_complete_outputs,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_artifact_attention_outputs",
+        "vanta_live_ingest_artifact_attention_outputs",
         live_ingest_overview.artifact_attention_outputs,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_manifest_path_missing_outputs",
+        "vanta_live_ingest_manifest_path_missing_outputs",
         live_ingest_overview.manifest_path_missing_outputs,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_archive_path_missing_outputs",
+        "vanta_live_ingest_archive_path_missing_outputs",
         live_ingest_overview.archive_path_missing_outputs,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_telemetry_samples",
+        "vanta_live_ingest_telemetry_samples",
         live_ingest_overview.total_samples,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_degraded_samples",
+        "vanta_live_ingest_degraded_samples",
         live_ingest_overview.degraded_samples,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_failure_samples",
+        "vanta_live_ingest_failure_samples",
         live_ingest_overview.failure_samples,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_advisory_critical_samples",
+        "vanta_live_ingest_advisory_critical_samples",
         live_ingest_overview.advisory_critical_samples,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_advisory_repairable_samples",
+        "vanta_live_ingest_advisory_repairable_samples",
         live_ingest_overview.advisory_repairable_samples,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_runtime_artifact_reconciliation_samples",
+        "vanta_live_ingest_runtime_artifact_reconciliation_samples",
         live_ingest_overview.runtime_artifact_reconciliation_samples,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_runtime_archive_completion_samples",
+        "vanta_live_ingest_runtime_archive_completion_samples",
         live_ingest_overview.runtime_archive_completion_samples,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_peak_host_channel_targets",
+        "vanta_live_ingest_peak_host_channel_targets",
         live_ingest_overview.peak_host_channel_count,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_peak_mirror_channel_targets",
+        "vanta_live_ingest_peak_mirror_channel_targets",
         live_ingest_overview.peak_mirror_channel_count,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_peak_shared_program_mirror_channel_targets",
+        "vanta_live_ingest_peak_shared_program_mirror_channel_targets",
         live_ingest_overview.peak_shared_program_mirror_channel_count,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_peak_guest_isolated_mirror_channel_targets",
+        "vanta_live_ingest_peak_guest_isolated_mirror_channel_targets",
         live_ingest_overview.peak_guest_isolated_mirror_channel_count,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_peak_archive_targets",
+        "vanta_live_ingest_peak_archive_targets",
         live_ingest_overview.peak_archive_target_count,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_peak_active_targets",
+        "vanta_live_ingest_peak_active_targets",
         live_ingest_overview.peak_active_target_count,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_peak_degraded_targets",
+        "vanta_live_ingest_peak_degraded_targets",
         live_ingest_overview.peak_degraded_target_count,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_peak_armed_targets",
+        "vanta_live_ingest_peak_armed_targets",
         live_ingest_overview.peak_armed_target_count,
     );
     write_gauge(
         body,
-        "lifestream_live_ingest_peak_pending_source_targets",
+        "vanta_live_ingest_peak_pending_source_targets",
         live_ingest_overview.peak_pending_source_target_count,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_last_host_channel_targets",
+        "vanta_live_ingest_last_host_channel_targets",
         live_ingest_overview.last_host_channel_count,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_last_mirror_channel_targets",
+        "vanta_live_ingest_last_mirror_channel_targets",
         live_ingest_overview.last_mirror_channel_count,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_last_shared_program_mirror_channel_targets",
+        "vanta_live_ingest_last_shared_program_mirror_channel_targets",
         live_ingest_overview.last_shared_program_mirror_channel_count,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_last_guest_isolated_mirror_channel_targets",
+        "vanta_live_ingest_last_guest_isolated_mirror_channel_targets",
         live_ingest_overview.last_guest_isolated_mirror_channel_count,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_last_archive_targets",
+        "vanta_live_ingest_last_archive_targets",
         live_ingest_overview.last_archive_target_count,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_last_active_targets",
+        "vanta_live_ingest_last_active_targets",
         live_ingest_overview.last_active_target_count,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_last_degraded_targets",
+        "vanta_live_ingest_last_degraded_targets",
         live_ingest_overview.last_degraded_target_count,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_last_armed_targets",
+        "vanta_live_ingest_last_armed_targets",
         live_ingest_overview.last_armed_target_count,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_last_pending_source_targets",
+        "vanta_live_ingest_last_pending_source_targets",
         live_ingest_overview.last_pending_source_target_count,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_ready_latency_seconds",
+        "vanta_live_ingest_ready_latency_seconds",
         live_ingest_overview.avg_ready_latency_seconds,
     );
     write_optional_gauge(
         body,
-        "lifestream_live_ingest_archive_completion_seconds",
+        "vanta_live_ingest_archive_completion_seconds",
         live_ingest_overview.avg_archive_completion_seconds,
     );
 }

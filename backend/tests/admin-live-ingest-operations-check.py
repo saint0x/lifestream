@@ -4,8 +4,8 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-AUTH = "Bearer lifestream-local-dev-token"
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+AUTH = "Bearer vanta-local-dev-token"
 
 
 def req(path, method="GET", body=None, headers=None):
@@ -38,6 +38,17 @@ def cleanup_active_broadcast():
     if current is not None:
         ended = req(f"/api/v1/creator/me/broadcasts/{current['id']}/end", "POST")
         assert ended[0] == 200, ended
+    conn = sqlite3.connect(DB)
+    conn.execute(
+        "UPDATE broadcasts SET status = 'ended', ended_at = COALESCE(ended_at, ?), duration_sec = COALESCE(duration_sec, 0) WHERE creator_id = ? AND status IN ('ready', 'live')",
+        ("2026-08-21T13:00:00+00:00", "crt-deepsaint"),
+    )
+    conn.execute(
+        "UPDATE creator_profiles SET live_status = 'offline', current_broadcast_id = NULL WHERE id = ?",
+        ("crt-deepsaint",),
+    )
+    conn.commit()
+    conn.close()
 
 
 cleanup_active_broadcast()
@@ -53,6 +64,21 @@ started = req(
         "notifyFollowers": False,
     },
 )
+if started[0] == 400 and started[1] == {
+    "error": "bad request: an active or pending broadcast already exists"
+}:
+    cleanup_active_broadcast()
+    started = req(
+        "/api/v1/creator/me/broadcasts/start",
+        "POST",
+        {
+            "title": "Admin ingest operator validation",
+            "category": "Tech",
+            "tags": ["admin", "ingest", "ops"],
+            "isMature": False,
+            "notifyFollowers": False,
+        },
+    )
 assert started[0] == 200, started
 broadcast_id = started[1]["id"]
 
@@ -121,7 +147,7 @@ assert any(
 
 creator_live = req("/api/v1/creator/me/live")
 assert creator_live[0] == 200, creator_live
-assert creator_live[1]["profile"]["liveStatus"] == "ready", creator_live
+assert creator_live[1]["profile"]["liveStatus"] == "starting", creator_live
 assert creator_live[1]["currentBroadcast"] is None, creator_live
 assert creator_live[1]["pendingBroadcast"] is not None, creator_live
 

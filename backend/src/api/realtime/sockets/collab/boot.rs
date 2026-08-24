@@ -23,7 +23,7 @@ pub(super) async fn bootstrap_socket(
     channel_id: &str,
     sender: &mut futures_util::stream::SplitSink<WebSocket, Message>,
 ) -> Option<SocketBootstrap> {
-    if ensure_identity_session_active(&state.pool, identity)
+    if ensure_identity_session_active(state.db.sqlite_adapter(), identity)
         .await
         .is_err()
     {
@@ -32,21 +32,28 @@ pub(super) async fn bootstrap_socket(
     let session = fetch_current_collaboration_socket_session_view(state, session_id, identity)
         .await
         .ok()?;
-    let (presence_session_token, resumed, last_seen_at) =
-        register_collaboration_socket_session(&state.pool, &session, identity, session_token)
+    let (presence_session_token, resumed, last_seen_at) = register_collaboration_socket_session(
+        state.db.sqlite_adapter(),
+        &session,
+        identity,
+        session_token,
+    )
+    .await
+    .ok()?;
+    let session_grants =
+        fetch_collaboration_mirror_grants_for_session(state.db.sqlite_adapter(), session_id)
             .await
-            .ok()?;
-    let session_grants = fetch_collaboration_mirror_grants_for_session(&state.pool, session_id)
-        .await
-        .unwrap_or_default();
-    let session_pickups = fetch_collaboration_mirror_pickups_for_session(&state.pool, session_id)
-        .await
-        .unwrap_or_default();
-    let socket_sessions = fetch_collaboration_socket_presence_for_session(&state.pool, session_id)
-        .await
-        .unwrap_or_default();
+            .unwrap_or_default();
+    let session_pickups =
+        fetch_collaboration_mirror_pickups_for_session(state.db.sqlite_adapter(), session_id)
+            .await
+            .unwrap_or_default();
+    let socket_sessions =
+        fetch_collaboration_socket_presence_for_session(state.db.sqlite_adapter(), session_id)
+            .await
+            .unwrap_or_default();
     let topology = match build_collaboration_runtime_topology(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session,
         &session_grants,
         &session_pickups,
@@ -57,7 +64,7 @@ pub(super) async fn bootstrap_socket(
         Ok(topology) => topology,
         Err(_) => {
             let _ = disconnect_collaboration_socket_session(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 session_id,
                 &presence_session_token,
                 &last_seen_at,
@@ -67,7 +74,7 @@ pub(super) async fn bootstrap_socket(
         }
     };
     let (snapshot_events, replay_events) =
-        load_collaboration_socket_event_bootstrap(&state.pool, session_id, after_seq)
+        load_collaboration_socket_event_bootstrap(state.db.sqlite_adapter(), session_id, after_seq)
             .await
             .unwrap_or_default();
     let (subscription, _) = state.realtime.join(channel_id).await;

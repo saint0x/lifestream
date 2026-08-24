@@ -6,10 +6,10 @@ import sqlite3
 import urllib.error
 import urllib.request
 
-BASE = os.environ.get("LIFESTREAM_BASE_URL", "http://127.0.0.1:8080")
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-CREATOR = "Bearer lifestream-local-dev-token"
-VIEWER = "Bearer lifestream-viewer-token"
+BASE = os.environ.get("VANTA_BASE_URL", "http://127.0.0.1:8080")
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+CREATOR = "Bearer vanta-local-dev-token"
+VIEWER = "Bearer vanta-viewer-token"
 UPLOAD_ID = "upl-48e7a559a80f4fe6bcec7e29764768e8"
 
 
@@ -42,7 +42,7 @@ conn.execute(
         "usr-viewer",
         "viewer_one",
         "Viewer One",
-        "https://cdn.lifestream.local/avatar/viewer-one.jpg",
+        "https://cdn.vanta.local/avatar/viewer-one.jpg",
         "free",
         now,
     ),
@@ -57,7 +57,7 @@ conn.execute(
         "sess-viewer-local",
         "usr-viewer",
         "local-viewer",
-        hashlib.sha256("lifestream-viewer-token".encode()).hexdigest(),
+        hashlib.sha256("vanta-viewer-token".encode()).hexdigest(),
         json.dumps(["user"]),
         now,
     ),

@@ -3,9 +3,9 @@ use super::*;
 #[tokio::test]
 async fn ending_broadcast_with_stale_ingest_records_terminal_ingest_event() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let connected = connect_live_ingest(
         State(state.clone()),
@@ -25,32 +25,32 @@ async fn ending_broadcast_with_stale_ingest_records_terminal_ingest_event() -> A
     .bind(Utc::now().to_rfc3339())
     .bind(Utc::now().to_rfc3339())
     .bind(&connected.session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE broadcasts SET status = 'ready', ended_at = NULL, duration_sec = NULL WHERE id = ?",
     )
     .bind(&broadcast.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE creator_profiles SET live_status = 'ready', current_broadcast_id = ? WHERE id = ?",
     )
     .bind(&broadcast.id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query("UPDATE streamers SET is_live = 0 WHERE handle = ?")
         .bind(&creator.handle)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
     sqlx::query("DELETE FROM live_streams WHERE id = ?")
         .bind(format!("lv-{}-live", creator.handle))
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     let before = live_ingest_event_count_for_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &connected.session.id,
         "creator_broadcast_ended",
     )
@@ -62,7 +62,7 @@ async fn ending_broadcast_with_stale_ingest_records_terminal_ingest_event() -> A
     assert_eq!(ended.status, "ended");
 
     let after = live_ingest_event_count_for_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &connected.session.id,
         "creator_broadcast_ended",
     )
@@ -70,7 +70,8 @@ async fn ending_broadcast_with_stale_ingest_records_terminal_ingest_event() -> A
     assert_eq!(after, before + 1);
 
     let events =
-        fetch_live_ingest_events_for_session(&state.pool, &connected.session.id, 20).await?;
+        fetch_live_ingest_events_for_session(state.db.sqlite_adapter(), &connected.session.id, 20)
+            .await?;
     assert!(events.iter().any(|event| {
         event.event_type == "creator_broadcast_ended"
             && event.payload["details"]["actorUserId"] == Value::String("usr-1".to_string())
@@ -82,9 +83,9 @@ async fn ending_broadcast_with_stale_ingest_records_terminal_ingest_event() -> A
 #[tokio::test]
 async fn terminating_ingest_resets_creator_live_operational_metrics() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let connected = connect_live_ingest(
         State(state.clone()),
@@ -136,14 +137,16 @@ async fn terminating_ingest_resets_creator_live_operational_metrics() -> AppResu
     .0;
     assert_eq!(terminated.status, "terminated");
 
-    let control = fetch_creator_live_control_response(&state.pool, &creator.id).await?;
+    let control =
+        fetch_creator_live_control_response(state.db.sqlite_adapter(), &creator.id).await?;
     assert_eq!(control.current_viewers, 0);
     assert_eq!(control.health.current_bitrate_kbps, 0);
     assert_eq!(control.health.current_cpu_percent, 0);
     assert_eq!(control.health.current_dropped_frames, 0);
     assert_eq!(control.health.current_free_disk_gb, 0.0);
 
-    let runtime = fetch_creator_live_runtime_response(&state.pool, &creator.id).await?;
+    let runtime =
+        fetch_creator_live_runtime_response(state.db.sqlite_adapter(), &creator.id).await?;
     assert!(runtime.active_session.is_none());
     assert_eq!(runtime.snapshot.profile.live_status, "offline");
     assert_eq!(runtime.health.current_bitrate_kbps, 0);
@@ -157,12 +160,17 @@ async fn terminating_ingest_resets_creator_live_operational_metrics() -> AppResu
 #[tokio::test]
 async fn playback_token_cannot_access_source_media_path() -> AppResult<()> {
     let (state, _creator) = setup_test_state().await?;
-    let (_session_id, playback_token, asset) =
-        insert_playback_session_for_upload(&state.pool, "flm-afterglow", None, None, "free")
-            .await?;
+    let (_session_id, playback_token, asset) = insert_playback_session_for_upload(
+        state.db.sqlite_adapter(),
+        "flm-afterglow",
+        None,
+        None,
+        "free",
+    )
+    .await?;
 
     let allowed = validate_playback_session_token_for_path(
-        &state.pool,
+        &state.db,
         &playback_token,
         asset
             .playback_path
@@ -177,7 +185,7 @@ async fn playback_token_cannot_access_source_media_path() -> AppResult<()> {
         .as_deref()
         .expect("fixture asset has poster path");
     let poster =
-        validate_playback_session_token_for_path(&state.pool, &playback_token, poster_path).await?;
+        validate_playback_session_token_for_path(&state.db, &playback_token, poster_path).await?;
     assert_eq!(poster.content_id, "flm-afterglow");
     let thumbnail_path = asset
         .variants
@@ -186,12 +194,12 @@ async fn playback_token_cannot_access_source_media_path() -> AppResult<()> {
         .map(|variant| variant.relative_path.as_str())
         .expect("fixture asset should have a thumbnail derivative");
     let thumbnail =
-        validate_playback_session_token_for_path(&state.pool, &playback_token, thumbnail_path)
+        validate_playback_session_token_for_path(&state.db, &playback_token, thumbnail_path)
             .await?;
     assert_eq!(thumbnail.content_id, "flm-afterglow");
 
     let source_error =
-        validate_playback_session_token_for_path(&state.pool, &playback_token, &asset.source_path)
+        validate_playback_session_token_for_path(&state.db, &playback_token, &asset.source_path)
             .await
             .expect_err("source path must not be authorized by playback token");
     assert!(matches!(source_error, AppError::Forbidden));
@@ -201,9 +209,10 @@ async fn playback_token_cannot_access_source_media_path() -> AppResult<()> {
 #[tokio::test]
 async fn revoking_auth_session_expires_bound_playback_session() -> AppResult<()> {
     let (state, _creator) = setup_test_state().await?;
-    let playback_token = insert_user_auth_session(&state.pool, "usr-viewer", &["user"]).await?;
-    let identity = lookup_identity(&state.pool, &playback_token).await?;
-    let target = fetch_upload_playback_target(&state.pool, "flm-afterglow").await?;
+    let playback_token =
+        insert_user_auth_session(state.db.sqlite_adapter(), "usr-viewer", &["user"]).await?;
+    let identity = lookup_identity(&state.db, &playback_token).await?;
+    let target = fetch_upload_playback_target(state.db.sqlite_adapter(), "flm-afterglow").await?;
 
     let grant = create_content_playback_session(
         State(state.clone()),
@@ -221,10 +230,11 @@ async fn revoking_auth_session_expires_bound_playback_session() -> AppResult<()>
     )
     .await?;
 
-    let session = fetch_playback_session_record_by_id(&state.pool, &grant.session.id).await?;
+    let session =
+        fetch_playback_session_record_by_id(state.db.sqlite_adapter(), &grant.session.id).await?;
     assert!(session.expires_at <= Utc::now().to_rfc3339());
 
-    let error = validate_playback_session(&state.pool, &grant.session.id, &grant.playback_token)
+    let error = validate_playback_session(&state.db, &grant.session.id, &grant.playback_token)
         .await
         .expect_err("revoked auth session must invalidate bound playback token");
     assert!(matches!(error, AppError::Unauthorized));
@@ -234,11 +244,16 @@ async fn revoking_auth_session_expires_bound_playback_session() -> AppResult<()>
 #[tokio::test]
 async fn admin_can_inspect_and_reconcile_playback_session_by_id() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let (session_id, playback_token, _asset) =
-        insert_playback_session_for_upload(&state.pool, "flm-afterglow", None, None, "free")
-            .await?;
+    let (session_id, playback_token, _asset) = insert_playback_session_for_upload(
+        state.db.sqlite_adapter(),
+        "flm-afterglow",
+        None,
+        None,
+        "free",
+    )
+    .await?;
 
     let inspected = get_admin_playback_session(
         State(state.clone()),
@@ -253,7 +268,7 @@ async fn admin_can_inspect_and_reconcile_playback_session_by_id() -> AppResult<(
 
     sqlx::query("UPDATE uploads SET visibility = 'private' WHERE id = ?")
         .bind("flm-afterglow")
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     let report =
@@ -287,10 +302,16 @@ async fn admin_can_inspect_and_reconcile_playback_session_by_id() -> AppResult<(
 #[tokio::test]
 async fn refreshing_playback_session_rotates_token_and_invalidates_old_token() -> AppResult<()> {
     let (state, _creator) = setup_test_state().await?;
-    let (session_id, playback_token, asset) =
-        insert_playback_session_for_upload(&state.pool, "flm-afterglow", None, None, "free")
-            .await?;
-    let before = fetch_playback_session_record_by_id(&state.pool, &session_id).await?;
+    let (session_id, playback_token, asset) = insert_playback_session_for_upload(
+        state.db.sqlite_adapter(),
+        "flm-afterglow",
+        None,
+        None,
+        "free",
+    )
+    .await?;
+    let before =
+        fetch_playback_session_record_by_id(state.db.sqlite_adapter(), &session_id).await?;
 
     let refreshed = refresh_playback_session(
         State(state.clone()),
@@ -337,7 +358,7 @@ async fn refreshing_playback_session_rotates_token_and_invalidates_old_token() -
     assert_eq!(fetched.audio_tracks.len(), refreshed.audio_tracks.len());
 
     let allowed = validate_playback_session_token_for_path(
-        &state.pool,
+        &state.db,
         &refreshed.playback_token,
         asset
             .playback_path
@@ -348,7 +369,7 @@ async fn refreshing_playback_session_rotates_token_and_invalidates_old_token() -
     assert_eq!(allowed.content_id, "flm-afterglow");
 
     let old_path_error = validate_playback_session_token_for_path(
-        &state.pool,
+        &state.db,
         &playback_token,
         asset
             .playback_path
@@ -365,20 +386,25 @@ async fn refreshing_playback_session_rotates_token_and_invalidates_old_token() -
 async fn refreshing_playback_session_fails_closed_if_token_was_rotated_concurrently()
 -> AppResult<()> {
     let (state, _creator) = setup_test_state().await?;
-    let (session_id, playback_token, _asset) =
-        insert_playback_session_for_upload(&state.pool, "flm-afterglow", None, None, "free")
-            .await?;
+    let (session_id, playback_token, _asset) = insert_playback_session_for_upload(
+        state.db.sqlite_adapter(),
+        "flm-afterglow",
+        None,
+        None,
+        "free",
+    )
+    .await?;
     let validated =
-        validate_playback_session_record(&state.pool, &session_id, &playback_token).await?;
+        validate_playback_session_record(&state.db, &session_id, &playback_token).await?;
 
     sqlx::query("UPDATE playback_sessions SET token_hash = ? WHERE id = ?")
         .bind(hash_token("test-concurrent-rotation"))
         .bind(&session_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     let result = super::super::playback::rotate_playback_session_token_for_refresh(
-        &state.pool,
+        &state.db,
         validated,
         &playback_token,
     )
@@ -408,7 +434,7 @@ async fn stale_media_worker_cannot_overwrite_newer_processing_attempt() -> AppRe
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let job_id: String = row.get("id");
     let old_lease = (Utc::now() - chrono::Duration::minutes(10)).to_rfc3339();
@@ -420,7 +446,7 @@ async fn stale_media_worker_cannot_overwrite_newer_processing_attempt() -> AppRe
     .bind(&old_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'processing', updated_at = ? WHERE upload_job_id = ? AND creator_id = ?",
@@ -428,7 +454,7 @@ async fn stale_media_worker_cannot_overwrite_newer_processing_attempt() -> AppRe
     .bind(&old_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     sqlx::query(
@@ -437,7 +463,7 @@ async fn stale_media_worker_cannot_overwrite_newer_processing_attempt() -> AppRe
     .bind(&newer_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'uploaded', updated_at = ? WHERE upload_job_id = ? AND creator_id = ?",
@@ -445,11 +471,11 @@ async fn stale_media_worker_cannot_overwrite_newer_processing_attempt() -> AppRe
     .bind(&newer_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let updated = fail_media_job_for_lease(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator.id,
         &job_id,
         "stale worker failure",
@@ -458,9 +484,10 @@ async fn stale_media_worker_cannot_overwrite_newer_processing_attempt() -> AppRe
     )
     .await?;
 
-    let refreshed_job = fetch_upload_job_by_id(&state.pool, &creator.id, &job_id).await?;
+    let refreshed_job =
+        fetch_upload_job_by_id(state.db.sqlite_adapter(), &creator.id, &job_id).await?;
     let refreshed_asset =
-        fetch_media_asset_by_upload_job(&state.pool, &creator.id, &job_id).await?;
+        fetch_media_asset_by_upload_job(state.db.sqlite_adapter(), &creator.id, &job_id).await?;
 
     assert!(!updated);
     assert_eq!(refreshed_job.status, "uploaded");
@@ -487,7 +514,7 @@ async fn stale_processing_upload_job_materializes_as_uploaded_on_creator_read() 
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let job_id: String = row.get("id");
     let stale_lease = (Utc::now() - chrono::Duration::minutes(10)).to_rfc3339();
@@ -498,7 +525,7 @@ async fn stale_processing_upload_job_materializes_as_uploaded_on_creator_read() 
     .bind(&stale_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'processing', updated_at = ? WHERE upload_job_id = ? AND creator_id = ?",
@@ -506,16 +533,16 @@ async fn stale_processing_upload_job_materializes_as_uploaded_on_creator_read() 
     .bind(&stale_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let jobs = fetch_upload_jobs(&state.pool, &creator.id).await?;
+    let jobs = fetch_upload_jobs(state.db.sqlite_adapter(), &creator.id).await?;
     let refreshed_job = jobs
         .into_iter()
         .find(|job| job.id == job_id)
         .expect("upload job must still be readable");
     let refreshed_asset =
-        fetch_media_asset_by_upload_job(&state.pool, &creator.id, &job_id).await?;
+        fetch_media_asset_by_upload_job(state.db.sqlite_adapter(), &creator.id, &job_id).await?;
 
     assert_eq!(refreshed_job.status, "uploaded");
     assert_eq!(refreshed_asset.status, "uploaded");
@@ -532,7 +559,7 @@ async fn stale_processing_upload_job_materializes_as_uploaded_on_creator_read() 
 #[tokio::test]
 async fn stale_processing_upload_job_by_id_and_media_asset_reads_self_heal() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let row = sqlx::query(
         r#"
@@ -547,7 +574,7 @@ async fn stale_processing_upload_job_by_id_and_media_asset_reads_self_heal() -> 
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let job_id: String = row.get("id");
     let stale_lease = (Utc::now() - chrono::Duration::minutes(10)).to_rfc3339();
@@ -558,7 +585,7 @@ async fn stale_processing_upload_job_by_id_and_media_asset_reads_self_heal() -> 
     .bind(&stale_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'processing', updated_at = ? WHERE upload_job_id = ? AND creator_id = ?",
@@ -566,12 +593,13 @@ async fn stale_processing_upload_job_by_id_and_media_asset_reads_self_heal() -> 
     .bind(&stale_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let refreshed_job = fetch_upload_job_by_id(&state.pool, &creator.id, &job_id).await?;
+    let refreshed_job =
+        fetch_upload_job_by_id(state.db.sqlite_adapter(), &creator.id, &job_id).await?;
     let refreshed_asset =
-        fetch_media_asset_by_upload_job(&state.pool, &creator.id, &job_id).await?;
+        fetch_media_asset_by_upload_job(state.db.sqlite_adapter(), &creator.id, &job_id).await?;
     let asset_via_route =
         get_media_asset_for_upload_job(State(state.clone()), headers, Path(job_id.clone()))
             .await?
@@ -607,7 +635,7 @@ async fn stale_processing_admin_media_record_materializes_as_failed_at_attempt_c
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let job_id: String = row.get("id");
     let stale_lease = (Utc::now() - chrono::Duration::minutes(10)).to_rfc3339();
@@ -619,7 +647,7 @@ async fn stale_processing_admin_media_record_materializes_as_failed_at_attempt_c
     .bind(&stale_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'processing', updated_at = ? WHERE upload_job_id = ? AND creator_id = ?",
@@ -627,10 +655,11 @@ async fn stale_processing_admin_media_record_materializes_as_failed_at_attempt_c
     .bind(&stale_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let record = fetch_admin_media_job_record(&state.pool, &creator.id, &job_id).await?;
+    let record =
+        fetch_admin_media_job_record(state.db.sqlite_adapter(), &creator.id, &job_id).await?;
 
     assert_eq!(record.upload_job.status, "failed");
     assert_eq!(record.asset_status.as_deref(), Some("failed"));
@@ -649,7 +678,7 @@ async fn stale_processing_admin_media_record_materializes_as_failed_at_attempt_c
 #[tokio::test]
 async fn admin_can_inspect_and_reconcile_media_job_by_id() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let row = sqlx::query(
         r#"
@@ -664,7 +693,7 @@ async fn admin_can_inspect_and_reconcile_media_job_by_id() -> AppResult<()> {
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let job_id: String = row.get("id");
 
@@ -681,7 +710,7 @@ async fn admin_can_inspect_and_reconcile_media_job_by_id() -> AppResult<()> {
     .bind(&stale_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'processing', updated_at = ? WHERE upload_job_id = ? AND creator_id = ?",
@@ -689,7 +718,7 @@ async fn admin_can_inspect_and_reconcile_media_job_by_id() -> AppResult<()> {
     .bind(&stale_lease)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let report = reconcile_admin_media_job(State(state.clone()), headers, Path(job_id.clone()))
@@ -712,7 +741,7 @@ async fn admin_can_inspect_and_reconcile_media_job_by_id() -> AppResult<()> {
 #[tokio::test]
 async fn creator_retry_preserves_processing_attempt_history() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let row = sqlx::query(
         r#"
@@ -727,7 +756,7 @@ async fn creator_retry_preserves_processing_attempt_history() -> AppResult<()> {
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let job_id: String = row.get("id");
     let failed_at = Utc::now().to_rfc3339();
@@ -740,7 +769,7 @@ async fn creator_retry_preserves_processing_attempt_history() -> AppResult<()> {
     .bind(&failed_at)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'failed', updated_at = ? WHERE upload_job_id = ? AND creator_id = ?",
@@ -748,14 +777,15 @@ async fn creator_retry_preserves_processing_attempt_history() -> AppResult<()> {
     .bind(&failed_at)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let retried = retry_upload_job_processing(State(state.clone()), headers, Path(job_id.clone()))
         .await?
         .0;
 
-    let asset = fetch_media_asset_by_upload_job(&state.pool, &creator.id, &job_id).await?;
+    let asset =
+        fetch_media_asset_by_upload_job(state.db.sqlite_adapter(), &creator.id, &job_id).await?;
 
     assert_eq!(retried.status, "uploaded");
     assert_eq!(retried.processing_attempt_count, 2);

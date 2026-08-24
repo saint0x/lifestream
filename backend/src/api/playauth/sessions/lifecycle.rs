@@ -20,18 +20,6 @@ pub(crate) async fn expire_playback_sessions_for_upload(
     .await
 }
 
-pub(crate) async fn expire_playback_sessions_for_auth_session(
-    pool: &SqlitePool,
-    auth_session_id: &str,
-) -> AppResult<()> {
-    expire_playback_sessions_where(
-        pool,
-        "auth_session_id = ? AND expires_at > ?",
-        &[auth_session_id.to_string()],
-    )
-    .await
-}
-
 async fn expire_playback_sessions_where(
     pool: &SqlitePool,
     predicate: &str,

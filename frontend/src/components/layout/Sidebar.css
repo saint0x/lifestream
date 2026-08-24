@@ -157,3 +157,84 @@
   justify-content: space-between;
   border-top: 1px solid var(--c-border);
 }
+
+@media (max-width: 760px) {
+  .ls-sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--c-border);
+  }
+
+  .ls-sidebar__brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+  }
+
+  .ls-sidebar__wordmark {
+    margin-top: 0;
+    flex-shrink: 0;
+  }
+
+  .ls-sidebar__section {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    border-bottom: 0;
+    scrollbar-width: none;
+  }
+
+  .ls-sidebar__section::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ls-sidebar__label,
+  .ls-sidebar__footer,
+  .ls-sidebar__section--followed {
+    display: none;
+  }
+
+  .ls-sidebar__item {
+    flex: 0 0 auto;
+    gap: 7px;
+    padding: 8px 10px;
+    font-size: 12px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .ls-sidebar__item.is-active {
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .ls-sidebar__brand {
+    padding-inline: 10px;
+  }
+
+  .ls-sidebar__wordmark {
+    display: none;
+  }
+
+  .ls-sidebar__item span {
+    display: none;
+  }
+
+  .ls-sidebar__item {
+    width: 38px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .ls-sidebar__item.is-active {
+    padding-inline: 0;
+  }
+}

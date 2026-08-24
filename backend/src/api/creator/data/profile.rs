@@ -72,7 +72,9 @@ pub(crate) async fn fetch_creator_profile(
         .get::<i64, _>("total_watch_hours")
         .max(vod_watch_hours)
         .max(analytics_summary.total_watch_minutes / 60);
-    let monthly_viewers = analytics_summary.total_viewers.max(row.get("monthly_viewers"));
+    let monthly_viewers = analytics_summary
+        .total_viewers
+        .max(row.get("monthly_viewers"));
 
     creator_profile_from_row(row, subscribers, monthly_viewers, total_watch_hours)
 }

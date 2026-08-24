@@ -6,7 +6,9 @@ use crate::api::control::{
 use doc::{
     LiveRuntimeArchiveSpec, LiveRuntimeCollaborationSpec, LiveRuntimePackagingSpec,
     LiveRuntimeReconnectSpec, LiveRuntimeSpecDocument, LiveRuntimeSpecPaths,
-    LiveRuntimeSpecRuntime, LiveRuntimeSpecSession, LiveRuntimeTelemetrySpec,
+    LiveRuntimeSpecRuntime, LiveRuntimeSpecSession, LiveRuntimeStorageCleanup,
+    LiveRuntimeStorageLayoutSpec, LiveRuntimeStoragePrefixes, LiveRuntimeStorageRetention,
+    LiveRuntimeTelemetrySpec,
 };
 
 pub(super) async fn build_live_runtime_spec(
@@ -26,13 +28,13 @@ pub(super) async fn build_live_runtime_spec(
             AppError::Internal("live runtime manifest path missing parent".to_string())
         })?;
     let session_ordinal = count_live_ingest_sessions_for_broadcast(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session.creator_id,
         &session.broadcast_id,
     )
     .await?;
     let (current_cpu_percent, current_free_disk_gb) =
-        fetch_current_operational_telemetry(&state.pool, &session.creator_id).await?;
+        fetch_current_operational_telemetry(state.db.sqlite_adapter(), &session.creator_id).await?;
     let health = build_live_runtime_health_spec(session, current_cpu_percent, current_free_disk_gb);
     let variants = build_live_runtime_variant_specs(session, output)?;
     let collaboration = build_live_runtime_collaboration_spec(state, session).await?;
@@ -104,6 +106,32 @@ pub(super) async fn build_live_runtime_spec(
             manifest_relative_path: manifest_relative_path.clone(),
             archive_relative_path: archive_relative_path.clone(),
             spec_relative_path: spec_relative_path.to_string(),
+        },
+        storage_layout: LiveRuntimeStorageLayoutSpec {
+            root_prefixes: LiveRuntimeStoragePrefixes {
+                playback_prefix: live_playback_artifact_prefix(session),
+                archive_prefix: live_archive_artifact_prefix(session),
+                runtime_prefix: live_runtime_workspace_prefix(session),
+                collaboration_prefix: format!(
+                    "{}/collaboration",
+                    live_runtime_workspace_prefix(session)
+                ),
+            },
+            retention: LiveRuntimeStorageRetention {
+                playback_artifacts_hours: LIVE_PLAYBACK_ARTIFACT_RETENTION_HOURS,
+                mirror_artifacts_hours: LIVE_MIRROR_ARTIFACT_RETENTION_HOURS,
+                archive_days: LIVE_ARCHIVE_RETENTION_DAYS,
+                archive_staging_hours: LIVE_ARCHIVE_STAGING_RETENTION_HOURS,
+                runtime_spec_days: LIVE_RUNTIME_SPEC_RETENTION_DAYS,
+            },
+            cleanup: LiveRuntimeStorageCleanup {
+                playback_owner: "background_worker_after_disconnect".to_string(),
+                archive_owner: "retention_policy".to_string(),
+                runtime_owner: "retention_policy".to_string(),
+                mirror_owner: "collaboration_mirror_reconciliation".to_string(),
+                staging_promotion: "archive_staging_promotes_to_final_then_staging_is_removed"
+                    .to_string(),
+            },
         },
         packaging: LiveRuntimePackagingSpec {
             runtime_class: output.runtime_class.clone(),

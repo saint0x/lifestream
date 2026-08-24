@@ -91,3 +91,18 @@ pub struct UpdateCreatorSeriesRequest {
     pub backdrop_url: Option<String>,
     pub status: Option<String>,
 }
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectCreditInput {
+    pub person_id: Option<Id>,
+    pub person_slug: Option<String>,
+    pub role: String,
+    pub character: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateProjectCreditsRequest {
+    pub credits: Vec<ProjectCreditInput>,
+}

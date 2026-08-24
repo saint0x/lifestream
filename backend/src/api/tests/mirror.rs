@@ -3,12 +3,18 @@ use super::*;
 #[tokio::test]
 async fn expired_mirror_grant_cannot_be_redeemed_before_reconciliation() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let (_session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (_session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let expired_at = (Utc::now() - chrono::Duration::minutes(1)).to_rfc3339();
     let grant = insert_mirror_grant(
-        &state.pool,
-        &fetch_collaboration_session_by_id(&state.pool, &participant.session_id).await?,
+        state.db.sqlite_adapter(),
+        &fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &participant.session_id)
+            .await?,
         &participant,
         &expired_at,
     )
@@ -30,7 +36,8 @@ async fn expired_mirror_grant_cannot_be_redeemed_before_reconciliation() -> AppR
         other => panic!("unexpected error: {other:?}"),
     }
 
-    let refreshed_grant = fetch_collaboration_mirror_grant_by_id(&state.pool, &grant.id).await?;
+    let refreshed_grant =
+        fetch_collaboration_mirror_grant_by_id(state.db.sqlite_adapter(), &grant.id).await?;
     assert_eq!(refreshed_grant.state, "issued");
     assert!(refreshed_grant.activated_at.is_none());
     Ok(())
@@ -39,8 +46,13 @@ async fn expired_mirror_grant_cannot_be_redeemed_before_reconciliation() -> AppR
 #[tokio::test]
 async fn issue_mirror_grant_rejects_non_mirrored_or_non_live_participants() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
 
     let mut not_mirrored = participant.clone();
     not_mirrored.mirror_to_guest_channel = false;
@@ -72,8 +84,13 @@ async fn issue_mirror_grant_rejects_non_mirrored_or_non_live_participants() -> A
 #[tokio::test]
 async fn collaboration_socket_host_command_can_remove_participant() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let identity = RequestIdentity {
         session_id: "host-collab-socket-remove".to_string(),
         user_id: creator.user_id.clone(),
@@ -101,11 +118,12 @@ async fn collaboration_socket_host_command_can_remove_participant() -> AppResult
     );
     assert_eq!(outcome.state.as_deref(), Some("removed"));
 
-    let refreshed = fetch_collaboration_participant_by_id(&state.pool, &participant.id).await?;
+    let refreshed =
+        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), &participant.id).await?;
     assert_eq!(refreshed.state, "removed");
     assert!(refreshed.left_at.is_some());
 
-    let events = fetch_collaboration_events(&state.pool, &session.id, 0, 100).await?;
+    let events = fetch_collaboration_events(state.db.sqlite_adapter(), &session.id, 0, 100).await?;
     assert!(events.iter().any(|event| {
         event.event_type == "participant_removed"
             && event.payload["participantId"] == Value::String(participant.id.clone())
@@ -116,8 +134,13 @@ async fn collaboration_socket_host_command_can_remove_participant() -> AppResult
 #[tokio::test]
 async fn collaboration_socket_host_commands_can_issue_and_revoke_mirror_grants() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let identity = RequestIdentity {
         session_id: "host-collab-socket-grants".to_string(),
         user_id: creator.user_id.clone(),
@@ -143,8 +166,11 @@ async fn collaboration_socket_host_commands_can_issue_and_revoke_mirror_grants()
         Some(participant.id.as_str())
     );
 
-    let issued_grants =
-        fetch_collaboration_mirror_grants_for_participant(&state.pool, &participant.id).await?;
+    let issued_grants = fetch_collaboration_mirror_grants_for_participant(
+        state.db.sqlite_adapter(),
+        &participant.id,
+    )
+    .await?;
     assert_eq!(issued_grants.len(), 1);
     assert_eq!(issued_grants[0].state, "issued");
 
@@ -164,13 +190,16 @@ async fn collaboration_socket_host_commands_can_issue_and_revoke_mirror_grants()
         Some(participant.id.as_str())
     );
 
-    let refreshed_grants =
-        fetch_collaboration_mirror_grants_for_participant(&state.pool, &participant.id).await?;
+    let refreshed_grants = fetch_collaboration_mirror_grants_for_participant(
+        state.db.sqlite_adapter(),
+        &participant.id,
+    )
+    .await?;
     assert_eq!(refreshed_grants.len(), 1);
     assert_eq!(refreshed_grants[0].state, "revoked");
     assert!(refreshed_grants[0].revoked_at.is_some());
 
-    let events = fetch_collaboration_events(&state.pool, &session.id, 0, 100).await?;
+    let events = fetch_collaboration_events(state.db.sqlite_adapter(), &session.id, 0, 100).await?;
     assert!(events.iter().any(|event| {
         event.event_type == "mirror_grant_issued"
             && event.participant_id.as_deref() == Some(participant.id.as_str())
@@ -187,8 +216,13 @@ async fn collaboration_socket_host_commands_can_issue_and_revoke_mirror_grants()
 #[tokio::test]
 async fn redeeming_mirror_grant_requires_creator_scope_for_guest_channel() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let grant = issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
     let identity = RequestIdentity {
         session_id: "test-session".to_string(),
@@ -207,10 +241,15 @@ async fn redeeming_mirror_grant_requires_creator_scope_for_guest_channel() -> Ap
 #[tokio::test]
 async fn redeeming_mirror_grant_materializes_guest_pickup_broadcast() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let guest_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    reset_creator_live_state(&state.pool, &guest_creator).await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let guest_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    reset_creator_live_state(state.db.sqlite_adapter(), &guest_creator).await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let grant = issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
     let (mut subscription, _) = state
         .realtime
@@ -227,20 +266,27 @@ async fn redeeming_mirror_grant_materializes_guest_pickup_broadcast() -> AppResu
     assert_eq!(redeemed.state, "active");
     assert!(redeemed.activated_at.is_some());
 
-    let pickups =
-        fetch_collaboration_mirror_pickups_for_participant(&state.pool, &participant.id).await?;
+    let pickups = fetch_collaboration_mirror_pickups_for_participant(
+        state.db.sqlite_adapter(),
+        &participant.id,
+    )
+    .await?;
     assert_eq!(pickups.len(), 1);
     let pickup = &pickups[0];
     assert_eq!(pickup.state, "active");
     assert_eq!(pickup.grant_id, grant.id);
     assert_eq!(pickup.source_broadcast_id, session.source_broadcast_id);
 
-    let guest_broadcast =
-        fetch_broadcast_by_id(&state.pool, "crt-atlas", &pickup.guest_broadcast_id).await?;
+    let guest_broadcast = fetch_broadcast_by_id(
+        state.db.sqlite_adapter(),
+        "crt-atlas",
+        &pickup.guest_broadcast_id,
+    )
+    .await?;
     assert_eq!(guest_broadcast.status, "live");
     assert_eq!(guest_broadcast.title, "Collaboration Validation");
 
-    let guest_profile = fetch_creator_profile(&state.pool, "crt-atlas").await?;
+    let guest_profile = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
     assert_eq!(guest_profile.live_status, "live");
     assert_eq!(
         guest_profile.current_broadcast_id.as_deref(),
@@ -248,8 +294,8 @@ async fn redeeming_mirror_grant_materializes_guest_pickup_broadcast() -> AppResu
     );
 
     let runtime = build_collaboration_runtime_response_for_host(
-        &state.pool,
-        fetch_collaboration_session_by_id(&state.pool, &session.id).await?,
+        state.db.sqlite_adapter(),
+        fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &session.id).await?,
     )
     .await?;
     let guest_member = runtime
@@ -303,12 +349,18 @@ async fn redeeming_mirror_grant_materializes_guest_pickup_broadcast() -> AppResu
 async fn redeeming_mirror_grant_keeps_grant_issued_when_guest_has_other_broadcast() -> AppResult<()>
 {
     let (state, creator) = setup_test_state().await?;
-    let guest_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    reset_creator_live_state(&state.pool, &guest_creator).await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let guest_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    reset_creator_live_state(state.db.sqlite_adapter(), &guest_creator).await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let grant = issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
-    let conflicting_broadcast = insert_ready_broadcast(&state.pool, &guest_creator).await?;
+    let conflicting_broadcast =
+        insert_ready_broadcast(state.db.sqlite_adapter(), &guest_creator).await?;
     let identity = RequestIdentity {
         session_id: "test-session".to_string(),
         user_id: "usr-2".to_string(),
@@ -326,10 +378,14 @@ async fn redeeming_mirror_grant_keeps_grant_issued_when_guest_has_other_broadcas
         other => panic!("unexpected error: {other:?}"),
     }
 
-    let refreshed_grant = fetch_collaboration_mirror_grant_by_id(&state.pool, &grant.id).await?;
-    let pickups =
-        fetch_collaboration_mirror_pickups_for_participant(&state.pool, &participant.id).await?;
-    let refreshed_guest = fetch_creator_profile(&state.pool, "crt-atlas").await?;
+    let refreshed_grant =
+        fetch_collaboration_mirror_grant_by_id(state.db.sqlite_adapter(), &grant.id).await?;
+    let pickups = fetch_collaboration_mirror_pickups_for_participant(
+        state.db.sqlite_adapter(),
+        &participant.id,
+    )
+    .await?;
+    let refreshed_guest = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
 
     assert_eq!(refreshed_grant.state, "issued");
     assert!(refreshed_grant.activated_at.is_none());
@@ -345,10 +401,15 @@ async fn redeeming_mirror_grant_keeps_grant_issued_when_guest_has_other_broadcas
 #[tokio::test]
 async fn revoking_mirror_grant_ends_guest_pickup_broadcast() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let guest_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    reset_creator_live_state(&state.pool, &guest_creator).await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let guest_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    reset_creator_live_state(state.db.sqlite_adapter(), &guest_creator).await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let grant = issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
     let identity = RequestIdentity {
         session_id: "test-session".to_string(),
@@ -372,20 +433,27 @@ async fn revoking_mirror_grant_ends_guest_pickup_broadcast() -> AppResult<()> {
     )
     .await?;
 
-    let pickup = fetch_collaboration_mirror_pickups_for_participant(&state.pool, &participant.id)
-        .await?
-        .into_iter()
-        .next()
-        .expect("pickup should exist");
+    let pickup = fetch_collaboration_mirror_pickups_for_participant(
+        state.db.sqlite_adapter(),
+        &participant.id,
+    )
+    .await?
+    .into_iter()
+    .next()
+    .expect("pickup should exist");
     assert_eq!(pickup.state, "revoked");
     assert!(pickup.ended_at.is_some());
 
-    let guest_broadcast =
-        fetch_broadcast_by_id(&state.pool, "crt-atlas", &pickup.guest_broadcast_id).await?;
+    let guest_broadcast = fetch_broadcast_by_id(
+        state.db.sqlite_adapter(),
+        "crt-atlas",
+        &pickup.guest_broadcast_id,
+    )
+    .await?;
     assert_eq!(guest_broadcast.status, "ended");
     assert!(guest_broadcast.ended_at.is_some());
 
-    let guest_profile = fetch_creator_profile(&state.pool, "crt-atlas").await?;
+    let guest_profile = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
     assert_eq!(guest_profile.live_status, "offline");
     assert!(guest_profile.current_broadcast_id.is_none());
 
@@ -421,12 +489,21 @@ async fn revoking_mirror_grant_ends_guest_pickup_broadcast() -> AppResult<()> {
 #[tokio::test]
 async fn redeeming_mirror_grant_propagates_host_viewers_to_guest_channel() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let guest_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    reset_creator_live_state(&state.pool, &guest_creator).await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
-    let host_broadcast =
-        fetch_broadcast_by_id(&state.pool, &creator.id, &session.source_broadcast_id).await?;
+    let guest_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    reset_creator_live_state(state.db.sqlite_adapter(), &guest_creator).await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
+    let host_broadcast = fetch_broadcast_by_id(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &session.source_broadcast_id,
+    )
+    .await?;
     let viewers = 777_i64;
     let now = Utc::now().to_rfc3339();
 
@@ -435,13 +512,19 @@ async fn redeeming_mirror_grant_propagates_host_viewers_to_guest_channel() -> Ap
     )
     .bind(&session.source_broadcast_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query("UPDATE streamers SET is_live = 1 WHERE handle = ?")
         .bind(&creator.handle)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
-    ensure_live_stream_row(&state.pool, &creator, &host_broadcast, viewers).await?;
+    ensure_live_stream_row(
+        state.db.sqlite_adapter(),
+        &creator,
+        &host_broadcast,
+        viewers,
+    )
+    .await?;
     sqlx::query(
         r#"
         INSERT INTO live_ingest_sessions (
@@ -466,7 +549,7 @@ async fn redeeming_mirror_grant_propagates_host_viewers_to_guest_channel() -> Ap
     .bind(0_i64)
     .bind(&now)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let grant = issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
@@ -480,14 +563,21 @@ async fn redeeming_mirror_grant_propagates_host_viewers_to_guest_channel() -> Ap
     let redeemed = redeem_collaboration_mirror_grant_internal(&state, &identity, &grant.id).await?;
     assert_eq!(redeemed.state, "active");
 
-    let pickup = fetch_collaboration_mirror_pickups_for_participant(&state.pool, &participant.id)
-        .await?
-        .into_iter()
-        .next()
-        .expect("guest pickup should exist");
-    let guest_stream =
-        fetch_live_stream_by_id(&state.pool, &format!("lv-{}-live", guest_creator.handle)).await?;
-    let guest_control = fetch_creator_live_control_response(&state.pool, &guest_creator.id).await?;
+    let pickup = fetch_collaboration_mirror_pickups_for_participant(
+        state.db.sqlite_adapter(),
+        &participant.id,
+    )
+    .await?
+    .into_iter()
+    .next()
+    .expect("guest pickup should exist");
+    let guest_stream = fetch_live_stream_by_id(
+        state.db.sqlite_adapter(),
+        &format!("lv-{}-live", guest_creator.handle),
+    )
+    .await?;
+    let guest_control =
+        fetch_creator_live_control_response(state.db.sqlite_adapter(), &guest_creator.id).await?;
 
     assert_eq!(guest_stream.viewers, viewers);
     assert_eq!(guest_control.current_viewers, viewers);
@@ -505,12 +595,21 @@ async fn redeeming_mirror_grant_propagates_host_viewers_to_guest_channel() -> Ap
 #[tokio::test]
 async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let guest_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    reset_creator_live_state(&state.pool, &guest_creator).await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
-    let host_broadcast =
-        fetch_broadcast_by_id(&state.pool, &creator.id, &session.source_broadcast_id).await?;
+    let guest_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    reset_creator_live_state(state.db.sqlite_adapter(), &guest_creator).await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
+    let host_broadcast = fetch_broadcast_by_id(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &session.source_broadcast_id,
+    )
+    .await?;
     let now = Utc::now().to_rfc3339();
 
     sqlx::query(
@@ -518,13 +617,13 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
     )
     .bind(&session.source_broadcast_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query("UPDATE streamers SET is_live = 1 WHERE handle = ?")
         .bind(&creator.handle)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
-    ensure_live_stream_row(&state.pool, &creator, &host_broadcast, 321).await?;
+    ensure_live_stream_row(state.db.sqlite_adapter(), &creator, &host_broadcast, 321).await?;
 
     let playback_row = sqlx::query(
         r#"
@@ -536,7 +635,7 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
         LIMIT 1
         "#,
     )
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         r#"
@@ -549,7 +648,7 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
     .bind(playback_row.get::<Option<String>, _>("poster_relative_path"))
     .bind(playback_row.get::<Option<String>, _>("playback_relative_path"))
     .bind(format!("lv-{}-live", creator.handle))
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         r#"
@@ -575,7 +674,7 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
     .bind(0_i64)
     .bind(&now)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let grant = issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
@@ -586,7 +685,7 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
         scopes: vec!["user".to_string(), "creator".to_string()],
     };
     let _ = redeem_collaboration_mirror_grant_internal(&state, &identity, &grant.id).await?;
-    let guest_profile = fetch_creator_profile(&state.pool, &guest_creator.id).await?;
+    let guest_profile = fetch_creator_profile(state.db.sqlite_adapter(), &guest_creator.id).await?;
     let guest_broadcast_id = guest_profile
         .current_broadcast_id
         .clone()
@@ -614,7 +713,7 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
     )
     .bind(&creator.id)
     .bind(&session.source_broadcast_id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?
     .get::<String, _>("id");
     sqlx::query(
@@ -624,17 +723,26 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
             archive_status, manifest_relative_path, archive_relative_path, last_error,
             last_runtime_event_at, created_at, updated_at
         ) VALUES (?, ?, ?, ?, 'healthy', 'ready', 'not_started', ?, NULL, NULL, ?, ?, ?)
+        ON CONFLICT(session_id) DO UPDATE SET
+            runtime_state = 'healthy',
+            packaging_status = 'ready',
+            archive_status = 'not_started',
+            manifest_relative_path = excluded.manifest_relative_path,
+            archive_relative_path = NULL,
+            last_error = NULL,
+            last_runtime_event_at = excluded.last_runtime_event_at,
+            updated_at = excluded.updated_at
         "#,
     )
     .bind(format!("lro-test-{}", Uuid::new_v4().simple()))
     .bind(&source_session_id)
     .bind(&creator.id)
     .bind(&session.source_broadcast_id)
-    .bind(playback_row.get::<Option<String>, _>("playback_relative_path"))
+    .bind(Some(mirror_manifest_relative_path.clone()))
     .bind(&now)
     .bind(&now)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         r#"
@@ -644,6 +752,16 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
             recording_enabled, mix_minus_required, relative_path, source_participant_ids_json,
             created_at, updated_at
         ) VALUES (?, ?, ?, ?, 'mirror_channel', ?, 'mirror channel', 'active', ?, ?, 1, 0, 0, ?, '[]', ?, ?)
+        ON CONFLICT(session_id, target_kind, target_key) DO UPDATE SET
+            route_state = 'active',
+            target_creator_id = excluded.target_creator_id,
+            target_broadcast_id = excluded.target_broadcast_id,
+            playback_enabled = 1,
+            recording_enabled = 0,
+            mix_minus_required = 0,
+            relative_path = excluded.relative_path,
+            source_participant_ids_json = excluded.source_participant_ids_json,
+            updated_at = excluded.updated_at
         "#,
     )
     .bind(format!("lrt-test-{}", Uuid::new_v4().simple()))
@@ -656,14 +774,15 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
     .bind(&mirror_manifest_relative_path)
     .bind(&now)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query("UPDATE live_streams SET playback_relative_path = ? WHERE id = ?")
         .bind(&mirror_manifest_relative_path)
         .bind(&guest_stream_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
-    let target = fetch_live_stream_playback_target(&state.pool, &guest_stream_id).await?;
+    let target =
+        fetch_live_stream_playback_target(state.db.sqlite_adapter(), &guest_stream_id).await?;
     assert_eq!(target.playback_relative_path, mirror_manifest_relative_path);
 
     let playback = create_live_playback_session(
@@ -769,10 +888,15 @@ async fn mirrored_guest_channel_is_publicly_listed_and_can_issue_live_playback()
 #[tokio::test]
 async fn removing_participant_publishes_mirror_grant_revoked_event() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let grant = issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
 
     let (mut subscription, _) = state
@@ -816,7 +940,7 @@ async fn removing_participant_publishes_mirror_grant_revoked_event() -> AppResul
     }
 
     assert!(saw_grant_revoked);
-    let events = fetch_collaboration_events(&state.pool, &session.id, 0, 100).await?;
+    let events = fetch_collaboration_events(state.db.sqlite_adapter(), &session.id, 0, 100).await?;
     assert!(events.iter().any(|event| {
         event.event_type == "mirror_grant_revoked"
             && event.payload["grantId"] == Value::String(grant.id.clone())

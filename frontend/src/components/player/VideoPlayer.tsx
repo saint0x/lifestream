@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Play,
   Pause,
@@ -7,7 +7,6 @@ import {
   Maximize2,
   Minimize2,
   Subtitles,
-  Settings,
   SkipForward,
   SkipBack,
 } from "lucide-react";
@@ -182,6 +181,91 @@ export function VideoPlayer({
     return () => window.clearInterval(id);
   }, [durationSec, isTransportBacked, onProgress, playing]);
 
+  const resolvedDuration = Math.max(mediaDuration || durationSec, 1);
+  const pct = (progress / resolvedDuration) * 100;
+
+  const scheduleHide = () => {
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    setShowControls(true);
+    hideTimer.current = window.setTimeout(() => {
+      if (playing) setShowControls(false);
+    }, 2600);
+  };
+
+  const syncFallbackProgress = useCallback((next: number) => {
+    const bounded = Math.min(Math.max(next, 0), resolvedDuration);
+    setProgress(bounded);
+    onProgress?.(Math.floor(bounded));
+  }, [onProgress, resolvedDuration]);
+
+  const togglePlay = useCallback(async () => {
+    const video = videoRef.current;
+    if ((!isTransportBacked && allowPreviewTransport) || !video) {
+      setPlaying((current) => !current);
+      return;
+    }
+    if (!isTransportBacked) return;
+    if (video.paused) {
+      await video.play().catch(() => {
+        setPlaybackError("Playback could not be started.");
+      });
+    } else {
+      video.pause();
+    }
+  }, [allowPreviewTransport, isTransportBacked]);
+
+  const seekBy = useCallback((deltaSec: number) => {
+    const video = videoRef.current;
+    if (isTransportBacked && video) {
+      video.currentTime = Math.min(Math.max(video.currentTime + deltaSec, 0), resolvedDuration);
+      return;
+    }
+    if (!allowPreviewTransport) return;
+    syncFallbackProgress(progress + deltaSec);
+  }, [allowPreviewTransport, isTransportBacked, progress, resolvedDuration, syncFallbackProgress]);
+
+  const setSeek = (next: number) => {
+    const video = videoRef.current;
+    if (isTransportBacked && video) {
+      video.currentTime = next;
+      return;
+    }
+    if (!allowPreviewTransport) return;
+    syncFallbackProgress(next);
+  };
+
+  const setVolumeLevel = (next: number) => {
+    const video = videoRef.current;
+    if (isTransportBacked && video) {
+      video.volume = next;
+      video.muted = next === 0;
+      return;
+    }
+    setVolume(next);
+    setMuted(next === 0);
+  };
+
+  const toggleMute = useCallback(() => {
+    const video = videoRef.current;
+    if (isTransportBacked && video) {
+      video.muted = !video.muted;
+      return;
+    }
+    setMuted((current) => !current);
+  }, [isTransportBacked]);
+
+  const toggleFullscreen = useCallback(async () => {
+    const container = containerRef.current;
+    if (!container) return;
+    if (document.fullscreenElement === container) {
+      await document.exitFullscreen().catch(() => {});
+      return;
+    }
+    await container.requestFullscreen?.().catch(() => {
+      setFullscreen((current) => !current);
+    });
+  }, []);
+
   useEffect(() => {
     const onFullscreenChange = () => {
       setFullscreen(document.fullscreenElement === containerRef.current);
@@ -211,92 +295,7 @@ export function VideoPlayer({
       document.removeEventListener("fullscreenchange", onFullscreenChange);
       window.removeEventListener("keydown", onKey);
     };
-  }, [isTransportBacked, mediaDuration, playing]);
-
-  const resolvedDuration = Math.max(mediaDuration || durationSec, 1);
-  const pct = (progress / resolvedDuration) * 100;
-
-  const scheduleHide = () => {
-    if (hideTimer.current) window.clearTimeout(hideTimer.current);
-    setShowControls(true);
-    hideTimer.current = window.setTimeout(() => {
-      if (playing) setShowControls(false);
-    }, 2600);
-  };
-
-  const syncFallbackProgress = (next: number) => {
-    const bounded = Math.min(Math.max(next, 0), resolvedDuration);
-    setProgress(bounded);
-    onProgress?.(Math.floor(bounded));
-  };
-
-  const togglePlay = async () => {
-    const video = videoRef.current;
-    if ((!isTransportBacked && allowPreviewTransport) || !video) {
-      setPlaying((current) => !current);
-      return;
-    }
-    if (!isTransportBacked) return;
-    if (video.paused) {
-      await video.play().catch(() => {
-        setPlaybackError("Playback could not be started.");
-      });
-    } else {
-      video.pause();
-    }
-  };
-
-  const seekBy = (deltaSec: number) => {
-    const video = videoRef.current;
-    if (isTransportBacked && video) {
-      video.currentTime = Math.min(Math.max(video.currentTime + deltaSec, 0), resolvedDuration);
-      return;
-    }
-    if (!allowPreviewTransport) return;
-    syncFallbackProgress(progress + deltaSec);
-  };
-
-  const setSeek = (next: number) => {
-    const video = videoRef.current;
-    if (isTransportBacked && video) {
-      video.currentTime = next;
-      return;
-    }
-    if (!allowPreviewTransport) return;
-    syncFallbackProgress(next);
-  };
-
-  const setVolumeLevel = (next: number) => {
-    const video = videoRef.current;
-    if (isTransportBacked && video) {
-      video.volume = next;
-      video.muted = next === 0;
-      return;
-    }
-    setVolume(next);
-    setMuted(next === 0);
-  };
-
-  const toggleMute = () => {
-    const video = videoRef.current;
-    if (isTransportBacked && video) {
-      video.muted = !video.muted;
-      return;
-    }
-    setMuted((current) => !current);
-  };
-
-  const toggleFullscreen = async () => {
-    const container = containerRef.current;
-    if (!container) return;
-    if (document.fullscreenElement === container) {
-      await document.exitFullscreen().catch(() => {});
-      return;
-    }
-    await container.requestFullscreen?.().catch(() => {
-      setFullscreen((current) => !current);
-    });
-  };
+  }, [isTransportBacked, mediaDuration, seekBy, toggleFullscreen, toggleMute, togglePlay]);
 
   return (
     <div
@@ -409,9 +408,6 @@ export function VideoPlayer({
                 aria-label="Subtitles"
               >
                 <Subtitles size={18} strokeWidth={1.75} />
-              </button>
-              <button type="button" aria-label="Settings">
-                <Settings size={18} strokeWidth={1.75} />
               </button>
               <button type="button" onClick={() => void toggleFullscreen()} aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}>
                 {fullscreen ? (

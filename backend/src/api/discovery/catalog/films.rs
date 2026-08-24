@@ -35,6 +35,77 @@ pub(crate) async fn fetch_films(
     Ok(items)
 }
 
+pub(crate) async fn fetch_films_page(
+    pool: &SqlitePool,
+    genre: Option<&str>,
+    originals_only: bool,
+    sort: &str,
+    limit: i64,
+    offset: i64,
+) -> AppResult<(Vec<Film>, i64)> {
+    let mut filters = Vec::new();
+    if genre.is_some() {
+        filters.push(
+            r#"EXISTS (
+                SELECT 1
+                FROM json_each(films.genres_json)
+                WHERE json_each.value = ?
+            )"#,
+        );
+    }
+    if originals_only {
+        filters.push("is_original = 1");
+    }
+    let where_clause = if filters.is_empty() {
+        String::new()
+    } else {
+        format!(" WHERE {}", filters.join(" AND "))
+    };
+    let order_clause = match sort {
+        "newest" => "year DESC, score DESC",
+        "score" => "score DESC, year DESC",
+        "title" => "title COLLATE NOCASE ASC",
+        _ => "trending DESC, score DESC, year DESC",
+    };
+    let select_query = format!(
+        r#"
+        SELECT id, slug, title, tagline, synopsis, year, rating, genres_json,
+               images_json, credits_json, score, is_original, trending, hero_color,
+               duration_sec,
+               CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM media_assets ma
+                    WHERE ma.upload_id = films.id
+                      AND ma.status IN ('ready', 'published')
+               ) THEN 1 ELSE 0 END AS playback_ready
+        FROM films
+        {where_clause}
+        ORDER BY {order_clause}
+        LIMIT ? OFFSET ?
+        "#
+    );
+    let count_query = format!("SELECT COUNT(*) AS total FROM films {where_clause}");
+
+    let mut count_statement = sqlx::query(&count_query);
+    let mut select_statement = sqlx::query(&select_query);
+    if let Some(genre) = genre {
+        count_statement = count_statement.bind(genre);
+        select_statement = select_statement.bind(genre);
+    }
+    let total: i64 = count_statement.fetch_one(pool).await?.get("total");
+    let rows = select_statement
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(pool)
+        .await?;
+
+    let mut items = Vec::with_capacity(rows.len());
+    for row in rows {
+        items.push(film_from_row(row, None)?);
+    }
+    Ok((items, total))
+}
+
 pub(crate) async fn fetch_films_by_genre(pool: &SqlitePool, genre: &str) -> AppResult<Vec<Film>> {
     let rows = sqlx::query(
         r#"

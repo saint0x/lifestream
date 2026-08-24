@@ -13,7 +13,7 @@ pub(super) async fn generate_subtitle_variants(
     }
 
     let subtitles_run_id = start_media_processing_run(
-        &state.pool,
+        state.db.sqlite_adapter(),
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -57,7 +57,7 @@ pub(super) async fn generate_subtitle_variants(
             extract_subtitle_stream_to_webvtt(&attempt.source_path, stream, &full_path).await
         {
             let _ = finish_media_processing_run(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 &subtitles_run_id,
                 "failed",
                 json!({
@@ -83,7 +83,7 @@ pub(super) async fn generate_subtitle_variants(
         ));
     }
     finish_media_processing_run(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &subtitles_run_id,
         "completed",
         json!({

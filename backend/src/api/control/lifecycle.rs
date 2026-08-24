@@ -167,7 +167,7 @@ pub(crate) async fn close_live_ingest_session(
     event_type: &str,
     payload: Value,
 ) -> AppResult<()> {
-    let pool = &state.pool;
+    let pool = state.db.sqlite_adapter();
     let creator = fetch_creator_profile(pool, &session.creator_id).await?;
     let broadcast = fetch_broadcast_by_id(pool, &session.creator_id, &session.broadcast_id).await?;
     let started_at = chrono::DateTime::parse_from_rfc3339(&broadcast.started_at)

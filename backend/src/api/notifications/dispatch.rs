@@ -187,6 +187,7 @@ pub(crate) async fn mark_notification_delivery_failed(
         AppError::NotFound => "notification recipient no longer exists".to_string(),
         AppError::Unauthorized => "notification delivery unauthorized".to_string(),
         AppError::Forbidden => "notification delivery forbidden".to_string(),
+        AppError::Conflict(message) => message.clone(),
         AppError::RateLimited => "notification delivery rate limited".to_string(),
         AppError::Database(err) => format!("notification database failure: {err}"),
         AppError::Io(err) => format!("notification io failure: {err}"),

@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn admin_retry_preserves_processing_attempt_history() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let row = sqlx::query(
         r#"
@@ -18,7 +18,7 @@ async fn admin_retry_preserves_processing_attempt_history() -> AppResult<()> {
         "#,
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?;
     let job_id: String = row.get("id");
     let failed_at = Utc::now().to_rfc3339();
@@ -31,7 +31,7 @@ async fn admin_retry_preserves_processing_attempt_history() -> AppResult<()> {
     .bind(&failed_at)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE media_assets SET status = 'failed', updated_at = ? WHERE upload_job_id = ? AND creator_id = ?",
@@ -39,7 +39,7 @@ async fn admin_retry_preserves_processing_attempt_history() -> AppResult<()> {
     .bind(&failed_at)
     .bind(&job_id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let retried = retry_admin_media_job(State(state.clone()), headers, Path(job_id.clone()))
@@ -209,7 +209,7 @@ fn media_validation_rejects_invalid_audio_sample_rate_and_channel_count() {
 
 #[tokio::test]
 async fn hls_master_manifest_contains_variant_entries() -> AppResult<()> {
-    let temp_root = std::env::temp_dir().join(format!("lifestream-hls-test-{}", Uuid::new_v4()));
+    let temp_root = std::env::temp_dir().join(format!("vanta-hls-test-{}", Uuid::new_v4()));
     tokio::fs::create_dir_all(&temp_root).await?;
     let master_path = temp_root.join("master.m3u8");
 
@@ -266,7 +266,7 @@ async fn hls_master_manifest_contains_variant_entries() -> AppResult<()> {
 
 #[tokio::test]
 async fn generated_hls_package_validation_rejects_missing_variant_playlist() -> AppResult<()> {
-    let temp_root = std::env::temp_dir().join(format!("lifestream-hls-invalid-{}", Uuid::new_v4()));
+    let temp_root = std::env::temp_dir().join(format!("vanta-hls-invalid-{}", Uuid::new_v4()));
     tokio::fs::create_dir_all(temp_root.join("240p")).await?;
     let master_path = temp_root.join("master.m3u8");
 
@@ -324,7 +324,7 @@ async fn generated_hls_package_validation_rejects_missing_variant_playlist() -> 
 
 #[tokio::test]
 async fn generated_hls_package_validation_accepts_complete_artifact_graph() -> AppResult<()> {
-    let temp_root = std::env::temp_dir().join(format!("lifestream-hls-valid-{}", Uuid::new_v4()));
+    let temp_root = std::env::temp_dir().join(format!("vanta-hls-valid-{}", Uuid::new_v4()));
     let variant_dir = temp_root.join("240p");
     tokio::fs::create_dir_all(&variant_dir).await?;
     let master_path = temp_root.join("master.m3u8");
@@ -382,8 +382,7 @@ async fn generated_hls_package_validation_accepts_complete_artifact_graph() -> A
 
 #[tokio::test]
 async fn media_integrity_verification_accepts_decodable_mp4() -> AppResult<()> {
-    let temp_root =
-        std::env::temp_dir().join(format!("lifestream-integrity-valid-{}", Uuid::new_v4()));
+    let temp_root = std::env::temp_dir().join(format!("vanta-integrity-valid-{}", Uuid::new_v4()));
     tokio::fs::create_dir_all(&temp_root).await?;
     let media_path = temp_root.join("valid.mp4");
 
@@ -423,7 +422,7 @@ async fn media_integrity_verification_accepts_decodable_mp4() -> AppResult<()> {
 #[tokio::test]
 async fn media_integrity_verification_rejects_truncated_mp4() -> AppResult<()> {
     let temp_root =
-        std::env::temp_dir().join(format!("lifestream-integrity-invalid-{}", Uuid::new_v4()));
+        std::env::temp_dir().join(format!("vanta-integrity-invalid-{}", Uuid::new_v4()));
     tokio::fs::create_dir_all(&temp_root).await?;
     let valid_path = temp_root.join("source.mp4");
     let truncated_path = temp_root.join("truncated.mp4");
@@ -476,7 +475,7 @@ async fn media_integrity_verification_rejects_truncated_mp4() -> AppResult<()> {
 #[tokio::test]
 async fn upload_job_patch_only_updates_creator_metadata() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
 
     let created = create_upload_job(
@@ -529,7 +528,7 @@ async fn upload_job_patch_only_updates_creator_metadata() -> AppResult<()> {
     .bind(Utc::now().to_rfc3339())
     .bind(&created.id)
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let error = update_upload_job(
@@ -559,7 +558,7 @@ async fn upload_job_patch_only_updates_creator_metadata() -> AppResult<()> {
 #[tokio::test]
 async fn upload_chunk_rejects_bytes_beyond_declared_upload_size() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
 
     let created = create_upload_job(
@@ -612,9 +611,10 @@ async fn upload_chunk_rejects_bytes_beyond_declared_upload_size() -> AppResult<(
         other => panic!("unexpected error: {other:?}"),
     }
 
-    let refreshed_job = fetch_upload_job_by_id(&state.pool, &creator.id, &created.id).await?;
+    let refreshed_job =
+        fetch_upload_job_by_id(state.db.sqlite_adapter(), &creator.id, &created.id).await?;
     let refreshed_session =
-        fetch_upload_ingest_session(&state.pool, &creator.id, &created.id).await?;
+        fetch_upload_ingest_session(state.db.sqlite_adapter(), &creator.id, &created.id).await?;
     let upload_path = media_path_for_relative(&state, &refreshed_session.relative_path);
     let file_size = tokio::fs::metadata(upload_path).await?.len();
 

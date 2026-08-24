@@ -86,29 +86,3 @@ pub(super) fn from_json<T: serde::de::DeserializeOwned>(value: String) -> AppRes
 pub(super) fn to_json<T: serde::Serialize>(value: &T) -> AppResult<String> {
     Ok(serde_json::to_string(value)?)
 }
-
-pub(super) fn build_fts_query(input: &str) -> Option<String> {
-    let normalized = input
-        .chars()
-        .map(|ch| {
-            if ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' {
-                ch.to_ascii_lowercase()
-            } else {
-                ' '
-            }
-        })
-        .collect::<String>();
-
-    let tokens = normalized
-        .split_whitespace()
-        .filter(|token| !token.is_empty())
-        .take(6)
-        .map(|token| format!("{token}*"))
-        .collect::<Vec<_>>();
-
-    if tokens.is_empty() {
-        None
-    } else {
-        Some(tokens.join(" "))
-    }
-}

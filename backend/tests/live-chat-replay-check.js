@@ -1,7 +1,7 @@
 const BASE = "http://127.0.0.1:8080";
-const HOST = "Bearer lifestream-local-dev-token";
-const COLLAB = "Bearer lifestream-local-collaborator-token";
-const DB_PATH = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db";
+const HOST = "Bearer vanta-local-dev-token";
+const COLLAB = "Bearer vanta-local-collaborator-token";
+const DB_PATH = "/Users/deepsaint/Desktop/vanta/backend/vanta.db";
 
 async function req(path, { method = "GET", token = null, body = null, headers = {} } = {}) {
   const finalHeaders = { ...headers };
@@ -263,7 +263,7 @@ async function main() {
   }
 
   const ws3 = createSocketClient(
-    `ws://127.0.0.1:8080/ws/live/${streamId}?access_token=lifestream-local-collaborator-token`,
+    `ws://127.0.0.1:8080/ws/live/${streamId}?access_token=vanta-local-collaborator-token`,
   );
   await ws3.open();
   await ws3.waitFor((event) => event.type === "sessionReady");
@@ -306,7 +306,7 @@ async function main() {
   }
 
   const validHostSocket = createSocketClient(
-    `ws://127.0.0.1:8080/ws/live/${streamId}?access_token=lifestream-local-dev-token`,
+    `ws://127.0.0.1:8080/ws/live/${streamId}?access_token=vanta-local-dev-token`,
   );
   await validHostSocket.open();
   await validHostSocket.waitFor((event) => event.type === "sessionReady");

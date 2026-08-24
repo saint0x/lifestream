@@ -29,6 +29,16 @@
   color: #ffb49c;
 }
 
+.ls-live-watch__route-state {
+  margin: 32px;
+  padding: 14px 16px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text-dim);
+  font-size: 12px;
+}
+
 .ls-live-watch__info {
   display: flex;
   flex-direction: column;

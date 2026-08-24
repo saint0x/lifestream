@@ -3,7 +3,7 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-HOST = "Bearer lifestream-local-dev-token"
+HOST = "Bearer vanta-local-dev-token"
 
 
 def req(path, method="GET", token=None, body=None):
@@ -29,7 +29,7 @@ assert profile[0] == 200, profile
 settings = req("/api/v1/me/settings", token=HOST)
 assert settings[0] == 200, settings
 plan = req("/api/v1/me/plan", token=HOST)
-assert plan[0] == 200 and plan[1]["planName"] == "LIFESTREAM Premium", plan
+assert plan[0] == 200 and plan[1]["planName"] == "VANTA Premium", plan
 
 original_display_name = profile[1]["user"]["displayName"]
 original_email = profile[1]["email"]
@@ -109,7 +109,7 @@ updated_profile = req(
     HOST,
     {
         "displayName": "Deep Saint Control",
-        "email": "deepsaint.control@lifestream.tv",
+        "email": "deepsaint.control@vanta.tv",
         "matureContentAllowed": False,
         "defaultAudio": "Original language",
         "subtitlePreset": "English · Large",
@@ -119,7 +119,7 @@ updated_profile = req(
 )
 assert updated_profile[0] == 200, updated_profile
 assert updated_profile[1]["user"]["displayName"] == "Deep Saint Control", updated_profile
-assert updated_profile[1]["email"] == "deepsaint.control@lifestream.tv", updated_profile
+assert updated_profile[1]["email"] == "deepsaint.control@vanta.tv", updated_profile
 assert updated_profile[1]["defaultAudio"] == "Original language", updated_profile
 assert updated_profile[1]["liveChatFilter"] == "Strict", updated_profile
 

@@ -108,21 +108,29 @@ pub(crate) async fn fetch_creator_upload_operations_summary(
         total_jobs: jobs_row.get("total_jobs"),
         created_jobs: jobs_row.get::<Option<i64>, _>("created_jobs").unwrap_or(0),
         uploaded_jobs: jobs_row.get::<Option<i64>, _>("uploaded_jobs").unwrap_or(0),
-        processing_jobs: jobs_row.get::<Option<i64>, _>("processing_jobs").unwrap_or(0),
+        processing_jobs: jobs_row
+            .get::<Option<i64>, _>("processing_jobs")
+            .unwrap_or(0),
         ready_jobs: jobs_row.get::<Option<i64>, _>("ready_jobs").unwrap_or(0),
         failed_jobs: jobs_row.get::<Option<i64>, _>("failed_jobs").unwrap_or(0),
-        published_jobs: jobs_row.get::<Option<i64>, _>("published_jobs").unwrap_or(0),
+        published_jobs: jobs_row
+            .get::<Option<i64>, _>("published_jobs")
+            .unwrap_or(0),
         active_ingest_sessions: ingest_row
             .get::<Option<i64>, _>("active_ingest_sessions")
             .unwrap_or(0),
         completed_ingest_sessions: ingest_row
             .get::<Option<i64>, _>("completed_ingest_sessions")
             .unwrap_or(0),
-        ready_assets: assets_row.get::<Option<i64>, _>("ready_assets").unwrap_or(0),
+        ready_assets: assets_row
+            .get::<Option<i64>, _>("ready_assets")
+            .unwrap_or(0),
         processing_assets: assets_row
             .get::<Option<i64>, _>("processing_assets")
             .unwrap_or(0),
-        failed_assets: assets_row.get::<Option<i64>, _>("failed_assets").unwrap_or(0),
+        failed_assets: assets_row
+            .get::<Option<i64>, _>("failed_assets")
+            .unwrap_or(0),
         published_assets: assets_row
             .get::<Option<i64>, _>("published_assets")
             .unwrap_or(0),

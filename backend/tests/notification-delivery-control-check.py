@@ -5,8 +5,8 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-ADMIN = "Bearer lifestream-local-dev-token"
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+ADMIN = "Bearer vanta-local-dev-token"
 
 
 def req(path, method="GET", token=None, body=None):

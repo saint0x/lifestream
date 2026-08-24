@@ -184,7 +184,10 @@ pub(crate) async fn fetch_live_streams(
         .await?
     };
 
-    let mut streams = rows.into_iter().map(live_stream_from_row).collect::<Vec<_>>();
+    let mut streams = rows
+        .into_iter()
+        .map(live_stream_from_row)
+        .collect::<Vec<_>>();
     apply_effective_live_viewer_counts(pool, &mut streams).await?;
     sort_live_streams(&mut streams, "viewers");
 
@@ -269,7 +272,10 @@ pub(crate) async fn fetch_followed_live_streams(
     .fetch_all(pool)
     .await?;
 
-    let mut streams = rows.into_iter().map(live_stream_from_row).collect::<Vec<_>>();
+    let mut streams = rows
+        .into_iter()
+        .map(live_stream_from_row)
+        .collect::<Vec<_>>();
     apply_effective_live_viewer_counts(pool, &mut streams).await?;
     sort_live_streams(&mut streams, "viewers");
     Ok(streams)
@@ -392,10 +398,7 @@ pub(crate) async fn fetch_categories(pool: &SqlitePool) -> AppResult<Vec<Categor
     .fetch_all(pool)
     .await?;
 
-    let categories: Vec<Category> = rows
-        .into_iter()
-        .map(category_from_row)
-        .collect();
+    let categories: Vec<Category> = rows.into_iter().map(category_from_row).collect();
 
     categories_with_live_totals(pool, categories).await
 }
@@ -410,7 +413,10 @@ pub(crate) async fn fetch_categories_for_live_streams(
     .fetch_all(pool)
     .await?;
 
-    apply_category_live_totals(rows.into_iter().map(category_from_row).collect(), live_streams)
+    apply_category_live_totals(
+        rows.into_iter().map(category_from_row).collect(),
+        live_streams,
+    )
 }
 
 pub(crate) async fn fetch_category_by_slug(pool: &SqlitePool, slug: &str) -> AppResult<Category> {
@@ -422,11 +428,7 @@ pub(crate) async fn fetch_category_by_slug(pool: &SqlitePool, slug: &str) -> App
     .await?
     .ok_or(AppError::NotFound)?;
 
-    let mut categories = categories_with_live_totals(
-        pool,
-        vec![category_from_row(row)],
-    )
-    .await?;
+    let mut categories = categories_with_live_totals(pool, vec![category_from_row(row)]).await?;
 
     categories.pop().ok_or(AppError::NotFound)
 }
@@ -477,7 +479,12 @@ async fn apply_effective_live_viewer_counts(
     let rows = query.build().fetch_all(pool).await?;
     let connected_counts = rows
         .into_iter()
-        .map(|row| (row.get::<String, _>("stream_id"), row.get::<i64, _>("count")))
+        .map(|row| {
+            (
+                row.get::<String, _>("stream_id"),
+                row.get::<i64, _>("count"),
+            )
+        })
         .collect::<HashMap<_, _>>();
 
     for stream in streams {

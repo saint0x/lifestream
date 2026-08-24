@@ -1,12 +1,11 @@
 use chrono::Utc;
-use sqlx::Row;
-use sqlx::SqlitePool;
 use std::path::Path;
 use std::process::Stdio;
 use tokio::process::Command;
 use uuid::Uuid;
 
 use crate::config::Config;
+use crate::db::{Database, NewAuthSession, ProvisionedCreator, ProvisionedUser};
 use crate::models::{CollaborationMediaLaunchRuntime, CollaborationMediaLaunchStep};
 use crate::{auth::hash_token, error::AppError};
 
@@ -16,6 +15,7 @@ pub(crate) enum RuntimeCommand {
     ProvisionCreator(ProvisionCreatorCommand),
     IssueSession(IssueSessionCommand),
     RunCollaborationWorker(RunCollaborationWorkerCommand),
+    RunBackgroundWorker,
 }
 
 pub(crate) struct ProvisionUserCommand {
@@ -71,8 +71,9 @@ impl RuntimeCommand {
             "run-collaboration-worker" => Ok(Self::RunCollaborationWorker(
                 RunCollaborationWorkerCommand::from_args(args)?,
             )),
+            "run-background-worker" => Ok(Self::RunBackgroundWorker),
             flag => Err(format!(
-                "unknown command `{flag}`; supported commands: `serve`, `provision-user`, `provision-creator`, `issue-session`, `run-collaboration-worker`"
+                "unknown command `{flag}`; supported commands: `serve`, `provision-user`, `provision-creator`, `issue-session`, `run-collaboration-worker`, `run-background-worker`"
             )
             .into()),
         }
@@ -86,16 +87,15 @@ impl ProvisionUserCommand {
             user_id: required_option(&options, "--user-id")?,
             handle: required_option(&options, "--handle")?,
             display_name: required_option(&options, "--display-name")?,
-            avatar_url: option_with_default(
-                &options,
-                "--avatar-url",
-                "https://cdn.lifestream.local/avatar/default.jpg",
-            ),
+            avatar_url: option_with_default(&options, "--avatar-url", ""),
             tier: option_with_default(&options, "--tier", "free"),
         })
     }
 
-    pub(crate) async fn execute(self, pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>> {
+    pub(crate) async fn execute(
+        self,
+        database: &Database,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if self.user_id.trim().is_empty() || self.handle.trim().is_empty() {
             return Err(AppError::BadRequest("user id and handle are required".to_string()).into());
         }
@@ -104,25 +104,16 @@ impl ProvisionUserCommand {
         }
 
         let now = Utc::now().to_rfc3339();
-        sqlx::query(
-            r#"
-            INSERT INTO users (id, handle, display_name, avatar, tier, joined_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                handle = excluded.handle,
-                display_name = excluded.display_name,
-                avatar = excluded.avatar,
-                tier = excluded.tier
-            "#,
-        )
-        .bind(self.user_id.trim())
-        .bind(self.handle.trim())
-        .bind(self.display_name.trim())
-        .bind(self.avatar_url.trim())
-        .bind(self.tier.trim())
-        .bind(&now)
-        .execute(pool)
-        .await?;
+        database
+            .provision_user(ProvisionedUser {
+                id: self.user_id.trim(),
+                handle: self.handle.trim(),
+                display_name: self.display_name.trim(),
+                avatar_url: self.avatar_url.trim(),
+                tier: self.tier.trim(),
+                joined_at: &now,
+            })
+            .await?;
 
         println!(
             "provisioned user {}\nhandle: {}\ndisplay_name: {}",
@@ -143,29 +134,17 @@ impl ProvisionCreatorCommand {
             creator_id: required_option(&options, "--creator-id")?,
             user_id: required_option(&options, "--user-id")?,
             display_name: required_option(&options, "--display-name")?,
-            avatar_url: option_with_default(
-                &options,
-                "--avatar-url",
-                &format!("https://cdn.lifestream.local/avatar/{handle}.jpg"),
-            ),
-            banner_url: option_with_default(
-                &options,
-                "--banner-url",
-                &format!("https://cdn.lifestream.local/banner/{handle}.jpg"),
-            ),
-            tagline: option_with_default(&options, "--tagline", "Live now on Lifestream"),
-            bio: option_with_default(&options, "--bio", "Lifestream creator"),
+            avatar_url: option_with_default(&options, "--avatar-url", ""),
+            banner_url: option_with_default(&options, "--banner-url", ""),
+            tagline: option_with_default(&options, "--tagline", "Live now on Vanta"),
+            bio: option_with_default(&options, "--bio", "Vanta creator"),
             partner_status: option_with_default(&options, "--partner-status", "affiliate"),
             stream_key: option_with_default(
                 &options,
                 "--stream-key",
                 &format!("sk_{handle}_{}", Uuid::new_v4().simple()),
             ),
-            rtmp_url: option_with_default(
-                &options,
-                "--rtmp-url",
-                "rtmp://ingest.lifestream.local/live",
-            ),
+            rtmp_url: option_with_default(&options, "--rtmp-url", ""),
             default_category: option_with_default(&options, "--default-category", "Gaming"),
             default_tags: parse_csv_option(
                 options.get("--default-tags").map(String::as_str),
@@ -175,9 +154,10 @@ impl ProvisionCreatorCommand {
         })
     }
 
-    pub(crate) async fn execute(self, pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>> {
-        ensure_user_exists(pool, &self.user_id).await?;
-
+    pub(crate) async fn execute(
+        self,
+        database: &Database,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if self.creator_id.trim().is_empty() || self.handle.trim().is_empty() {
             return Err(
                 AppError::BadRequest("creator id and handle are required".to_string()).into(),
@@ -188,44 +168,25 @@ impl ProvisionCreatorCommand {
         }
 
         let now = Utc::now().to_rfc3339();
-        sqlx::query(
-            r#"
-            INSERT INTO creator_profiles (
-                id, user_id, handle, display_name, avatar, banner, tagline, bio, partner_status,
-                joined_at, stream_key, rtmp_url, default_category, default_tags_json, followers,
-                subscribers, monthly_viewers, total_watch_hours, live_status, current_broadcast_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 0, 'offline', NULL)
-            ON CONFLICT(id) DO UPDATE SET
-                user_id = excluded.user_id,
-                handle = excluded.handle,
-                display_name = excluded.display_name,
-                avatar = excluded.avatar,
-                banner = excluded.banner,
-                tagline = excluded.tagline,
-                bio = excluded.bio,
-                partner_status = excluded.partner_status,
-                stream_key = excluded.stream_key,
-                rtmp_url = excluded.rtmp_url,
-                default_category = excluded.default_category,
-                default_tags_json = excluded.default_tags_json
-            "#,
-        )
-        .bind(self.creator_id.trim())
-        .bind(self.user_id.trim())
-        .bind(self.handle.trim())
-        .bind(self.display_name.trim())
-        .bind(self.avatar_url.trim())
-        .bind(self.banner_url.trim())
-        .bind(self.tagline.trim())
-        .bind(self.bio.trim())
-        .bind(self.partner_status.trim())
-        .bind(&now)
-        .bind(self.stream_key.trim())
-        .bind(self.rtmp_url.trim())
-        .bind(self.default_category.trim())
-        .bind(serde_json::to_string(&self.default_tags)?)
-        .execute(pool)
-        .await?;
+        let default_tags_json = serde_json::to_string(&self.default_tags)?;
+        database
+            .provision_creator(ProvisionedCreator {
+                id: self.creator_id.trim(),
+                user_id: self.user_id.trim(),
+                handle: self.handle.trim(),
+                display_name: self.display_name.trim(),
+                avatar_url: self.avatar_url.trim(),
+                banner_url: self.banner_url.trim(),
+                tagline: self.tagline.trim(),
+                bio: self.bio.trim(),
+                partner_status: self.partner_status.trim(),
+                joined_at: &now,
+                stream_key: self.stream_key.trim(),
+                rtmp_url: self.rtmp_url.trim(),
+                default_category: self.default_category.trim(),
+                default_tags_json: &default_tags_json,
+            })
+            .await?;
 
         println!(
             "provisioned creator {}\nuser_id: {}\nhandle: {}",
@@ -259,8 +220,11 @@ impl IssueSessionCommand {
         })
     }
 
-    pub(crate) async fn execute(self, pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>> {
-        ensure_user_exists(pool, &self.user_id).await?;
+    pub(crate) async fn execute(
+        self,
+        database: &Database,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        database.ensure_user_exists(&self.user_id).await?;
 
         let label = self.label.trim();
         if label.is_empty() {
@@ -294,22 +258,19 @@ impl IssueSessionCommand {
             .expires_in_days
             .map(|days| (Utc::now() + chrono::Duration::days(days)).to_rfc3339());
 
-        sqlx::query(
-            r#"
-            INSERT INTO auth_sessions (
-                id, user_id, label, token_hash, scopes_json, created_at, expires_at, revoked_at, last_used_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL)
-            "#,
-        )
-        .bind(&session_id)
-        .bind(self.user_id.trim())
-        .bind(label)
-        .bind(hash_token(&access_token))
-        .bind(serde_json::to_string(&self.scopes)?)
-        .bind(&created_at)
-        .bind(&expires_at)
-        .execute(pool)
-        .await?;
+        let scopes_json = serde_json::to_string(&self.scopes)?;
+        let token_hash = hash_token(&access_token);
+        database
+            .create_auth_session(NewAuthSession {
+                id: &session_id,
+                user_id: self.user_id.trim(),
+                label,
+                token_hash: &token_hash,
+                scopes_json: &scopes_json,
+                created_at: &created_at,
+                expires_at: expires_at.as_deref(),
+            })
+            .await?;
 
         println!("session_id: {session_id}");
         println!("user_id: {}", self.user_id.trim());
@@ -331,11 +292,12 @@ impl RunCollaborationWorkerCommand {
     pub(crate) async fn execute(
         self,
         config: &Config,
-        pool: &SqlitePool,
+        database: &Database,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let session_id = self.session_id.trim();
-        let launch_relative_path =
-            fetch_collaboration_launch_relative_path(pool, session_id).await?;
+        let launch_relative_path = database
+            .fetch_collaboration_launch_relative_path(session_id)
+            .await?;
         let launch_full_path = config.media_root.join(&launch_relative_path);
         let launch_runtime = load_collaboration_launch_runtime(&launch_full_path).await?;
 
@@ -352,28 +314,6 @@ impl RunCollaborationWorkerCommand {
         );
         Ok(())
     }
-}
-
-async fn fetch_collaboration_launch_relative_path(
-    pool: &SqlitePool,
-    session_id: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let row = sqlx::query(
-        r#"
-        SELECT creator_id, broadcast_id
-        FROM live_ingest_sessions
-        WHERE id = ?
-        "#,
-    )
-    .bind(session_id)
-    .fetch_optional(pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
-    let creator_id: String = row.get("creator_id");
-    let broadcast_id: String = row.get("broadcast_id");
-    Ok(format!(
-        "runtime/{creator_id}/{broadcast_id}/{session_id}/collaboration/launch.json"
-    ))
 }
 
 async fn load_collaboration_launch_runtime(
@@ -434,7 +374,7 @@ async fn execute_launch_step(
     let resolved_args = resolve_launch_args(media_root, &step.args);
     let status = Command::new(&step.command)
         .args(&resolved_args)
-        .env("LIFESTREAM_MEDIA_ROOT", media_root)
+        .env("VANTA_MEDIA_ROOT", media_root)
         .stdin(Stdio::null())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -453,7 +393,7 @@ async fn execute_launch_step(
 fn resolve_launch_args(media_root: &Path, args: &[String]) -> Vec<String> {
     let media_root_string = media_root.to_string_lossy();
     args.iter()
-        .map(|arg| arg.replace("${LIFESTREAM_MEDIA_ROOT}", &media_root_string))
+        .map(|arg| arg.replace("${VANTA_MEDIA_ROOT}", &media_root_string))
         .collect()
 }
 
@@ -464,18 +404,18 @@ mod tests {
 
     #[test]
     fn resolves_media_root_placeholder_in_launch_args() {
-        let media_root = PathBuf::from("/tmp/lifestream-media");
+        let media_root = PathBuf::from("/tmp/vanta-media");
         let resolved = resolve_launch_args(
             &media_root,
             &[
-                "${LIFESTREAM_MEDIA_ROOT}/runtime/crt/broadcast/launch.json".to_string(),
+                "${VANTA_MEDIA_ROOT}/runtime/crt/broadcast/launch.json".to_string(),
                 "srt://guest.example.com:9000".to_string(),
             ],
         );
         assert_eq!(
             resolved,
             vec![
-                "/tmp/lifestream-media/runtime/crt/broadcast/launch.json".to_string(),
+                "/tmp/vanta-media/runtime/crt/broadcast/launch.json".to_string(),
                 "srt://guest.example.com:9000".to_string(),
             ]
         );
@@ -507,7 +447,7 @@ mod tests {
     #[tokio::test]
     async fn executes_launch_step_with_resolved_media_root()
     -> Result<(), Box<dyn std::error::Error>> {
-        let media_root = std::env::temp_dir().join(format!("lifestream-worker-{}", Uuid::new_v4()));
+        let media_root = std::env::temp_dir().join(format!("vanta-worker-{}", Uuid::new_v4()));
         tokio::fs::create_dir_all(&media_root).await?;
         let output_path = media_root.join("worker-proof.txt");
         let step = CollaborationMediaLaunchStep {
@@ -517,7 +457,7 @@ mod tests {
                 "-c".to_string(),
                 "printf ok > \"$1\"".to_string(),
                 "worker-proof".to_string(),
-                "${LIFESTREAM_MEDIA_ROOT}/worker-proof.txt".to_string(),
+                "${VANTA_MEDIA_ROOT}/worker-proof.txt".to_string(),
             ],
             filter_complex: None,
             input_participant_ids: Vec::new(),
@@ -531,22 +471,6 @@ mod tests {
         assert_eq!(proof, "ok");
         Ok(())
     }
-}
-
-async fn ensure_user_exists(pool: &SqlitePool, user_id: &str) -> Result<(), AppError> {
-    let exists = sqlx::query("SELECT 1 FROM users WHERE id = ? LIMIT 1")
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await?
-        .is_some();
-
-    if !exists {
-        return Err(AppError::BadRequest(format!(
-            "user `{user_id}` does not exist; run `provision-user` first"
-        )));
-    }
-
-    Ok(())
 }
 
 fn parse_options(

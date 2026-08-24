@@ -3,8 +3,8 @@ use super::*;
 #[tokio::test]
 async fn runtime_reports_persist_output_state_for_creator_and_terminal_session() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let auth_token = insert_creator_auth_session(&state.pool, &creator).await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let auth_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -54,7 +54,8 @@ async fn runtime_reports_persist_output_state_for_creator_and_terminal_session()
         Some(manifest_relative_path.as_str())
     );
 
-    let runtime = fetch_creator_live_runtime_response(&state.pool, &creator.id).await?;
+    let runtime =
+        fetch_creator_live_runtime_response(state.db.sqlite_adapter(), &creator.id).await?;
     let active_runtime_output = runtime
         .active_runtime_output
         .expect("active runtime output");
@@ -124,9 +125,12 @@ async fn runtime_reports_persist_output_state_for_creator_and_terminal_session()
         0
     );
 
-    let record =
-        fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
-            .await?;
+    let record = fetch_creator_live_ingest_session_record(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.id,
+    )
+    .await?;
     assert_eq!(
         record
             .runtime_output
@@ -180,9 +184,12 @@ async fn runtime_reports_persist_output_state_for_creator_and_terminal_session()
     .0;
     assert_eq!(terminated.status, "terminated");
 
-    let terminal_record =
-        fetch_creator_live_ingest_session_record(&state.pool, &creator.id, &connected.session.id)
-            .await?;
+    let terminal_record = fetch_creator_live_ingest_session_record(
+        state.db.sqlite_adapter(),
+        &creator.id,
+        &connected.session.id,
+    )
+    .await?;
     let terminal_runtime_output = terminal_record
         .runtime_output
         .expect("terminal runtime output");

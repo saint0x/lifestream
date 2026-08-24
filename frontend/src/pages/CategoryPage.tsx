@@ -1,24 +1,77 @@
+import { useEffect, useState } from "react";
 import { useParams, Navigate } from "react-router-dom";
 import { repository } from "@/lib/repository";
 import { LiveCard } from "@/components/content/LiveCard";
 import { ContentCard } from "@/components/content/ContentCard";
-import type { Genre } from "@/types";
+import type { Category, Film, LiveStream, Series } from "@/types";
 import "./CategoryPage.css";
-
-const toGenre = (slug: string): Genre | undefined => {
-  const match = repository.listCategories().find((c) => c.slug === slug);
-  return match?.name;
-};
 
 export function CategoryPage() {
   const { slug } = useParams<{ slug: string }>();
-  const cat = slug ? repository.getCategory(slug) : undefined;
-  const genre = slug ? toGenre(slug) : undefined;
+  const [cat, setCat] = useState<Category | null>(null);
+  const [liveInCat, setLiveInCat] = useState<ReadonlyArray<LiveStream>>([]);
+  const [vodInCat, setVodInCat] = useState<ReadonlyArray<Series | Film>>([]);
+  const [totalVodTitles, setTotalVodTitles] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pageSize = 18;
 
-  if (!cat || !genre) return <Navigate to="/browse" replace />;
+  useEffect(() => {
+    if (!slug) return;
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
 
-  const liveInCat = repository.getLiveStreamsByCategory(genre);
-  const vodInCat = repository.listByGenre(genre);
+    void repository
+      .fetchCategoryBrowse(slug, { limit: pageSize, offset: 0 }, controller.signal)
+      .then((payload) => {
+        setCat(payload.category);
+        setLiveInCat(payload.liveStreams);
+        setVodInCat([...payload.series, ...payload.films]);
+        setTotalVodTitles(payload.totalVodTitles);
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setCat(null);
+          setError(err instanceof Error ? err.message : "Unable to load this category.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [slug]);
+
+  const loadMore = () => {
+    if (!slug || loadingMore) return;
+    setLoadingMore(true);
+    setError(null);
+    void repository
+      .fetchCategoryBrowse(slug, { limit: pageSize, offset: vodInCat.length })
+      .then((payload) => {
+        setVodInCat((current) => [...current, ...payload.series, ...payload.films]);
+        setTotalVodTitles(payload.totalVodTitles);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Unable to load more titles.");
+      })
+      .finally(() => setLoadingMore(false));
+  };
+
+  if (!slug) return <Navigate to="/live" replace />;
+  if (!loading && !cat && !error) return <Navigate to="/live" replace />;
+
+  if (!cat) {
+    return (
+      <div className="ls-category">
+        <div className="ls-category__empty">
+          {loading ? "Loading category…" : error ?? "Category is unavailable."}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ls-category">
@@ -40,7 +93,7 @@ export function CategoryPage() {
             </span>
             <span className="ls-category__sep">/</span>
             <span>
-              <strong>{vodInCat.length}</strong> on-demand titles
+              <strong>{totalVodTitles}</strong> on-demand titles
             </span>
           </div>
           <div className="ls-category__tags">
@@ -75,6 +128,16 @@ export function CategoryPage() {
             ))
           )}
         </div>
+        {vodInCat.length < totalVodTitles ? (
+          <button
+            type="button"
+            className="ls-category__load-more"
+            onClick={loadMore}
+            disabled={loadingMore}
+          >
+            {loadingMore ? "Loading" : "Load more"}
+          </button>
+        ) : null}
       </section>
     </div>
   );

@@ -6,13 +6,13 @@ pub(crate) async fn get_playback_manifest(
     Query(query): Query<PlaybackAccessQuery>,
 ) -> AppResult<Response> {
     let playback_token = query.playback_token.ok_or(AppError::Unauthorized)?;
-    let session = validate_playback_session(&state.pool, &session_id, &playback_token).await?;
+    let session = validate_playback_session(&state.db, &session_id, &playback_token).await?;
     let manifest_relative_path = if session.content_kind == "live" {
-        fetch_live_stream_playback_target(&state.pool, &session.content_id)
+        fetch_live_stream_playback_target(state.db.sqlite_adapter(), &session.content_id)
             .await?
             .playback_relative_path
     } else {
-        fetch_upload_playback_target(&state.pool, &session.content_id)
+        fetch_upload_playback_target(state.db.sqlite_adapter(), &session.content_id)
             .await?
             .asset
             .playback_path
@@ -32,11 +32,21 @@ pub(crate) async fn get_playback_manifest(
             if line.is_empty() {
                 line.to_string()
             } else if line.starts_with("#EXT-X-MEDIA:") {
-                rewrite_hls_manifest_media_uri_line(line, &manifest_dir, &playback_token)
+                rewrite_hls_manifest_media_uri_line_with_storage(
+                    &state,
+                    line,
+                    &manifest_dir,
+                    &playback_token,
+                )
             } else if line.starts_with('#') {
                 line.to_string()
             } else {
-                rewrite_hls_manifest_reference(line, &manifest_dir, &playback_token)
+                rewrite_hls_manifest_reference_with_storage(
+                    &state,
+                    line,
+                    &manifest_dir,
+                    &playback_token,
+                )
             }
         })
         .collect::<Vec<_>>()
@@ -47,4 +57,44 @@ pub(crate) async fn get_playback_manifest(
         Body::from(format!("{rewritten}\n")),
     )
         .into_response())
+}
+
+fn rewrite_hls_manifest_reference_with_storage(
+    state: &SharedState,
+    relative_reference: &str,
+    manifest_dir: &FsPath,
+    playback_token: &str,
+) -> String {
+    let resolved = normalize_relative_storage_path(&manifest_dir.join(relative_reference));
+    state
+        .storage
+        .playback_media_url(&resolved.to_string_lossy(), playback_token)
+}
+
+fn rewrite_hls_manifest_media_uri_line_with_storage(
+    state: &SharedState,
+    line: &str,
+    manifest_dir: &FsPath,
+    playback_token: &str,
+) -> String {
+    let Some(uri_start) = line.find("URI=\"") else {
+        return line.to_string();
+    };
+    let value_start = uri_start + 5;
+    let Some(value_end_offset) = line[value_start..].find('"') else {
+        return line.to_string();
+    };
+    let value_end = value_start + value_end_offset;
+    let rewritten_uri = rewrite_hls_manifest_reference_with_storage(
+        state,
+        &line[value_start..value_end],
+        manifest_dir,
+        playback_token,
+    );
+    format!(
+        "{}URI=\"{}\"{}",
+        &line[..uri_start],
+        rewritten_uri,
+        &line[value_end + 1..]
+    )
 }

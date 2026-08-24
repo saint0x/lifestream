@@ -4,6 +4,7 @@ import type {
   BillingPlan,
   Category,
   ContentItem,
+  Credit,
   CreatorNotification,
   CreatorProfile,
   Episode,
@@ -11,11 +12,14 @@ import type {
   FollowingFeedResponse,
   Genre,
   LiveStream,
+  PersonProfile,
   RevenueEntry,
   Series,
   Streamer,
   TopContent,
   TrafficSource,
+  UpdatePersonProfileRequest,
+  UpdateProjectCreditsRequest,
   Upload,
   UploadStatus,
   User,
@@ -26,7 +30,12 @@ import type {
   ViewerAppState,
   WatchlistResponse,
 } from "@/types";
-import { requestJson } from "./api";
+import {
+  clearAccessToken,
+  createGuestSession,
+  getAccessToken,
+  requestJson,
+} from "./api";
 
 interface BootstrapPayload {
   readonly creator: {
@@ -40,9 +49,10 @@ interface BootstrapPayload {
     readonly revenue: ReadonlyArray<RevenueEntry>;
     readonly notifications: ReadonlyArray<CreatorNotification>;
     readonly uploads: ReadonlyArray<Upload>;
-  };
-  readonly home: unknown;
-  readonly me: User;
+  } | null;
+  readonly home: HomePayload;
+  readonly me: User | null;
+  readonly viewer: ViewerAppState | null;
 }
 
 interface RepositoryState {
@@ -53,7 +63,7 @@ interface RepositoryState {
   readonly categories: ReadonlyArray<Category>;
   readonly currentUser: User;
   readonly viewerState: ViewerAppState;
-  readonly creatorProfile: CreatorProfile;
+  readonly creatorProfile: CreatorProfile | null;
   readonly broadcasts: ReadonlyArray<Broadcast>;
   readonly uploads: ReadonlyArray<Upload>;
   readonly analytics: ReadonlyArray<AnalyticsPoint>;
@@ -61,6 +71,66 @@ interface RepositoryState {
   readonly topContent: ReadonlyArray<TopContent>;
   readonly revenue: ReadonlyArray<RevenueEntry>;
   readonly creatorNotifications: ReadonlyArray<CreatorNotification>;
+}
+
+export interface SearchPayload {
+  readonly series: ReadonlyArray<Series>;
+  readonly films: ReadonlyArray<Film>;
+  readonly liveStreams: ReadonlyArray<LiveStream>;
+}
+
+export interface SearchPagePayload extends SearchPayload {
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: boolean;
+}
+
+export interface HomePayload {
+  readonly trendingSeries: ReadonlyArray<Series>;
+  readonly trendingFilms: ReadonlyArray<Film>;
+  readonly featuredLive: ReadonlyArray<LiveStream>;
+  readonly categories: ReadonlyArray<Category>;
+  readonly continueWatching: ReadonlyArray<ViewerAppState["library"]["continueWatching"][number]>;
+}
+
+export interface CategoryBrowsePayload {
+  readonly category: Category;
+  readonly liveStreams: ReadonlyArray<LiveStream>;
+  readonly series: ReadonlyArray<Series>;
+  readonly films: ReadonlyArray<Film>;
+  readonly totalVodTitles: number;
+}
+
+export interface LiveDiscoveryOptions {
+  readonly category?: Genre | "all";
+  readonly sort?: "viewers" | "newest";
+  readonly limit?: number;
+}
+
+export interface LiveDiscoveryPayload {
+  readonly streams: ReadonlyArray<LiveStream>;
+  readonly categories: ReadonlyArray<Category>;
+  readonly totalViewers: number;
+  readonly totalChannels: number;
+  readonly activeCategory: Genre | null;
+  readonly activeSort: "viewers" | "newest";
+}
+
+export interface CatalogPageOptions {
+  readonly genre?: Genre | "All";
+  readonly originalsOnly?: boolean;
+  readonly sort?: "trending" | "newest" | "score" | "title";
+  readonly limit?: number;
+  readonly offset?: number;
+}
+
+export interface CatalogPagePayload<T> {
+  readonly items: ReadonlyArray<T>;
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: boolean;
 }
 
 let state: RepositoryState | null = null;
@@ -84,47 +154,163 @@ function normalizeUpload(upload: Upload): Upload {
   };
 }
 
+function mergeCatalogCache(
+  current: RepositoryState,
+  incoming: ReadonlyArray<Series | Film>,
+): RepositoryState {
+  const seriesById = new Map(current.series.map((item) => [item.id, item]));
+  const filmsById = new Map(current.films.map((item) => [item.id, item]));
+
+  for (const item of incoming) {
+    if (item.kind === "series") {
+      seriesById.set(item.id, item);
+    } else {
+      filmsById.set(item.id, item);
+    }
+  }
+
+  return {
+    ...current,
+    series: Array.from(seriesById.values()),
+    films: Array.from(filmsById.values()),
+  };
+}
+
+function rememberCatalogItems(items: ReadonlyArray<Series | Film>): void {
+  if (!state || items.length === 0) return;
+  state = mergeCatalogCache(state, items);
+}
+
+function rememberContentCredits(
+  contentKind: "series" | "film",
+  contentId: string,
+  credits: ReadonlyArray<Credit>,
+): void {
+  if (!state) return;
+  if (contentKind === "series") {
+    state = {
+      ...state,
+      series: state.series.map((item) => (item.id === contentId ? { ...item, credits } : item)),
+    };
+    return;
+  }
+  state = {
+    ...state,
+    films: state.films.map((item) => (item.id === contentId ? { ...item, credits } : item)),
+  };
+}
+
+function rememberLiveDiscovery(payload: LiveDiscoveryPayload): void {
+  if (!state) return;
+  const streamsById = new Map(state.liveStreams.map((item) => [item.id, item]));
+  for (const stream of payload.streams) streamsById.set(stream.id, stream);
+  const categoriesBySlug = new Map(state.categories.map((item) => [item.slug, item]));
+  for (const category of payload.categories) categoriesBySlug.set(category.slug, category);
+  state = {
+    ...state,
+    liveStreams: Array.from(streamsById.values()),
+    categories: Array.from(categoriesBySlug.values()),
+  };
+}
+
+function rememberLiveStream(stream: LiveStream): void {
+  if (!state) return;
+  const streamsById = new Map(state.liveStreams.map((item) => [item.id, item]));
+  streamsById.set(stream.id, stream);
+  state = {
+    ...state,
+    liveStreams: Array.from(streamsById.values()),
+  };
+}
+
+function buildCatalogPagePath(
+  basePath: string,
+  options: CatalogPageOptions = {},
+): string {
+  const params = new URLSearchParams();
+  if (options.genre !== undefined && options.genre !== "All") {
+    params.set("genre", options.genre);
+  }
+  if (options.originalsOnly !== undefined) {
+    params.set("originalsOnly", String(options.originalsOnly));
+  }
+  if (options.sort !== undefined) {
+    params.set("sort", options.sort);
+  }
+  if (options.limit !== undefined) {
+    params.set("limit", String(options.limit));
+  }
+  if (options.offset !== undefined) {
+    params.set("offset", String(options.offset));
+  }
+  const query = params.toString();
+  return query ? `${basePath}?${query}` : basePath;
+}
+
+function buildLiveDiscoveryPath(options: LiveDiscoveryOptions = {}): string {
+  const params = new URLSearchParams();
+  if (options.category !== undefined) {
+    params.set("category", options.category);
+  }
+  if (options.sort !== undefined) {
+    params.set("sort", options.sort);
+  }
+  if (options.limit !== undefined) {
+    params.set("limit", String(options.limit));
+  }
+  const query = params.toString();
+  return query ? `/api/v1/live/discovery?${query}` : "/api/v1/live/discovery";
+}
+
 export const repository = {
+  hasState(): boolean {
+    return state !== null;
+  },
+
+  getViewerStateOrNull(): ViewerAppState | null {
+    return state?.viewerState ?? null;
+  },
+
   async hydrate(): Promise<void> {
-    const [
-      bootstrap,
-      viewerState,
-      series,
-      films,
-      liveStreams,
-      streamers,
-      categories,
-    ] = await Promise.all([
-      requestJson<BootstrapPayload>("/api/v1/bootstrap"),
-      requestJson<ViewerAppState>("/api/v1/me/state"),
-      requestJson<ReadonlyArray<Series>>("/api/v1/catalog/series"),
-      requestJson<ReadonlyArray<Film>>("/api/v1/catalog/films"),
-      requestJson<ReadonlyArray<LiveStream>>("/api/v1/live/streams", { auth: false }),
-      requestJson<ReadonlyArray<Streamer>>("/api/v1/streamers", { auth: false }),
-      requestJson<ReadonlyArray<Category>>("/api/v1/categories", { auth: false }),
-    ]);
+    if (getAccessToken() === null) {
+      await createGuestSession();
+    }
+    let bootstrap = await requestJson<BootstrapPayload>("/api/v1/bootstrap", {
+      auth: getAccessToken() !== null,
+    });
+    if (!bootstrap.viewer && getAccessToken() !== null) {
+      clearAccessToken();
+      await createGuestSession();
+      bootstrap = await requestJson<BootstrapPayload>("/api/v1/bootstrap", {
+        auth: true,
+      });
+    }
+    if (!bootstrap.viewer) {
+      throw new Error("Bootstrap did not return viewer state.");
+    }
 
     const creator = bootstrap.creator;
+    const viewerState = bootstrap.viewer;
     state = {
-      series,
-      films,
-      liveStreams,
-      streamers,
-      categories,
+      series: bootstrap.home.trendingSeries,
+      films: bootstrap.home.trendingFilms,
+      liveStreams: bootstrap.home.featuredLive,
+      streamers: [],
+      categories: bootstrap.home.categories,
       currentUser: viewerState.user,
       viewerState,
-      creatorProfile: creator.profile,
+      creatorProfile: creator?.profile ?? null,
       broadcasts: dedupeBroadcasts([
-        ...(creator.currentBroadcast ? [creator.currentBroadcast] : []),
-        ...creator.scheduledBroadcasts,
-        ...creator.recentBroadcasts,
+        ...(creator?.currentBroadcast ? [creator.currentBroadcast] : []),
+        ...(creator?.scheduledBroadcasts ?? []),
+        ...(creator?.recentBroadcasts ?? []),
       ]),
-      uploads: creator.uploads.map(normalizeUpload),
-      analytics: creator.analytics,
-      trafficSources: creator.trafficSources,
-      topContent: creator.topContent,
-      revenue: creator.revenue,
-      creatorNotifications: creator.notifications,
+      uploads: creator?.uploads.map(normalizeUpload) ?? [],
+      analytics: creator?.analytics ?? [],
+      trafficSources: creator?.trafficSources ?? [],
+      topContent: creator?.topContent ?? [],
+      revenue: creator?.revenue ?? [],
+      creatorNotifications: creator?.notifications ?? [],
     };
   },
 
@@ -157,6 +343,39 @@ export const repository = {
   listSeries(): ReadonlyArray<Series> {
     return requireState().series;
   },
+  async fetchSeriesPage(
+    options: CatalogPageOptions = {},
+    signal?: AbortSignal,
+  ): Promise<CatalogPagePayload<Series>> {
+    const payload = await requestJson<CatalogPagePayload<Series>>(
+      buildCatalogPagePath("/api/v1/catalog/series/page", options),
+      { auth: false, signal },
+    );
+    rememberCatalogItems(payload.items);
+    return payload;
+  },
+  async fetchSeriesBySlug(slug: string, signal?: AbortSignal): Promise<Series> {
+    const existing = state?.series.find((item) => item.slug === slug);
+    if (existing) return existing;
+    const series = await requestJson<Series>(
+      `/api/v1/catalog/series/${encodeURIComponent(slug)}`,
+      { auth: getAccessToken() !== null, signal },
+    );
+    rememberCatalogItems([series]);
+    return series;
+  },
+  async fetchSeriesForEpisode(episodeId: string, signal?: AbortSignal): Promise<Series> {
+    const existing = state?.series.find((item) =>
+      item.seasons.some((season) => season.episodes.some((episode) => episode.id === episodeId)),
+    );
+    if (existing) return existing;
+    const series = await requestJson<Series>(
+      `/api/v1/catalog/episodes/${encodeURIComponent(episodeId)}/series`,
+      { auth: getAccessToken() !== null, signal },
+    );
+    rememberCatalogItems([series]);
+    return series;
+  },
   getSeriesBySlug(slug: string): Series | undefined {
     return requireState().series.find((item) => item.slug === slug);
   },
@@ -177,6 +396,27 @@ export const repository = {
   listFilms(): ReadonlyArray<Film> {
     return requireState().films;
   },
+  async fetchFilmsPage(
+    options: CatalogPageOptions = {},
+    signal?: AbortSignal,
+  ): Promise<CatalogPagePayload<Film>> {
+    const payload = await requestJson<CatalogPagePayload<Film>>(
+      buildCatalogPagePath("/api/v1/catalog/films/page", options),
+      { auth: false, signal },
+    );
+    rememberCatalogItems(payload.items);
+    return payload;
+  },
+  async fetchFilmBySlug(slug: string, signal?: AbortSignal): Promise<Film> {
+    const existing = state?.films.find((item) => item.slug === slug);
+    if (existing) return existing;
+    const film = await requestJson<Film>(
+      `/api/v1/catalog/films/${encodeURIComponent(slug)}`,
+      { auth: getAccessToken() !== null, signal },
+    );
+    rememberCatalogItems([film]);
+    return film;
+  },
   getFilmBySlug(slug: string): Film | undefined {
     return requireState().films.find((item) => item.slug === slug);
   },
@@ -187,6 +427,27 @@ export const repository = {
   // ---------- streams ----------
   listLiveStreams(): ReadonlyArray<LiveStream> {
     return requireState().liveStreams;
+  },
+  async fetchLiveDiscovery(
+    options: LiveDiscoveryOptions = {},
+    signal?: AbortSignal,
+  ): Promise<LiveDiscoveryPayload> {
+    const payload = await requestJson<LiveDiscoveryPayload>(
+      buildLiveDiscoveryPath(options),
+      { auth: false, signal },
+    );
+    rememberLiveDiscovery(payload);
+    return payload;
+  },
+  async fetchLiveStreamBySlug(slug: string, signal?: AbortSignal): Promise<LiveStream> {
+    const existing = state?.liveStreams.find((item) => item.slug === slug);
+    if (existing) return existing;
+    const stream = await requestJson<LiveStream>(
+      `/api/v1/live/streams/${encodeURIComponent(slug)}`,
+      { auth: false, signal },
+    );
+    rememberLiveStream(stream);
+    return stream;
   },
   getLiveStreamBySlug(slug: string): LiveStream | undefined {
     return requireState().liveStreams.find((item) => item.slug === slug);
@@ -247,11 +508,78 @@ export const repository = {
     return requireState().viewerState.plan;
   },
 
+  async fetchPersonProfile(slug: string, signal?: AbortSignal): Promise<PersonProfile> {
+    return requestJson<PersonProfile>(
+      `/api/v1/people/${encodeURIComponent(slug)}`,
+      { auth: false, signal },
+    );
+  },
+
+  async fetchMyPersonProfile(signal?: AbortSignal): Promise<PersonProfile> {
+    return requestJson<PersonProfile>(
+      "/api/v1/me/person-profile",
+      { auth: true, signal },
+    );
+  },
+
+  async updateMyPersonProfile(input: UpdatePersonProfileRequest): Promise<PersonProfile> {
+    return requestJson<PersonProfile>("/api/v1/me/person-profile", {
+      method: "PATCH",
+      body: input,
+      auth: true,
+    });
+  },
+
+  async replaceProjectCredits(
+    contentKind: "series" | "film",
+    contentId: string,
+    input: UpdateProjectCreditsRequest,
+  ): Promise<ReadonlyArray<Credit>> {
+    const credits = await requestJson<ReadonlyArray<Credit>>(
+      `/api/v1/creator/me/content/${contentKind}/${encodeURIComponent(contentId)}/credits`,
+      {
+        method: "PUT",
+        body: input,
+        auth: true,
+      },
+    );
+    rememberContentCredits(contentKind, contentId, credits);
+    return credits;
+  },
+
   listUserNotifications(): ReadonlyArray<UserNotification> {
     return requireState().viewerState.notifications;
   },
 
+  hasCreatorWorkspace(): boolean {
+    return requireState().creatorProfile !== null;
+  },
+
   // ---------- aggregation helpers ----------
+  async fetchHome(signal?: AbortSignal): Promise<HomePayload> {
+    const payload = await requestJson<HomePayload>(
+      "/api/v1/home",
+      { auth: getAccessToken() !== null, signal },
+    );
+    rememberCatalogItems([...payload.trendingSeries, ...payload.trendingFilms]);
+    return payload;
+  },
+  async fetchCategoryBrowse(
+    slug: string,
+    options: { readonly limit?: number; readonly offset?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<CategoryBrowsePayload> {
+    const params = new URLSearchParams();
+    if (options.limit !== undefined) params.set("limit", String(options.limit));
+    if (options.offset !== undefined) params.set("offset", String(options.offset));
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    const payload = await requestJson<CategoryBrowsePayload>(
+      `/api/v1/categories/${encodeURIComponent(slug)}/browse${suffix}`,
+      { auth: false, signal },
+    );
+    rememberCatalogItems([...payload.series, ...payload.films]);
+    return payload;
+  },
   listAllContent(): ReadonlyArray<ContentItem> {
     const current = requireState();
     return [...current.series, ...current.films, ...current.liveStreams];
@@ -277,10 +605,26 @@ export const repository = {
   getByAnyId(id: string): ContentItem | undefined {
     return this.listAllContent().find((item) => item.id === id);
   },
+  async fetchContentById(id: string, signal?: AbortSignal): Promise<ContentItem> {
+    const existing = this.getByAnyId(id);
+    if (existing) return existing;
+    const content = await requestJson<ContentItem>(
+      `/api/v1/catalog/content/${encodeURIComponent(id)}`,
+      { auth: getAccessToken() !== null, signal },
+    );
+    if (content.kind === "series" || content.kind === "film") {
+      rememberCatalogItems([content]);
+    }
+    return content;
+  },
 
   // ---------- creator ----------
   getCreatorProfile(): CreatorProfile {
-    return requireState().creatorProfile;
+    const profile = requireState().creatorProfile;
+    if (!profile) {
+      throw new Error("Creator workspace is unavailable for this session.");
+    }
+    return profile;
   },
 
   listBroadcasts(): ReadonlyArray<Broadcast> {
@@ -339,5 +683,31 @@ export const repository = {
         item.genres.some((genre) => genre.toLowerCase().includes(q))
       );
     });
+  },
+
+  async searchRemote(query: string, signal?: AbortSignal): Promise<ReadonlyArray<ContentItem>> {
+    const q = query.trim();
+    if (!q) return [];
+    const payload = await this.searchRemotePage(q, { limit: 8, offset: 0 }, signal);
+    return [...payload.series, ...payload.films, ...payload.liveStreams];
+  },
+
+  async searchRemotePage(
+    query: string,
+    options: { readonly limit?: number; readonly offset?: number } = {},
+    signal?: AbortSignal,
+  ): Promise<SearchPagePayload> {
+    const q = query.trim();
+    if (!q) {
+      return { series: [], films: [], liveStreams: [], total: 0, limit: 0, offset: 0, hasMore: false };
+    }
+    const params = new URLSearchParams();
+    params.set("q", q);
+    if (options.limit !== undefined) params.set("limit", String(options.limit));
+    if (options.offset !== undefined) params.set("offset", String(options.offset));
+    return requestJson<SearchPagePayload>(
+      `/api/v1/search?${params.toString()}`,
+      { auth: false, signal },
+    );
   },
 } as const;

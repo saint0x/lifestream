@@ -74,12 +74,8 @@ pub(super) fn build_topology_programs(
         if output_ids.is_empty() {
             continue;
         }
-        let source_participant_ids = guest_program_sources(
-            participant,
-            outputs,
-            &output_ids,
-            live_participant_ids,
-        );
+        let source_participant_ids =
+            guest_program_sources(participant, outputs, &output_ids, live_participant_ids);
         programs.push(CollaborationProgramRoute {
             id: format!("col-program-{}", participant.id),
             program_kind: "guest_program".to_string(),

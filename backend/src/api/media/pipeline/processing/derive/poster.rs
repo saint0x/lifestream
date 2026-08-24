@@ -18,7 +18,7 @@ pub(super) async fn generate_poster_derivative(
         .await
         .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
     let poster_run_id = start_media_processing_run(
-        &state.pool,
+        state.db.sqlite_adapter(),
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -30,7 +30,7 @@ pub(super) async fn generate_poster_derivative(
     match generate_poster(&attempt.source_path, &poster_full_path, probed.duration_sec).await {
         Ok(()) => {
             finish_media_processing_run(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 &poster_run_id,
                 "completed",
                 json!({ "target": poster_relative_path }),
@@ -41,7 +41,7 @@ pub(super) async fn generate_poster_derivative(
         }
         Err(error) => {
             let _ = finish_media_processing_run(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 &poster_run_id,
                 "failed",
                 json!({ "target": poster_relative_path, "error": error.to_string() }),

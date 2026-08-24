@@ -57,6 +57,7 @@ pub struct CreatorDashboard {
     pub recent_broadcasts: Vec<Broadcast>,
     pub analytics: Vec<AnalyticsPoint>,
     pub traffic_sources: Vec<TrafficSource>,
+    pub attention_score: CreatorAttentionScore,
     pub top_content: Vec<TopContent>,
     pub revenue: Vec<RevenueEntry>,
     pub analytics_summary: CreatorAnalyticsSummary,

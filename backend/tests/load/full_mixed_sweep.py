@@ -19,9 +19,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[3]
 BACKEND_ROOT = ROOT / "backend"
-DB_PATH = BACKEND_ROOT / "lifestream.db"
-BASE_URL = os.environ.get("LIFESTREAM_BASE_URL", "http://127.0.0.1:8080")
-AUTH = "Bearer lifestream-local-dev-token"
+DB_PATH = BACKEND_ROOT / "vanta.db"
+BASE_URL = os.environ.get("VANTA_BASE_URL", "http://127.0.0.1:8080")
+AUTH = "Bearer vanta-local-dev-token"
 HEADERS = {"Authorization": AUTH, "Content-Type": "application/json"}
 PLAYBACK_WRK = BACKEND_ROOT / "tests" / "load" / "playback-session.lua"
 CHAT_WRK = BACKEND_ROOT / "tests" / "load" / "chat-message.lua"
@@ -69,7 +69,7 @@ def ensure_auth_session() -> None:
                 "sess-load-owner",
                 "usr-1",
                 "load-owner",
-                hashlib.sha256("lifestream-local-dev-token".encode()).hexdigest(),
+                hashlib.sha256("vanta-local-dev-token".encode()).hexdigest(),
                 json.dumps(["user", "creator", "creator:write", "admin"]),
                 now,
             ),

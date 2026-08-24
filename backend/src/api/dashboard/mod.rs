@@ -6,14 +6,15 @@ mod dashboard;
 mod series;
 
 pub(crate) use analytics::{
-    fetch_analytics, fetch_revenue_entries, summarize_creator_analytics, summarize_creator_revenue,
+    fetch_analytics, fetch_revenue_entries, reconcile_creator_attention_rollups,
+    summarize_creator_analytics, summarize_creator_revenue,
 };
 pub(crate) use content::{
     derive_upload_lifecycle_status, fetch_broadcast_by_id, fetch_broadcasts,
     fetch_creator_upload_operations_response, fetch_creator_upload_operations_summary,
     fetch_upload_by_id, fetch_uploads, filter_creator_uploads, summarize_creator_content,
-    validate_bulk_upload_action,
-    validate_upload_job_kind, validate_upload_job_source_type, validate_upload_visibility,
+    validate_bulk_upload_action, validate_upload_job_kind, validate_upload_job_source_type,
+    validate_upload_visibility,
 };
 pub(crate) use dashboard::{
     creator_dashboard_payload, fetch_creator_app_state, fetch_creator_dashboard_shell,

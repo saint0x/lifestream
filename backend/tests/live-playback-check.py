@@ -5,8 +5,8 @@ import urllib.request
 import urllib.error
 
 BASE = "http://127.0.0.1:8080"
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-OWNER = "Bearer lifestream-local-dev-token"
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+OWNER = "Bearer vanta-local-dev-token"
 
 
 def get_json(path, method="GET", token=None, body=None, extra_headers=None):
@@ -47,10 +47,52 @@ def ensure_owner_session():
             "sess-live-playback-owner",
             "usr-1",
             "live-playback-owner",
-            hashlib.sha256("lifestream-local-dev-token".encode()).hexdigest(),
+            hashlib.sha256("vanta-local-dev-token".encode()).hexdigest(),
             json.dumps(["user", "creator", "creator:write", "admin"]),
             now,
         ),
+    )
+    conn.commit()
+    conn.close()
+
+
+def repair_owner_live_state():
+    conn = sqlite3.connect(DB)
+    timestamp = "2026-08-21T14:10:00Z"
+    conn.execute(
+        """
+        UPDATE broadcasts
+        SET status = 'ended',
+            ended_at = COALESCE(ended_at, ?),
+            duration_sec = COALESCE(duration_sec, 0)
+        WHERE creator_id = ?
+          AND status IN ('ready', 'live')
+        """,
+        (timestamp, "crt-deepsaint"),
+    )
+    conn.execute(
+        """
+        UPDATE live_ingest_sessions
+        SET status = CASE
+                WHEN status = 'terminated' THEN status
+                ELSE 'ended'
+            END,
+            contribution_state = 'disconnected',
+            disconnected_at = COALESCE(disconnected_at, ?),
+            last_heartbeat_at = COALESCE(last_heartbeat_at, ?)
+        WHERE creator_id = ?
+          AND status IN ('connected', 'stale', 'ready', 'live', 'ended')
+        """,
+        (timestamp, timestamp, "crt-deepsaint"),
+    )
+    conn.execute(
+        """
+        UPDATE creator_profiles
+        SET live_status = 'offline',
+            current_broadcast_id = NULL
+        WHERE id = ?
+        """,
+        ("crt-deepsaint",),
     )
     conn.commit()
     conn.close()
@@ -96,6 +138,37 @@ def ensure_live_stream():
             "broadcastId": broadcast_id,
         },
     )
+    if connected == (400, {"error": "bad request: broadcast is not available for ingest"}):
+        repair_owner_live_state()
+        live = get_json("/api/v1/creator/me/live", token=OWNER)
+        assert live[0] == 200, live
+        started = get_json(
+            "/api/v1/creator/me/broadcasts/start",
+            "POST",
+            OWNER,
+            {
+                "title": "live playback validation",
+                "category": "Tech",
+                "tags": ["playback", "live", "validation"],
+                "isMature": False,
+                "notifyFollowers": False,
+            },
+        )
+        assert started[0] == 200, started
+        broadcast_id = started[1]["id"]
+        refreshed = get_json("/api/v1/creator/me/live", token=OWNER)
+        assert refreshed[0] == 200, refreshed
+        connected = get_json(
+            "/api/v1/ingest/live/connect",
+            "POST",
+            None,
+            {
+                "streamKey": refreshed[1]["profile"]["streamKey"],
+                "protocol": "rtmp",
+                "ingestServer": "rtmp-us-east-1-primary",
+                "broadcastId": broadcast_id,
+            },
+        )
     assert connected[0] == 200, connected
     heartbeat = get_json(
         f"/api/v1/ingest/live/{connected[1]['session']['id']}/heartbeat",

@@ -5,10 +5,7 @@ mod reconciliation;
 mod targets;
 mod validation;
 
-pub(crate) use lifecycle::{
-    expire_playback_session_by_id, expire_playback_sessions_for_auth_session,
-    expire_playback_sessions_for_upload,
-};
+pub(crate) use lifecycle::{expire_playback_session_by_id, expire_playback_sessions_for_upload};
 pub(crate) use reconciliation::{
     reconcile_invalid_playback_sessions, reconcile_playback_sessions_for_read,
     reconcile_playback_sessions_for_user, reconcile_single_playback_session,

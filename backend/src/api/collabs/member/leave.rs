@@ -5,10 +5,13 @@ pub(crate) async fn leave_my_collaboration_session(
     headers: HeaderMap,
     Path(session_id): Path<String>,
 ) -> AppResult<Json<CollaborationParticipant>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let participant =
-        fetch_collaboration_participant_for_user(&state.pool, &session_id, &identity.user_id)
-            .await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let participant = fetch_collaboration_participant_for_user(
+        state.db.sqlite_adapter(),
+        &session_id,
+        &identity.user_id,
+    )
+    .await?;
     if participant.role == "host" {
         return Err(AppError::BadRequest(
             "hosts must end the collaboration session instead of leaving it".to_string(),
@@ -18,7 +21,7 @@ pub(crate) async fn leave_my_collaboration_session(
         return Ok(Json(participant));
     }
 
-    let session = fetch_collaboration_session_by_id(&state.pool, &session_id).await?;
+    let session = fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &session_id).await?;
     if session.status == "ended" {
         return Ok(Json(participant));
     }
@@ -36,7 +39,7 @@ pub(crate) async fn leave_my_collaboration_session(
     .bind(&now)
     .bind(&participant.id)
     .bind(&session_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     revoke_collaboration_mirror_grants_for_participant(
         &state,
@@ -61,6 +64,6 @@ pub(crate) async fn leave_my_collaboration_session(
     .await?;
 
     Ok(Json(
-        fetch_collaboration_participant_by_id(&state.pool, &participant.id).await?,
+        fetch_collaboration_participant_by_id(state.db.sqlite_adapter(), &participant.id).await?,
     ))
 }

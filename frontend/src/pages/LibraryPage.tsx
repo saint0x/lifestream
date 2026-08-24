@@ -1,14 +1,52 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Play, X } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { repository } from "@/lib/repository";
 import { formatDuration, clamp01 } from "@/lib/format";
+import type { Film, Series } from "@/types";
 import "./ListPage.css";
 
 export function LibraryPage() {
   const library = useAppStore((s) => s.library);
   const continueWatching = library.continueWatching;
   const remove = useAppStore((s) => s.removeFromContinueWatching);
+  const [contentById, setContentById] = useState<ReadonlyMap<string, Series | Film>>(new Map());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (continueWatching.length === 0) {
+      setContentById(new Map());
+      return;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+
+    void Promise.all(
+      continueWatching.map((entry) => repository.fetchContentById(entry.contentId, controller.signal)),
+    )
+      .then((items) => {
+        const next = new Map<string, Series | Film>();
+        for (const item of items) {
+          if (item.kind === "series" || item.kind === "film") {
+            next.set(item.id, item);
+          }
+        }
+        setContentById(next);
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setError(err instanceof Error ? err.message : "Unable to load library.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [continueWatching]);
 
   return (
     <div className="ls-list">
@@ -27,11 +65,21 @@ export function LibraryPage() {
           <div>Nothing in progress.</div>
           <p>Start watching anything and it will show up here.</p>
         </div>
+      ) : loading ? (
+        <div className="ls-list__empty">
+          <Play size={24} strokeWidth={1.5} />
+          <div>Loading library.</div>
+        </div>
+      ) : error ? (
+        <div className="ls-list__empty">
+          <Play size={24} strokeWidth={1.5} />
+          <div>{error}</div>
+        </div>
       ) : (
         <div className="ls-list__rows">
           {continueWatching.map((entry) => {
-            const content = repository.getByAnyId(entry.contentId);
-            if (!content || content.kind === "live") return null;
+            const content = contentById.get(entry.contentId);
+            if (!content) return null;
             const ratio = clamp01(entry.progressSec / entry.durationSec);
             const remaining = entry.durationSec - entry.progressSec;
             const href =
@@ -41,7 +89,11 @@ export function LibraryPage() {
 
             const ep =
               entry.episodeId !== undefined
-                ? repository.getEpisode(entry.episodeId)
+                ? content.kind === "series"
+                  ? content.seasons
+                      .flatMap((season) => season.episodes)
+                      .find((episode) => episode.id === entry.episodeId)
+                  : undefined
                 : undefined;
 
             return (
@@ -88,6 +140,61 @@ export function LibraryPage() {
           })}
         </div>
       )}
+
+      <section className="ls-list__section">
+        <div className="ls-list__label mono">Membership access</div>
+        {library.memberships.length === 0 ? (
+          <div className="ls-list__empty">
+            <Play size={24} strokeWidth={1.5} />
+            <div>No active memberships.</div>
+          </div>
+        ) : (
+          <div className="ls-list__rows">
+            {library.memberships.map((membership) => (
+              <div key={membership.creatorId} className="ls-list__row">
+                <div className="ls-list__row-main ls-list__row-main--plain">
+                  <div className="ls-list__row-body">
+                    <div className="ls-list__row-kicker mono">{membership.status}</div>
+                    <div className="ls-list__row-title">{membership.creatorDisplayName}</div>
+                    <div className="ls-list__row-meta mono">
+                      {membership.tierName}
+                      {membership.renewsAt ? ` · renews ${membership.renewsAt}` : ""}
+                      {membership.endsAt ? ` · ends ${membership.endsAt}` : ""}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="ls-list__section">
+        <div className="ls-list__label mono">Purchased access</div>
+        {library.purchases.length === 0 ? (
+          <div className="ls-list__empty">
+            <Play size={24} strokeWidth={1.5} />
+            <div>No purchases yet.</div>
+          </div>
+        ) : (
+          <div className="ls-list__rows">
+            {library.purchases.map((purchase) => (
+              <div key={purchase.id} className="ls-list__row">
+                <div className="ls-list__row-main ls-list__row-main--plain">
+                  <div className="ls-list__row-body">
+                    <div className="ls-list__row-kicker mono">{purchase.status}</div>
+                    <div className="ls-list__row-title">{purchase.title}</div>
+                    <div className="ls-list__row-meta mono">
+                      {purchase.creatorDisplayName}
+                      {purchase.expiresAt ? ` · expires ${purchase.expiresAt}` : ""}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

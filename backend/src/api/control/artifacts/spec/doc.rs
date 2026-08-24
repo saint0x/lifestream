@@ -15,6 +15,7 @@ pub(super) struct LiveRuntimeSpecDocument {
     pub(super) advisory: LiveRuntimeAdvisory,
     pub(super) artifact_health: LiveRuntimeArtifactHealth,
     pub(super) expected_paths: LiveRuntimeSpecPaths,
+    pub(super) storage_layout: LiveRuntimeStorageLayoutSpec,
     pub(super) packaging: LiveRuntimePackagingSpec,
     pub(super) archive: LiveRuntimeArchiveSpec,
     pub(super) collaboration: Option<LiveRuntimeCollaborationSpec>,
@@ -77,6 +78,43 @@ pub(super) struct LiveRuntimeSpecPaths {
     pub(super) manifest_relative_path: String,
     pub(super) archive_relative_path: String,
     pub(super) spec_relative_path: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct LiveRuntimeStorageLayoutSpec {
+    pub(super) root_prefixes: LiveRuntimeStoragePrefixes,
+    pub(super) retention: LiveRuntimeStorageRetention,
+    pub(super) cleanup: LiveRuntimeStorageCleanup,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct LiveRuntimeStoragePrefixes {
+    pub(super) playback_prefix: String,
+    pub(super) archive_prefix: String,
+    pub(super) runtime_prefix: String,
+    pub(super) collaboration_prefix: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct LiveRuntimeStorageRetention {
+    pub(super) playback_artifacts_hours: i64,
+    pub(super) mirror_artifacts_hours: i64,
+    pub(super) archive_days: i64,
+    pub(super) archive_staging_hours: i64,
+    pub(super) runtime_spec_days: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct LiveRuntimeStorageCleanup {
+    pub(super) playback_owner: String,
+    pub(super) archive_owner: String,
+    pub(super) runtime_owner: String,
+    pub(super) mirror_owner: String,
+    pub(super) staging_promotion: String,
 }
 
 #[derive(Serialize)]

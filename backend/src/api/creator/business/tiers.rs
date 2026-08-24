@@ -4,10 +4,10 @@ pub(super) async fn list_creator_subscriber_tiers(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<Vec<CreatorSubscriberTier>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_creator_subscriber_tiers(&state.pool, creator_id).await?,
+        fetch_creator_subscriber_tiers(state.db.sqlite_adapter(), creator_id).await?,
     ))
 }
 
@@ -16,7 +16,7 @@ pub(super) async fn create_creator_subscriber_tier(
     headers: HeaderMap,
     Json(input): Json<CreateCreatorSubscriberTierRequest>,
 ) -> AppResult<Json<CreatorSubscriberTier>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     enforce_rate_limit(
         &state,
         &format!("creator-subscriber-tier-create:{}", identity.user_id),
@@ -25,7 +25,7 @@ pub(super) async fn create_creator_subscriber_tier(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_can_manage_subscription_tiers(&state.pool, creator_id).await?;
+    ensure_creator_can_manage_subscription_tiers(state.db.sqlite_adapter(), creator_id).await?;
     validate_creator_subscriber_tier_input(
         input.tier_name.trim(),
         input.rank,
@@ -35,7 +35,7 @@ pub(super) async fn create_creator_subscriber_tier(
     let tier_id = format!("tier-{}", Uuid::new_v4().simple());
     let rank = match input.rank {
         Some(rank) => rank,
-        None => next_creator_subscriber_tier_rank(&state.pool, creator_id).await?,
+        None => next_creator_subscriber_tier_rank(state.db.sqlite_adapter(), creator_id).await?,
     };
 
     sqlx::query(
@@ -51,11 +51,11 @@ pub(super) async fn create_creator_subscriber_tier(
     .bind(input.monthly_price)
     .bind(input.accent_color.trim())
     .bind(rank)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
-    normalize_creator_subscriber_tier_ranks(&state.pool, creator_id).await?;
+    normalize_creator_subscriber_tier_ranks(state.db.sqlite_adapter(), creator_id).await?;
     let _ = enqueue_notification_event(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "subscriber_tier_created",
         &format!(
             "{} was added to your subscription offerings.",
@@ -76,7 +76,8 @@ pub(super) async fn create_creator_subscriber_tier(
     )
     .await;
     Ok(Json(
-        fetch_creator_subscriber_tier_by_id(&state.pool, creator_id, &tier_id).await?,
+        fetch_creator_subscriber_tier_by_id(state.db.sqlite_adapter(), creator_id, &tier_id)
+            .await?,
     ))
 }
 
@@ -86,7 +87,7 @@ pub(super) async fn update_creator_subscriber_tier(
     Path(tier_id): Path<String>,
     Json(input): Json<UpdateCreatorSubscriberTierRequest>,
 ) -> AppResult<Json<CreatorSubscriberTier>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     enforce_rate_limit(
         &state,
         &format!("creator-subscriber-tier-update:{}", identity.user_id),
@@ -95,8 +96,10 @@ pub(super) async fn update_creator_subscriber_tier(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_can_manage_subscription_tiers(&state.pool, creator_id).await?;
-    let current = fetch_creator_subscriber_tier_by_id(&state.pool, creator_id, &tier_id).await?;
+    ensure_creator_can_manage_subscription_tiers(state.db.sqlite_adapter(), creator_id).await?;
+    let current =
+        fetch_creator_subscriber_tier_by_id(state.db.sqlite_adapter(), creator_id, &tier_id)
+            .await?;
     if current.status != "active" {
         return Err(AppError::BadRequest(
             "retired subscriber tiers cannot be updated".to_string(),
@@ -126,11 +129,12 @@ pub(super) async fn update_creator_subscriber_tier(
     .bind(next_accent_color.trim())
     .bind(&tier_id)
     .bind(creator_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
-    normalize_creator_subscriber_tier_ranks(&state.pool, creator_id).await?;
+    normalize_creator_subscriber_tier_ranks(state.db.sqlite_adapter(), creator_id).await?;
     Ok(Json(
-        fetch_creator_subscriber_tier_by_id(&state.pool, creator_id, &tier_id).await?,
+        fetch_creator_subscriber_tier_by_id(state.db.sqlite_adapter(), creator_id, &tier_id)
+            .await?,
     ))
 }
 
@@ -139,9 +143,11 @@ pub(super) async fn retire_creator_subscriber_tier(
     headers: HeaderMap,
     Path(tier_id): Path<String>,
 ) -> AppResult<Json<CreatorSubscriberTier>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let current = fetch_creator_subscriber_tier_by_id(&state.pool, creator_id, &tier_id).await?;
+    let current =
+        fetch_creator_subscriber_tier_by_id(state.db.sqlite_adapter(), creator_id, &tier_id)
+            .await?;
     if current.status == "retired" {
         return Ok(Json(current));
     }
@@ -152,9 +158,10 @@ pub(super) async fn retire_creator_subscriber_tier(
     .bind(&now)
     .bind(&tier_id)
     .bind(creator_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     Ok(Json(
-        fetch_creator_subscriber_tier_by_id(&state.pool, creator_id, &tier_id).await?,
+        fetch_creator_subscriber_tier_by_id(state.db.sqlite_adapter(), creator_id, &tier_id)
+            .await?,
     ))
 }

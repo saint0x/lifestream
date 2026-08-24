@@ -5,10 +5,10 @@ import hashlib
 import urllib.error
 import urllib.request
 
-BASE = os.environ.get("LIFESTREAM_BASE_URL", "http://127.0.0.1:8080")
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-OWNER = "Bearer lifestream-local-dev-token"
-VIEWER = "Bearer lifestream-viewer-token"
+BASE = os.environ.get("VANTA_BASE_URL", "http://127.0.0.1:8080")
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+OWNER = "Bearer vanta-local-dev-token"
+VIEWER = "Bearer vanta-viewer-token"
 
 
 def req(path, method="GET", token=None, body=None, extra_headers=None):
@@ -44,7 +44,7 @@ def ensure_auth_sessions():
             "sess-live-watch-owner",
             "usr-1",
             "live-watch-owner",
-            hashlib.sha256("lifestream-local-dev-token".encode()).hexdigest(),
+            hashlib.sha256("vanta-local-dev-token".encode()).hexdigest(),
             json.dumps(["user", "creator", "creator:write", "admin"]),
             now,
         ),
@@ -59,7 +59,7 @@ def ensure_auth_sessions():
             "sess-live-watch-viewer",
             "usr-viewer",
             "live-watch-viewer",
-            hashlib.sha256("lifestream-viewer-token".encode()).hexdigest(),
+            hashlib.sha256("vanta-viewer-token".encode()).hexdigest(),
             json.dumps(["user"]),
             now,
         ),

@@ -1,12 +1,113 @@
 use super::*;
 
+async fn create_ready_film_upload(
+    state: &SharedState,
+    creator: &CreatorProfile,
+    headers: &HeaderMap,
+    title: &str,
+    storage_label: &str,
+) -> AppResult<UploadJob> {
+    let temp_root =
+        std::env::temp_dir().join(format!("vanta-upload-{storage_label}-{}", Uuid::new_v4()));
+    tokio::fs::create_dir_all(&temp_root).await?;
+    let media_path = temp_root.join("source.mp4");
+
+    let ffmpeg = Command::new("ffmpeg")
+        .arg("-y")
+        .arg("-f")
+        .arg("lavfi")
+        .arg("-i")
+        .arg("testsrc=size=320x240:rate=24:duration=1")
+        .arg("-f")
+        .arg("lavfi")
+        .arg("-i")
+        .arg("sine=frequency=1000:sample_rate=48000:duration=1")
+        .arg("-c:v")
+        .arg("libx264")
+        .arg("-pix_fmt")
+        .arg("yuv420p")
+        .arg("-c:a")
+        .arg("aac")
+        .arg("-shortest")
+        .arg(&media_path)
+        .output()
+        .await?;
+    assert!(
+        ffmpeg.status.success(),
+        "ffmpeg fixture generation failed: {}",
+        String::from_utf8_lossy(&ffmpeg.stderr)
+    );
+
+    let payload = tokio::fs::read(&media_path).await?;
+    let created = create_upload_job(
+        State(state.clone()),
+        headers.clone(),
+        Json(CreateUploadJobRequest {
+            upload_id: None,
+            series_id: None,
+            kind: "film".to_string(),
+            source_type: "resumable-upload".to_string(),
+            title: title.to_string(),
+            intended_visibility: "public".to_string(),
+            bytes_expected: payload.len() as i64,
+            storage_key: format!(
+                "uploads/creator/{}/features/{}-{}.mp4",
+                creator.handle,
+                storage_label,
+                Uuid::new_v4().simple()
+            ),
+            mime_type: Some("video/mp4".to_string()),
+        }),
+    )
+    .await?
+    .0;
+    let ticket = start_upload_ingest_session(
+        State(state.clone()),
+        headers.clone(),
+        Path(created.id.clone()),
+    )
+    .await?
+    .0;
+    let mut ingest_headers = headers.clone();
+    ingest_headers.insert("x-upload-token", ticket.upload_token.parse().unwrap());
+    let _ = append_upload_chunk(
+        State(state.clone()),
+        ingest_headers.clone(),
+        Path(created.id.clone()),
+        Query(AppendUploadChunkQuery { offset: 0 }),
+        Bytes::from(payload),
+    )
+    .await?;
+    let _ = complete_upload_ingest(
+        State(state.clone()),
+        ingest_headers,
+        Path(created.id.clone()),
+    )
+    .await?;
+
+    for _ in 0..30 {
+        let current =
+            fetch_media_asset_by_upload_job(state.db.sqlite_adapter(), &creator.id, &created.id)
+                .await?;
+        if current.status == "ready" {
+            let _ = tokio::fs::remove_dir_all(&temp_root).await;
+            return Ok(created);
+        }
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+
+    let _ = tokio::fs::remove_dir_all(&temp_root).await;
+    Err(AppError::Internal(
+        "processed upload did not become ready in time".to_string(),
+    ))
+}
+
 #[tokio::test]
 async fn processed_upload_materializes_thumbnail_variant_and_publish_uses_it() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let temp_root =
-        std::env::temp_dir().join(format!("lifestream-upload-thumb-{}", Uuid::new_v4()));
+    let temp_root = std::env::temp_dir().join(format!("vanta-upload-thumb-{}", Uuid::new_v4()));
     tokio::fs::create_dir_all(&temp_root).await?;
     let media_path = temp_root.join("source.mp4");
 
@@ -85,7 +186,8 @@ async fn processed_upload_materializes_thumbnail_variant_and_publish_uses_it() -
     let mut asset = None;
     for _ in 0..30 {
         let current =
-            fetch_media_asset_by_upload_job(&state.pool, &creator.id, &created.id).await?;
+            fetch_media_asset_by_upload_job(state.db.sqlite_adapter(), &creator.id, &created.id)
+                .await?;
         if current.status == "ready" {
             asset = Some(current);
             break;
@@ -204,14 +306,14 @@ async fn processed_upload_materializes_thumbnail_variant_and_publish_uses_it() -
         )
     );
     let preview_image_session = validate_playback_session_token_for_path(
-        &state.pool,
+        &state.db,
         &grant.playback_token,
         &asset.preview_tracks[0].image_path,
     )
     .await?;
     assert_eq!(preview_image_session.content_id, published.id);
     let preview_vtt_session = validate_playback_session_token_for_path(
-        &state.pool,
+        &state.db,
         &grant.playback_token,
         &asset.preview_tracks[0].vtt_path,
     )
@@ -243,13 +345,81 @@ async fn processed_upload_materializes_thumbnail_variant_and_publish_uses_it() -
 }
 
 #[tokio::test]
+async fn repeated_title_publish_without_explicit_slug_allocates_suffix() -> AppResult<()> {
+    let (state, creator) = setup_test_state().await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
+    let headers = auth_headers(&token);
+    let title = "Repeated Title Validation";
+
+    let first =
+        create_ready_film_upload(&state, &creator, &headers, title, "repeat-title-a").await?;
+    let first_publish = publish_upload_job(
+        State(state.clone()),
+        headers.clone(),
+        Path(first.id.clone()),
+        Json(PublishUploadJobRequest {
+            description: Some("first repeated-title publish".to_string()),
+            visibility: None,
+            slug: None,
+            release_at: None,
+            access_policy: Some("free".to_string()),
+            access_tier_id: None,
+            price_cents: None,
+            currency: None,
+            rental_window_hours: None,
+            season_number: None,
+            episode_number: None,
+            season_title: None,
+            season_synopsis: None,
+        }),
+    )
+    .await?
+    .0;
+
+    let second =
+        create_ready_film_upload(&state, &creator, &headers, title, "repeat-title-b").await?;
+    let second_publish = publish_upload_job(
+        State(state.clone()),
+        headers,
+        Path(second.id.clone()),
+        Json(PublishUploadJobRequest {
+            description: Some("second repeated-title publish".to_string()),
+            visibility: None,
+            slug: None,
+            release_at: None,
+            access_policy: Some("free".to_string()),
+            access_tier_id: None,
+            price_cents: None,
+            currency: None,
+            rental_window_hours: None,
+            season_number: None,
+            episode_number: None,
+            season_title: None,
+            season_synopsis: None,
+        }),
+    )
+    .await?
+    .0;
+
+    assert_eq!(
+        first_publish.slug.as_deref(),
+        Some("repeated-title-validation")
+    );
+    assert_eq!(
+        second_publish.slug.as_deref(),
+        Some("repeated-title-validation-2")
+    );
+    assert_ne!(first_publish.id, second_publish.id);
+    Ok(())
+}
+
+#[tokio::test]
 async fn processed_upload_materializes_webvtt_caption_variant_from_embedded_subtitles()
 -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let temp_root =
-        std::env::temp_dir().join(format!("lifestream-upload-caption-{}", Uuid::new_v4()));
+    let temp_root = std::env::temp_dir().join(format!("vanta-upload-caption-{}", Uuid::new_v4()));
     tokio::fs::create_dir_all(&temp_root).await?;
     let subtitle_path = temp_root.join("captions.srt");
     let media_path = temp_root.join("source-with-subs.mp4");
@@ -346,7 +516,8 @@ async fn processed_upload_materializes_webvtt_caption_variant_from_embedded_subt
     let mut asset = None;
     for _ in 0..30 {
         let current =
-            fetch_media_asset_by_upload_job(&state.pool, &creator.id, &created.id).await?;
+            fetch_media_asset_by_upload_job(state.db.sqlite_adapter(), &creator.id, &created.id)
+                .await?;
         if current.status == "ready" {
             asset = Some(current);
             break;
@@ -491,7 +662,7 @@ async fn processed_upload_materializes_webvtt_caption_variant_from_embedded_subt
         caption_variant.relative_path, grant.playback_token
     )));
     let caption_session = validate_playback_session_token_for_path(
-        &state.pool,
+        &state.db,
         &grant.playback_token,
         &caption_variant.relative_path,
     )
@@ -506,10 +677,10 @@ async fn processed_upload_materializes_webvtt_caption_variant_from_embedded_subt
 async fn processed_upload_materializes_multi_audio_variants_and_playback_honors_preferences()
 -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let temp_root =
-        std::env::temp_dir().join(format!("lifestream-upload-multi-audio-{}", Uuid::new_v4()));
+        std::env::temp_dir().join(format!("vanta-upload-multi-audio-{}", Uuid::new_v4()));
     tokio::fs::create_dir_all(&temp_root).await?;
     let media_path = temp_root.join("source-multi-audio.mp4");
 
@@ -602,7 +773,8 @@ async fn processed_upload_materializes_multi_audio_variants_and_playback_honors_
     let mut asset = None;
     for _ in 0..30 {
         let current =
-            fetch_media_asset_by_upload_job(&state.pool, &creator.id, &created.id).await?;
+            fetch_media_asset_by_upload_job(state.db.sqlite_adapter(), &creator.id, &created.id)
+                .await?;
         if current.status == "ready" {
             asset = Some(current);
             break;
@@ -718,9 +890,10 @@ async fn processed_upload_materializes_multi_audio_variants_and_playback_honors_
     .bind(0_i64)
     .bind(1_i64)
     .bind("1.0")
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
-    let viewer_token = insert_user_auth_session(&state.pool, "usr-viewer", &["user"]).await?;
+    let viewer_token =
+        insert_user_auth_session(state.db.sqlite_adapter(), "usr-viewer", &["user"]).await?;
     let preferred_grant = create_content_playback_session(
         State(state.clone()),
         auth_headers(&viewer_token),
@@ -774,7 +947,7 @@ async fn processed_upload_materializes_multi_audio_variants_and_playback_honors_
         preferred_playlist_path, preferred_grant.playback_token
     )));
     let audio_session = validate_playback_session_token_for_path(
-        &state.pool,
+        &state.db,
         &preferred_grant.playback_token,
         preferred_playlist_path,
     )
@@ -818,8 +991,14 @@ fn caption_track_selection_prefers_matching_language_when_available() {
         },
     ];
 
-    let tracks =
-        build_media_caption_tracks("published", &variants, Some("playback-token"), Some("deu"));
+    let playback_media_url =
+        |relative_path: &str| format!("/api/v1/media/{relative_path}?playbackToken=playback-token");
+    let tracks = build_media_caption_tracks(
+        "published",
+        &variants,
+        Some(&playback_media_url),
+        Some("deu"),
+    );
 
     assert_eq!(tracks.len(), 2);
     assert!(

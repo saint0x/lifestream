@@ -23,7 +23,7 @@ pub(crate) fn build_media_audio_tracks(
     asset_id: &str,
     variants: &[MediaAssetVariant],
     audio_codec: Option<&str>,
-    playback_token: Option<&str>,
+    playback_media_url: Option<&dyn Fn(&str) -> String>,
     preferred_audio_language: Option<&str>,
     prefer_dubbed: bool,
 ) -> Vec<PlaybackAudioTrack> {
@@ -37,13 +37,8 @@ pub(crate) fn build_media_audio_tracks(
             let source = parts.next().unwrap_or("source-provided").to_string();
             let is_dubbed = parts.next().unwrap_or("0") == "1";
             let variant_codec = parts.next().map(str::to_string);
-            let playlist_url = playback_token
-                .map(|token| {
-                    format!(
-                        "/api/v1/media/{}?playbackToken={}",
-                        variant.relative_path, token
-                    )
-                })
+            let playlist_url = playback_media_url
+                .map(|media_url| media_url(&variant.relative_path))
                 .or_else(|| Some(variant.url.clone()));
 
             PlaybackAudioTrack {

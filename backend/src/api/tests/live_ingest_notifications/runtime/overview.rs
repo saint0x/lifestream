@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn admin_live_ingest_overview_aggregates_latency_and_creator_breakdown() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let baseline = get_admin_live_ingest_overview(
         State(state.clone()),
         auth_headers(&token),
@@ -13,7 +13,7 @@ async fn admin_live_ingest_overview_aggregates_latency_and_creator_breakdown() -
     )
     .await?
     .0;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -34,7 +34,7 @@ async fn admin_live_ingest_overview_aggregates_latency_and_creator_breakdown() -
     .bind(&connected_at)
     .bind(&ready_at)
     .bind(&connected.session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE live_runtime_outputs SET runtime_state = 'healthy', packaging_status = 'ready', archive_status = 'finalizing', updated_at = ?, last_runtime_event_at = ? WHERE session_id = ?",
@@ -42,7 +42,7 @@ async fn admin_live_ingest_overview_aggregates_latency_and_creator_breakdown() -
     .bind(&ready_at)
     .bind(&ready_at)
     .bind(&connected.session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "INSERT INTO live_runtime_telemetry (id, session_id, creator_id, broadcast_id, sample_kind, runtime_state, packaging_status, archive_status, bitrate_kbps, viewers, dropped_frames, cpu_percent, free_disk_gb, detail_json, collected_at) VALUES (?, ?, ?, ?, 'runtime_report', 'healthy', 'ready', 'not_started', 6400, 120, 0, 31, 500.0, '{}', ?)",
@@ -52,7 +52,7 @@ async fn admin_live_ingest_overview_aggregates_latency_and_creator_breakdown() -
     .bind(&creator.id)
     .bind(&broadcast.id)
     .bind(&ready_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let overview = get_admin_live_ingest_overview(

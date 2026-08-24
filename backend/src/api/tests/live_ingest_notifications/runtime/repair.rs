@@ -3,8 +3,8 @@ use super::*;
 #[tokio::test]
 async fn creator_runtime_repair_updates_output_and_records_audit_trail() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -125,8 +125,8 @@ async fn creator_runtime_repair_updates_output_and_records_audit_trail() -> AppR
 #[tokio::test]
 async fn admin_runtime_repair_recovers_missing_runtime_output_row() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let connected = connect_live_ingest(
         State(state.clone()),
         Json(IngestConnectRequest {
@@ -141,7 +141,7 @@ async fn admin_runtime_repair_recovers_missing_runtime_output_row() -> AppResult
 
     sqlx::query("DELETE FROM live_runtime_outputs WHERE session_id = ?")
         .bind(&connected.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
     let manifest_relative_path = runtime_manifest_path(&connected.session);
     write_test_media_file(

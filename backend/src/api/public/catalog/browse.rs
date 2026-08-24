@@ -1,7 +1,170 @@
 use super::*;
 
+const DEFAULT_CATALOG_PAGE_LIMIT: i64 = 24;
+const MAX_CATALOG_PAGE_LIMIT: i64 = 50;
+
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CatalogPageQuery {
+    pub(crate) genre: Option<String>,
+    pub(crate) originals_only: Option<bool>,
+    pub(crate) sort: Option<String>,
+    pub(crate) limit: Option<i64>,
+    pub(crate) offset: Option<i64>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CatalogPageResponse<T> {
+    items: Vec<T>,
+    total: i64,
+    limit: i64,
+    offset: i64,
+    has_more: bool,
+}
+
+impl CatalogPageQuery {
+    fn normalized(&self) -> NormalizedCatalogPageQuery {
+        let genre = self
+            .genre
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty() && *value != "All")
+            .map(str::to_string);
+        let sort = match self.sort.as_deref().unwrap_or("trending") {
+            "newest" => "newest",
+            "score" => "score",
+            "title" => "title",
+            _ => "trending",
+        }
+        .to_string();
+        let limit = self
+            .limit
+            .unwrap_or(DEFAULT_CATALOG_PAGE_LIMIT)
+            .clamp(1, MAX_CATALOG_PAGE_LIMIT);
+        let offset = self.offset.unwrap_or(0).max(0);
+        NormalizedCatalogPageQuery {
+            genre,
+            originals_only: self.originals_only.unwrap_or(false),
+            sort,
+            limit,
+            offset,
+        }
+    }
+}
+
+struct NormalizedCatalogPageQuery {
+    genre: Option<String>,
+    originals_only: bool,
+    sort: String,
+    limit: i64,
+    offset: i64,
+}
+
+fn catalog_page_response<T>(
+    items: Vec<T>,
+    total: i64,
+    query: &NormalizedCatalogPageQuery,
+) -> CatalogPageResponse<T> {
+    CatalogPageResponse {
+        has_more: query.offset + (items.len() as i64) < total,
+        items,
+        total,
+        limit: query.limit,
+        offset: query.offset,
+    }
+}
+
+fn sort_series_for_page(items: &mut [Series], sort: &str) {
+    match sort {
+        "newest" => items.sort_by(|left, right| {
+            right
+                .year
+                .cmp(&left.year)
+                .then_with(|| right.score.cmp(&left.score))
+        }),
+        "score" => items.sort_by(|left, right| {
+            right
+                .score
+                .cmp(&left.score)
+                .then_with(|| right.year.cmp(&left.year))
+        }),
+        "title" => {
+            items.sort_by(|left, right| left.title.to_lowercase().cmp(&right.title.to_lowercase()))
+        }
+        _ => items.sort_by(|left, right| {
+            right
+                .trending
+                .cmp(&left.trending)
+                .then_with(|| right.score.cmp(&left.score))
+                .then_with(|| right.year.cmp(&left.year))
+        }),
+    }
+}
+
+fn sort_films_for_page(items: &mut [Film], sort: &str) {
+    match sort {
+        "newest" => items.sort_by(|left, right| {
+            right
+                .year
+                .cmp(&left.year)
+                .then_with(|| right.score.cmp(&left.score))
+        }),
+        "score" => items.sort_by(|left, right| {
+            right
+                .score
+                .cmp(&left.score)
+                .then_with(|| right.year.cmp(&left.year))
+        }),
+        "title" => {
+            items.sort_by(|left, right| left.title.to_lowercase().cmp(&right.title.to_lowercase()))
+        }
+        _ => items.sort_by(|left, right| {
+            right
+                .trending
+                .cmp(&left.trending)
+                .then_with(|| right.score.cmp(&left.score))
+                .then_with(|| right.year.cmp(&left.year))
+        }),
+    }
+}
+
 pub(crate) async fn list_series(State(state): State<SharedState>) -> AppResult<Json<Vec<Series>>> {
-    Ok(Json(fetch_series(&state.pool, None, None).await?))
+    Ok(Json(CatalogRepository::new(&state).list_series().await?))
+}
+
+pub(crate) async fn list_series_page(
+    State(state): State<SharedState>,
+    Query(query): Query<CatalogPageQuery>,
+) -> AppResult<Json<CatalogPageResponse<Series>>> {
+    let query = query.normalized();
+    if state.database_kind == crate::config::DatabaseKind::Postgres {
+        let mut items = CatalogRepository::new(&state).list_series().await?;
+        if let Some(genre) = query.genre.as_deref() {
+            items.retain(|item| item.genres.iter().any(|value| value == genre));
+        }
+        if query.originals_only {
+            items.retain(|item| item.is_original);
+        }
+        sort_series_for_page(&mut items, &query.sort);
+        let total = items.len() as i64;
+        let items = items
+            .into_iter()
+            .skip(query.offset as usize)
+            .take(query.limit as usize)
+            .collect();
+        return Ok(Json(catalog_page_response(items, total, &query)));
+    }
+    let (items, total) = fetch_series_page(
+        state.db.sqlite_adapter(),
+        query.genre.as_deref(),
+        query.originals_only,
+        &query.sort,
+        query.limit,
+        query.offset,
+    )
+    .await?;
+    Ok(Json(catalog_page_response(items, total, &query)))
 }
 
 pub(crate) async fn get_series(
@@ -9,19 +172,50 @@ pub(crate) async fn get_series(
     headers: HeaderMap,
     Path(slug): Path<String>,
 ) -> AppResult<Json<Series>> {
-    let maybe_identity = optional_identity(&state.pool, &headers).await?;
-    let progress = match maybe_identity {
-        Some(identity) => {
-            fetch_continue_watching_entry(&state.pool, &identity.user_id, None, &slug).await?
-        }
-        None => None,
-    };
-    let series = fetch_series_by_slug(&state.pool, &slug, progress.as_ref()).await?;
-    Ok(Json(series))
+    let maybe_identity = optional_identity(&state.db, &headers).await?;
+    Ok(Json(
+        CatalogRepository::new(&state)
+            .get_series(&slug, maybe_identity)
+            .await?,
+    ))
 }
 
 pub(crate) async fn list_films(State(state): State<SharedState>) -> AppResult<Json<Vec<Film>>> {
-    Ok(Json(fetch_films(&state.pool, None, None).await?))
+    Ok(Json(CatalogRepository::new(&state).list_films().await?))
+}
+
+pub(crate) async fn list_films_page(
+    State(state): State<SharedState>,
+    Query(query): Query<CatalogPageQuery>,
+) -> AppResult<Json<CatalogPageResponse<Film>>> {
+    let query = query.normalized();
+    if state.database_kind == crate::config::DatabaseKind::Postgres {
+        let mut items = CatalogRepository::new(&state).list_films().await?;
+        if let Some(genre) = query.genre.as_deref() {
+            items.retain(|item| item.genres.iter().any(|value| value == genre));
+        }
+        if query.originals_only {
+            items.retain(|item| item.is_original);
+        }
+        sort_films_for_page(&mut items, &query.sort);
+        let total = items.len() as i64;
+        let items = items
+            .into_iter()
+            .skip(query.offset as usize)
+            .take(query.limit as usize)
+            .collect();
+        return Ok(Json(catalog_page_response(items, total, &query)));
+    }
+    let (items, total) = fetch_films_page(
+        state.db.sqlite_adapter(),
+        query.genre.as_deref(),
+        query.originals_only,
+        &query.sort,
+        query.limit,
+        query.offset,
+    )
+    .await?;
+    Ok(Json(catalog_page_response(items, total, &query)))
 }
 
 pub(crate) async fn get_film(
@@ -29,15 +223,11 @@ pub(crate) async fn get_film(
     headers: HeaderMap,
     Path(slug): Path<String>,
 ) -> AppResult<Json<Film>> {
-    let maybe_identity = optional_identity(&state.pool, &headers).await?;
-    let progress = match maybe_identity {
-        Some(identity) => {
-            fetch_continue_watching_entry(&state.pool, &identity.user_id, None, &slug).await?
-        }
-        None => None,
-    };
+    let maybe_identity = optional_identity(&state.db, &headers).await?;
     Ok(Json(
-        fetch_film_by_slug(&state.pool, &slug, progress.as_ref()).await?,
+        CatalogRepository::new(&state)
+            .get_film(&slug, maybe_identity)
+            .await?,
     ))
 }
 
@@ -46,33 +236,35 @@ pub(crate) async fn get_content(
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> AppResult<Json<serde_json::Value>> {
-    let maybe_identity = optional_identity(&state.pool, &headers).await?;
-    let progress = match maybe_identity {
-        Some(identity) => {
-            fetch_continue_watching_entry(&state.pool, &identity.user_id, Some(&id), &id).await?
-        }
-        None => None,
-    };
-    if let Ok(series) = fetch_series_by_id(&state.pool, &id, progress.as_ref()).await {
-        return Ok(Json(serde_json::to_value(series)?));
-    }
-    if let Ok(film) = fetch_film_by_id(&state.pool, &id, progress.as_ref()).await {
-        return Ok(Json(serde_json::to_value(film)?));
-    }
-    if let Ok(series) = fetch_creator_catalog_series_by_id(&state.pool, &id, false).await {
-        return Ok(Json(serde_json::to_value(series)?));
-    }
-    if let Ok(film) = fetch_creator_catalog_film_by_id(&state.pool, &id, false).await {
-        return Ok(Json(serde_json::to_value(film)?));
-    }
-    let live = fetch_live_stream_by_id(&state.pool, &id).await?;
-    Ok(Json(serde_json::to_value(live)?))
+    let maybe_identity = optional_identity(&state.db, &headers).await?;
+    Ok(Json(
+        CatalogRepository::new(&state)
+            .get_content(&id, maybe_identity)
+            .await?,
+    ))
+}
+
+pub(crate) async fn get_series_for_episode(
+    State(state): State<SharedState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> AppResult<Json<Series>> {
+    let maybe_identity = optional_identity(&state.db, &headers).await?;
+    Ok(Json(
+        CatalogRepository::new(&state)
+            .get_series_for_episode(&id, maybe_identity)
+            .await?,
+    ))
 }
 
 pub(crate) async fn list_creator_catalog_series(
     State(state): State<SharedState>,
 ) -> AppResult<Json<Vec<CreatorCatalogSeries>>> {
-    Ok(Json(fetch_creator_catalog_series(&state.pool, true).await?))
+    Ok(Json(
+        CatalogRepository::new(&state)
+            .list_creator_catalog_series()
+            .await?,
+    ))
 }
 
 pub(crate) async fn get_creator_catalog_series(
@@ -80,14 +272,20 @@ pub(crate) async fn get_creator_catalog_series(
     Path(slug): Path<String>,
 ) -> AppResult<Json<CreatorCatalogSeries>> {
     Ok(Json(
-        fetch_creator_catalog_series_by_slug(&state.pool, &slug, false).await?,
+        CatalogRepository::new(&state)
+            .get_creator_catalog_series(&slug)
+            .await?,
     ))
 }
 
 pub(crate) async fn list_creator_catalog_films(
     State(state): State<SharedState>,
 ) -> AppResult<Json<Vec<CreatorCatalogFilm>>> {
-    Ok(Json(fetch_creator_catalog_films(&state.pool, true).await?))
+    Ok(Json(
+        CatalogRepository::new(&state)
+            .list_creator_catalog_films()
+            .await?,
+    ))
 }
 
 pub(crate) async fn get_creator_catalog_film(
@@ -95,51 +293,52 @@ pub(crate) async fn get_creator_catalog_film(
     Path(slug): Path<String>,
 ) -> AppResult<Json<CreatorCatalogFilm>> {
     Ok(Json(
-        fetch_creator_catalog_film_by_slug(&state.pool, &slug, false).await?,
+        CatalogRepository::new(&state)
+            .get_creator_catalog_film(&slug)
+            .await?,
     ))
 }
 
 pub(crate) async fn list_categories(
     State(state): State<SharedState>,
 ) -> AppResult<Json<Vec<Category>>> {
-    Ok(Json(fetch_categories(&state.pool).await?))
+    Ok(Json(
+        CatalogRepository::new(&state).list_categories().await?,
+    ))
 }
 
 pub(crate) async fn get_category(
     State(state): State<SharedState>,
     Path(slug): Path<String>,
 ) -> AppResult<Json<Category>> {
-    Ok(Json(fetch_category_by_slug(&state.pool, &slug).await?))
+    Ok(Json(
+        CatalogRepository::new(&state).get_category(&slug).await?,
+    ))
 }
 
 pub(crate) async fn get_category_browse(
     State(state): State<SharedState>,
     Path(slug): Path<String>,
+    Query(query): Query<CatalogPageQuery>,
 ) -> AppResult<Json<CategoryBrowseResponse>> {
-    let category = fetch_category_by_slug(&state.pool, &slug).await?;
-    let live_streams = fetch_live_streams_by_category(&state.pool, &category.name).await?;
-    let series = fetch_series_by_genre(&state.pool, &category.name).await?;
-    let films = fetch_films_by_genre(&state.pool, &category.name).await?;
-    let total_vod_titles = (series.len() + films.len()) as i64;
-
-    Ok(Json(CategoryBrowseResponse {
-        category,
-        live_streams,
-        series,
-        films,
-        total_vod_titles,
-    }))
+    Ok(Json(
+        CatalogRepository::new(&state)
+            .get_category_browse(&slug, query.limit, query.offset)
+            .await?,
+    ))
 }
 
 pub(crate) async fn list_streamers(
     State(state): State<SharedState>,
 ) -> AppResult<Json<Vec<Streamer>>> {
-    Ok(Json(fetch_streamers(&state.pool).await?))
+    Ok(Json(CatalogRepository::new(&state).list_streamers().await?))
 }
 
 pub(crate) async fn get_streamer(
     State(state): State<SharedState>,
     Path(id): Path<String>,
 ) -> AppResult<Json<Streamer>> {
-    Ok(Json(fetch_streamer_by_id(&state.pool, &id).await?))
+    Ok(Json(
+        CatalogRepository::new(&state).get_streamer(&id).await?,
+    ))
 }

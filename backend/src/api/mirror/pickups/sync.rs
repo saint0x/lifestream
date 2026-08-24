@@ -32,8 +32,11 @@ pub(crate) async fn sync_active_collaboration_mirror_pickups_for_session_and_pub
     state: &SharedState,
     session_id: &str,
 ) -> AppResult<()> {
-    sync_active_collaboration_mirror_pickups_for_session(&state.pool, session_id).await?;
-    let pickups = fetch_collaboration_mirror_pickups_for_session(&state.pool, session_id).await?;
+    sync_active_collaboration_mirror_pickups_for_session(state.db.sqlite_adapter(), session_id)
+        .await?;
+    let pickups =
+        fetch_collaboration_mirror_pickups_for_session(state.db.sqlite_adapter(), session_id)
+            .await?;
     publish_creator_live_states_for_creators(
         state,
         pickups

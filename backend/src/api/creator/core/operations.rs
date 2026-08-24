@@ -4,10 +4,10 @@ pub(super) async fn get_creator_upload_operations(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<CreatorUploadOperationsResponse>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
     Ok(Json(
-        fetch_creator_upload_operations_response(&state.pool, creator_id).await?,
+        fetch_creator_upload_operations_response(state.db.sqlite_adapter(), creator_id).await?,
     ))
 }
 
@@ -15,11 +15,11 @@ pub(super) async fn get_creator_operational_state(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<CreatorOperationalState>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let profile = fetch_creator_profile(&state.pool, creator_id).await?;
+    let profile = fetch_creator_profile(state.db.sqlite_adapter(), creator_id).await?;
     Ok(Json(
-        fetch_creator_operational_state(&state.pool, &profile).await?,
+        fetch_creator_operational_state(state.db.sqlite_adapter(), &profile).await?,
     ))
 }
 
@@ -28,10 +28,10 @@ pub(super) async fn update_creator_operational_state(
     headers: HeaderMap,
     Json(input): Json<UpdateCreatorOperationalStateRequest>,
 ) -> AppResult<Json<CreatorOperationalState>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    let profile = fetch_creator_profile(&state.pool, creator_id).await?;
-    let current = fetch_creator_operational_state(&state.pool, &profile).await?;
+    let profile = fetch_creator_profile(state.db.sqlite_adapter(), creator_id).await?;
+    let current = fetch_creator_operational_state(state.db.sqlite_adapter(), &profile).await?;
     let now = Utc::now().to_rfc3339();
 
     let legal_name = input
@@ -126,11 +126,11 @@ pub(super) async fn update_creator_operational_state(
     .bind(&payout_status)
     .bind(&now)
     .bind(creator_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let refreshed_profile = fetch_creator_profile(&state.pool, creator_id).await?;
+    let refreshed_profile = fetch_creator_profile(state.db.sqlite_adapter(), creator_id).await?;
     Ok(Json(
-        fetch_creator_operational_state(&state.pool, &refreshed_profile).await?,
+        fetch_creator_operational_state(state.db.sqlite_adapter(), &refreshed_profile).await?,
     ))
 }

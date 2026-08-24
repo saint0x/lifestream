@@ -16,18 +16,18 @@ pub(super) struct LivePlaybackTarget {
     pub(super) asset: MediaAsset,
 }
 
-pub(super) struct PlaybackSessionRecord {
-    pub(super) id: String,
-    pub(super) auth_session_id: Option<String>,
-    pub(super) user_id: Option<String>,
-    pub(super) creator_id: Option<String>,
-    pub(super) asset_id: String,
-    pub(super) content_id: String,
-    pub(super) content_kind: String,
-    pub(super) access_scope: String,
-    pub(super) created_at: String,
-    pub(super) expires_at: String,
-    pub(super) last_used_at: String,
+pub(crate) struct PlaybackSessionRecord {
+    pub(crate) id: String,
+    pub(crate) auth_session_id: Option<String>,
+    pub(crate) user_id: Option<String>,
+    pub(crate) creator_id: Option<String>,
+    pub(crate) asset_id: String,
+    pub(crate) content_id: String,
+    pub(crate) content_kind: String,
+    pub(crate) access_scope: String,
+    pub(crate) created_at: String,
+    pub(crate) expires_at: String,
+    pub(crate) last_used_at: String,
 }
 
 pub(super) struct UploadAccessTerms {
@@ -50,13 +50,13 @@ pub(super) use access::{
     fetch_active_creator_membership, resolve_upload_access_terms, resolve_upload_playback_access,
 };
 pub(super) use sessions::{
-    expire_playback_session_by_id, expire_playback_sessions_for_auth_session,
-    expire_playback_sessions_for_upload, fetch_live_stream_playback_target,
-    fetch_playback_session_record_by_id, fetch_upload_playback_target,
-    playback_session_from_record, reconcile_invalid_playback_sessions,
-    reconcile_playback_sessions_for_read, reconcile_playback_sessions_for_user,
-    reconcile_single_playback_session, validate_existing_playback_session_access,
-    validate_playback_session_record, validate_playback_session_record_for_path,
+    expire_playback_session_by_id, expire_playback_sessions_for_upload,
+    fetch_live_stream_playback_target, fetch_playback_session_record_by_id,
+    fetch_upload_playback_target, playback_session_from_record,
+    reconcile_invalid_playback_sessions, reconcile_playback_sessions_for_read,
+    reconcile_playback_sessions_for_user, reconcile_single_playback_session,
+    validate_existing_playback_session_access, validate_playback_session_record,
+    validate_playback_session_record_for_path,
 };
 pub(super) use tracks::{
     build_media_audio_tracks, build_media_caption_tracks, build_media_preview_tracks,

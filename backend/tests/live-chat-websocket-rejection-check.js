@@ -1,6 +1,6 @@
 const BASE = "http://127.0.0.1:8080";
-const HOST = "Bearer lifestream-local-dev-token";
-const VIEWER = "Bearer lifestream-viewer-token";
+const HOST = "Bearer vanta-local-dev-token";
+const VIEWER = "Bearer vanta-viewer-token";
 
 async function req(path, { method = "GET", token = null, body = null, headers = {} } = {}) {
   const finalHeaders = { ...headers };

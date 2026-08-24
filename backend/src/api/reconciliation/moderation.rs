@@ -11,7 +11,7 @@ pub(crate) async fn reconcile_expired_live_moderation_actions(state: SharedState
         "#,
     )
     .bind(&now)
-    .fetch_all(&state.pool)
+    .fetch_all(state.db.sqlite_adapter())
     .await?;
 
     for row in rows {
@@ -21,10 +21,10 @@ pub(crate) async fn reconcile_expired_live_moderation_actions(state: SharedState
         )
         .bind(&now)
         .bind(&action.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
         let _ = write_moderation_audit_entry(
-            &state.pool,
+            state.db.sqlite_adapter(),
             &action.creator_id,
             Some(&action.stream_id),
             &action.actor_user_id,
@@ -37,7 +37,8 @@ pub(crate) async fn reconcile_expired_live_moderation_actions(state: SharedState
             }),
         )
         .await;
-        let expired = fetch_live_moderation_action_by_id(&state.pool, &action.id).await?;
+        let expired =
+            fetch_live_moderation_action_by_id(state.db.sqlite_adapter(), &action.id).await?;
         state
             .realtime
             .publish(
@@ -113,7 +114,8 @@ pub(crate) async fn reconcile_single_live_moderation_action(
     state: SharedState,
     action_id: &str,
 ) -> AppResult<LiveModerationReconciliationReport> {
-    let before = fetch_live_moderation_action_by_id_raw(&state.pool, action_id).await?;
+    let before =
+        fetch_live_moderation_action_by_id_raw(state.db.sqlite_adapter(), action_id).await?;
     let now = Utc::now().to_rfc3339();
     let mut actions = Vec::new();
 
@@ -128,11 +130,11 @@ pub(crate) async fn reconcile_single_live_moderation_action(
         )
         .bind(&now)
         .bind(action_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
         if updated.rows_affected() > 0 {
             write_moderation_audit_entry(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 &before.creator_id,
                 Some(&before.stream_id),
                 &before.actor_user_id,
@@ -156,7 +158,8 @@ pub(crate) async fn reconcile_single_live_moderation_action(
         }
     }
 
-    let action = fetch_live_moderation_action_by_id_raw(&state.pool, action_id).await?;
+    let action =
+        fetch_live_moderation_action_by_id_raw(state.db.sqlite_adapter(), action_id).await?;
     if !actions.is_empty() {
         state
             .realtime

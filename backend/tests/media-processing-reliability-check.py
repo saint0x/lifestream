@@ -4,7 +4,7 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-AUTH = "Bearer lifestream-local-dev-token"
+AUTH = "Bearer vanta-local-dev-token"
 
 
 def req(path, method="GET", body=None, headers=None):

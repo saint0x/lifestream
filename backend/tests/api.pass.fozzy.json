@@ -27,7 +27,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/home', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{len(data['featuredLive'])}|{len(data['trendingSeries'])}|{len(data['continueWatching'])}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/home', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{len(data['featuredLive'])}|{len(data['trendingSeries'])}|{len(data['continueWatching'])}\")"
       ],
       "exit_code": 0,
       "times": 1
@@ -37,7 +37,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/home', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{len(data['featuredLive'])}|{len(data['trendingSeries'])}|{len(data['continueWatching'])}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/home', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{len(data['featuredLive'])}|{len(data['trendingSeries'])}|{len(data['continueWatching'])}\")"
       ],
       "expect_exit": 0,
       "expect_stdout": "6|3|4\n"
@@ -47,7 +47,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/progress', data=json.dumps({'contentId':'ser-northlight','kind':'series','episodeId':'ser-northlight-s2e3','progressSec':1280,'durationSec':3120}).encode(), headers={'content-type':'application/json','Authorization':'Bearer lifestream-local-dev-token'}, method='PUT'); data=json.load(urllib.request.urlopen(req)); entry=next(item for item in data['continueWatching'] if item['contentId']=='ser-northlight'); print(f\"{entry['contentId']}|{entry['progressSec']}|{entry['durationSec']}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/progress', data=json.dumps({'contentId':'ser-northlight','kind':'series','episodeId':'ser-northlight-s2e3','progressSec':1280,'durationSec':3120}).encode(), headers={'content-type':'application/json','Authorization':'Bearer vanta-local-dev-token'}, method='PUT'); data=json.load(urllib.request.urlopen(req)); entry=next(item for item in data['continueWatching'] if item['contentId']=='ser-northlight'); print(f\"{entry['contentId']}|{entry['progressSec']}|{entry['durationSec']}\")"
       ],
       "exit_code": 0,
       "times": 1
@@ -57,7 +57,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/progress', data=json.dumps({'contentId':'ser-northlight','kind':'series','episodeId':'ser-northlight-s2e3','progressSec':1280,'durationSec':3120}).encode(), headers={'content-type':'application/json','Authorization':'Bearer lifestream-local-dev-token'}, method='PUT'); data=json.load(urllib.request.urlopen(req)); entry=next(item for item in data['continueWatching'] if item['contentId']=='ser-northlight'); print(f\"{entry['contentId']}|{entry['progressSec']}|{entry['durationSec']}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/progress', data=json.dumps({'contentId':'ser-northlight','kind':'series','episodeId':'ser-northlight-s2e3','progressSec':1280,'durationSec':3120}).encode(), headers={'content-type':'application/json','Authorization':'Bearer vanta-local-dev-token'}, method='PUT'); data=json.load(urllib.request.urlopen(req)); entry=next(item for item in data['continueWatching'] if item['contentId']=='ser-northlight'); print(f\"{entry['contentId']}|{entry['progressSec']}|{entry['durationSec']}\")"
       ],
       "expect_exit": 0,
       "expect_stdout": "ser-northlight|1280|3120\n"
@@ -67,7 +67,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/watchlist/ser-northlight', headers={'Authorization':'Bearer lifestream-local-dev-token'}, method='POST'); data=json.load(urllib.request.urlopen(req)); print(len(data['watchlist']))"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/watchlist/ser-northlight', headers={'Authorization':'Bearer vanta-local-dev-token'}, method='POST'); data=json.load(urllib.request.urlopen(req)); print(len(data['watchlist']))"
       ],
       "exit_code": 0,
       "times": 1
@@ -77,7 +77,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/watchlist/ser-northlight', headers={'Authorization':'Bearer lifestream-local-dev-token'}, method='POST'); data=json.load(urllib.request.urlopen(req)); print(len(data['watchlist']))"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/watchlist/ser-northlight', headers={'Authorization':'Bearer vanta-local-dev-token'}, method='POST'); data=json.load(urllib.request.urlopen(req)); print(len(data['watchlist']))"
       ],
       "expect_exit": 0,
       "expect_stdout": "3\n"
@@ -87,7 +87,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/creator/me/dashboard', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['profile']['handle']}|{data['currentBroadcast']['id']}|{len(data['uploads'])}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/creator/me/dashboard', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['profile']['handle']}|{data['currentBroadcast']['id']}|{len(data['uploads'])}\")"
       ],
       "exit_code": 0,
       "times": 1
@@ -97,7 +97,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/creator/me/dashboard', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['profile']['handle']}|{data['currentBroadcast']['id']}|{len(data['uploads'])}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/creator/me/dashboard', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['profile']['handle']}|{data['currentBroadcast']['id']}|{len(data['uploads'])}\")"
       ],
       "expect_exit": 0,
       "expect_stdout": "deepsaint|bcast-now|5\n"
@@ -107,7 +107,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/profile', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['email']}|{len(data['connectedAccounts'])}|{data['hoursWatched']}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/profile', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['email']}|{len(data['connectedAccounts'])}|{data['hoursWatched']}\")"
       ],
       "exit_code": 0,
       "times": 1
@@ -117,17 +117,17 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/profile', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['email']}|{len(data['connectedAccounts'])}|{data['hoursWatched']}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/profile', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['email']}|{len(data['connectedAccounts'])}|{data['hoursWatched']}\")"
       ],
       "expect_exit": 0,
-      "expect_stdout": "deepsaint@lifestream.tv|2|142\n"
+      "expect_stdout": "deepsaint@vanta.tv|2|142\n"
     },
     {
       "type": "proc_when",
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/creator/me/series', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{len(data)}|{data[0]['slug']}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/creator/me/series', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{len(data)}|{data[0]['slug']}\")"
       ],
       "exit_code": 0,
       "times": 1
@@ -137,7 +137,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/creator/me/series', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{len(data)}|{data[0]['slug']}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/creator/me/series', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{len(data)}|{data[0]['slug']}\")"
       ],
       "expect_exit": 0,
       "expect_stdout": "2|halcyon-drift-studio\n"
@@ -147,7 +147,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/live/streams/lv-deepsaint-live/chat/messages', data=json.dumps({'body':'hello from fozzy auth'}).encode(), headers={'content-type':'application/json','Authorization':'Bearer lifestream-local-dev-token'}, method='POST'); data=json.load(urllib.request.urlopen(req)); print(data['userHandle']+'|'+data['body'])"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/live/streams/lv-deepsaint-live/chat/messages', data=json.dumps({'body':'hello from fozzy auth'}).encode(), headers={'content-type':'application/json','Authorization':'Bearer vanta-local-dev-token'}, method='POST'); data=json.load(urllib.request.urlopen(req)); print(data['userHandle']+'|'+data['body'])"
       ],
       "exit_code": 0,
       "times": 1
@@ -157,7 +157,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/live/streams/lv-deepsaint-live/chat/messages', data=json.dumps({'body':'hello from fozzy auth'}).encode(), headers={'content-type':'application/json','Authorization':'Bearer lifestream-local-dev-token'}, method='POST'); data=json.load(urllib.request.urlopen(req)); print(data['userHandle']+'|'+data['body'])"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/live/streams/lv-deepsaint-live/chat/messages', data=json.dumps({'body':'hello from fozzy auth'}).encode(), headers={'content-type':'application/json','Authorization':'Bearer vanta-local-dev-token'}, method='POST'); data=json.load(urllib.request.urlopen(req)); print(data['userHandle']+'|'+data['body'])"
       ],
       "expect_exit": 0,
       "expect_stdout": "deepsaint|hello from fozzy auth\n"
@@ -167,7 +167,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/catalog/films/afterglow', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['id']}|{data['progressSec']}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/catalog/films/afterglow', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['id']}|{data['progressSec']}\")"
       ],
       "exit_code": 0,
       "times": 1
@@ -177,7 +177,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/catalog/films/afterglow', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['id']}|{data['progressSec']}\")"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/catalog/films/afterglow', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); print(f\"{data['id']}|{data['progressSec']}\")"
       ],
       "expect_exit": 0,
       "expect_stdout": "flm-afterglow|4210\n"
@@ -187,7 +187,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/catalog/series/northlight', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); progress=next(ep['progressSec'] for season in data['seasons'] for ep in season['episodes'] if ep['id']=='ser-northlight-s2e3'); print(progress)"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/catalog/series/northlight', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); progress=next(ep['progressSec'] for season in data['seasons'] for ep in season['episodes'] if ep['id']=='ser-northlight-s2e3'); print(progress)"
       ],
       "exit_code": 0,
       "times": 1
@@ -197,7 +197,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/catalog/series/northlight', headers={'Authorization':'Bearer lifestream-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); progress=next(ep['progressSec'] for season in data['seasons'] for ep in season['episodes'] if ep['id']=='ser-northlight-s2e3'); print(progress)"
+        "import json, urllib.request; req=urllib.request.Request('http://127.0.0.1:8080/api/v1/catalog/series/northlight', headers={'Authorization':'Bearer vanta-local-dev-token'}); data=json.load(urllib.request.urlopen(req)); progress=next(ep['progressSec'] for season in data['seasons'] for ep in season['episodes'] if ep['id']=='ser-northlight-s2e3'); print(progress)"
       ],
       "expect_exit": 0,
       "expect_stdout": "1280\n"
@@ -247,7 +247,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.error, urllib.request; create=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/sessions', data=json.dumps({'label':'fozzy-ephemeral','scopes':['user'],'expiresInDays':30}).encode(), headers={'content-type':'application/json','Authorization':'Bearer lifestream-local-dev-token'}, method='POST'); created=json.load(urllib.request.urlopen(create)); token=created['accessToken']; session_id=created['session']['id']; me=urllib.request.Request('http://127.0.0.1:8080/api/v1/me', headers={'Authorization':f'Bearer {token}'}); user=json.load(urllib.request.urlopen(me)); revoke=urllib.request.Request(f'http://127.0.0.1:8080/api/v1/me/sessions/{session_id}', headers={'Authorization':'Bearer lifestream-local-dev-token'}, method='DELETE'); revoke_status=urllib.request.urlopen(revoke).status; denied=0\ntry:\n    urllib.request.urlopen(me)\nexcept urllib.error.HTTPError as exc:\n    denied=exc.code\nprint(f\"{created['session']['label']}|{user['handle']}|{revoke_status}|{denied}\")"
+        "import json, urllib.error, urllib.request; create=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/sessions', data=json.dumps({'label':'fozzy-ephemeral','scopes':['user'],'expiresInDays':30}).encode(), headers={'content-type':'application/json','Authorization':'Bearer vanta-local-dev-token'}, method='POST'); created=json.load(urllib.request.urlopen(create)); token=created['accessToken']; session_id=created['session']['id']; me=urllib.request.Request('http://127.0.0.1:8080/api/v1/me', headers={'Authorization':f'Bearer {token}'}); user=json.load(urllib.request.urlopen(me)); revoke=urllib.request.Request(f'http://127.0.0.1:8080/api/v1/me/sessions/{session_id}', headers={'Authorization':'Bearer vanta-local-dev-token'}, method='DELETE'); revoke_status=urllib.request.urlopen(revoke).status; denied=0\ntry:\n    urllib.request.urlopen(me)\nexcept urllib.error.HTTPError as exc:\n    denied=exc.code\nprint(f\"{created['session']['label']}|{user['handle']}|{revoke_status}|{denied}\")"
       ],
       "exit_code": 0,
       "times": 1
@@ -257,7 +257,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import json, urllib.error, urllib.request; create=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/sessions', data=json.dumps({'label':'fozzy-ephemeral','scopes':['user'],'expiresInDays':30}).encode(), headers={'content-type':'application/json','Authorization':'Bearer lifestream-local-dev-token'}, method='POST'); created=json.load(urllib.request.urlopen(create)); token=created['accessToken']; session_id=created['session']['id']; me=urllib.request.Request('http://127.0.0.1:8080/api/v1/me', headers={'Authorization':f'Bearer {token}'}); user=json.load(urllib.request.urlopen(me)); revoke=urllib.request.Request(f'http://127.0.0.1:8080/api/v1/me/sessions/{session_id}', headers={'Authorization':'Bearer lifestream-local-dev-token'}, method='DELETE'); revoke_status=urllib.request.urlopen(revoke).status; denied=0\ntry:\n    urllib.request.urlopen(me)\nexcept urllib.error.HTTPError as exc:\n    denied=exc.code\nprint(f\"{created['session']['label']}|{user['handle']}|{revoke_status}|{denied}\")"
+        "import json, urllib.error, urllib.request; create=urllib.request.Request('http://127.0.0.1:8080/api/v1/me/sessions', data=json.dumps({'label':'fozzy-ephemeral','scopes':['user'],'expiresInDays':30}).encode(), headers={'content-type':'application/json','Authorization':'Bearer vanta-local-dev-token'}, method='POST'); created=json.load(urllib.request.urlopen(create)); token=created['accessToken']; session_id=created['session']['id']; me=urllib.request.Request('http://127.0.0.1:8080/api/v1/me', headers={'Authorization':f'Bearer {token}'}); user=json.load(urllib.request.urlopen(me)); revoke=urllib.request.Request(f'http://127.0.0.1:8080/api/v1/me/sessions/{session_id}', headers={'Authorization':'Bearer vanta-local-dev-token'}, method='DELETE'); revoke_status=urllib.request.urlopen(revoke).status; denied=0\ntry:\n    urllib.request.urlopen(me)\nexcept urllib.error.HTTPError as exc:\n    denied=exc.code\nprint(f\"{created['session']['label']}|{user['handle']}|{revoke_status}|{denied}\")"
       ],
       "expect_exit": 0,
       "expect_stdout": "fozzy-ephemeral|deepsaint|204|401\n"

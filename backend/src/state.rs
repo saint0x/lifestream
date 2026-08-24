@@ -1,25 +1,32 @@
 use std::{
     collections::{HashMap, VecDeque},
-    path::PathBuf,
     sync::Arc,
     sync::atomic::{AtomicU64, AtomicUsize, Ordering},
     time::{Duration, Instant},
 };
 
-use axum::http::HeaderValue;
 use axum::body::Bytes;
-use sqlx::SqlitePool;
+use axum::http::HeaderValue;
 use tokio::sync::{Mutex, broadcast};
 
+use crate::config::{Config, DatabaseKind, StorageKind};
+use crate::db::Database;
 use crate::models::{
     CreatorLiveControlResponse, CreatorLiveRuntimeResponse, HealthDependencyStatus, PlaybackGrant,
     WsEvent,
 };
+use crate::storage::Storage;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: SqlitePool,
-    pub media_root: PathBuf,
+    pub db: Database,
+    pub storage: Storage,
+    #[allow(dead_code)]
+    pub database_kind: DatabaseKind,
+    #[allow(dead_code)]
+    pub storage_kind: StorageKind,
+    pub admin_api_enabled: bool,
+    token_hash_secret: Option<String>,
     pub cors_allowed_origins: Vec<HeaderValue>,
     pub realtime: RealtimeHub,
     pub rate_limits: RateLimitStore,
@@ -35,13 +42,18 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(
-        pool: SqlitePool,
-        media_root: PathBuf,
+        db: Database,
+        storage: Storage,
+        config: Config,
         cors_allowed_origins: Vec<HeaderValue>,
     ) -> Self {
         Self {
-            pool,
-            media_root,
+            db,
+            storage,
+            database_kind: config.database_kind,
+            storage_kind: config.storage_kind,
+            admin_api_enabled: config.admin_api_enabled,
+            token_hash_secret: config.token_hash_secret.clone(),
             cors_allowed_origins,
             realtime: RealtimeHub::default(),
             rate_limits: RateLimitStore::default(),
@@ -64,6 +76,10 @@ impl AppState {
         self.cors_allowed_origins
             .iter()
             .any(|allowed| allowed == origin)
+    }
+
+    pub fn config_token_hash_secret(&self) -> Option<&str> {
+        self.token_hash_secret.as_deref()
     }
 }
 
@@ -316,11 +332,7 @@ impl LiveResponseCacheStore {
         self.runtime.lock().await.remove(creator_id);
     }
 
-    pub async fn get_live_playback_grant(
-        &self,
-        key: &str,
-        ttl: Duration,
-    ) -> Option<PlaybackGrant> {
+    pub async fn get_live_playback_grant(&self, key: &str, ttl: Duration) -> Option<PlaybackGrant> {
         get_timed_cache_value(&self.live_playback_grants, key, ttl).await
     }
 

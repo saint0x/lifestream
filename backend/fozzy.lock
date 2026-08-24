@@ -4,7 +4,7 @@
     "deps": [],
     "package": {
       "manifestHash": "62b085d9e7d674c6d4d0da93e6d2772405785b41c41eac8eb33d44de88a94d2c",
-      "name": "lifestream-backend",
+      "name": "vanta-backend",
       "version": "0.1.0"
     }
   },

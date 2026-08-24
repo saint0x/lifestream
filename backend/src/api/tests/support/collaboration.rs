@@ -19,7 +19,7 @@ pub(crate) async fn insert_ready_collaboration_broadcast(
         new_followers: 0,
         new_subscribers: 0,
         revenue: 0.0,
-        thumbnail: "https://cdn.lifestream.local/thumb/collab-ready.jpg".to_string(),
+        thumbnail: "https://cdn.vanta.local/thumb/collab-ready.jpg".to_string(),
         is_mature: false,
     };
     sqlx::query(
@@ -168,7 +168,7 @@ pub(crate) async fn insert_active_collaboration_session(
         new_followers: 0,
         new_subscribers: 0,
         revenue: 0.0,
-        thumbnail: "https://cdn.lifestream.local/thumb/collab.jpg".to_string(),
+        thumbnail: "https://cdn.vanta.local/thumb/collab.jpg".to_string(),
         is_mature: false,
     };
     sqlx::query(
@@ -360,7 +360,7 @@ pub(crate) async fn insert_test_user_with_creator_profile(
     .bind(user_id)
     .bind(handle)
     .bind(display_name)
-    .bind(format!("https://cdn.lifestream.local/avatar/{handle}.jpg"))
+    .bind(format!("https://cdn.vanta.local/avatar/{handle}.jpg"))
     .bind("free")
     .bind(&now)
     .execute(pool)
@@ -379,17 +379,17 @@ pub(crate) async fn insert_test_user_with_creator_profile(
     .bind(creator_handle)
     .bind(creator_display_name)
     .bind(format!(
-        "https://cdn.lifestream.local/avatar/{creator_handle}.jpg"
+        "https://cdn.vanta.local/avatar/{creator_handle}.jpg"
     ))
     .bind(format!(
-        "https://cdn.lifestream.local/banner/{creator_handle}.jpg"
+        "https://cdn.vanta.local/banner/{creator_handle}.jpg"
     ))
     .bind("Co-stream everything")
     .bind("Extra guest creator")
     .bind("affiliate")
     .bind(&now)
     .bind(format!("sk_{creator_handle}"))
-    .bind("rtmp://ingest.lifestream.local/live")
+    .bind("rtmp://ingest.vanta.local/live")
     .bind("Gaming")
     .bind(json!(["co-stream"]).to_string())
     .bind(0_i64)

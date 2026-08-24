@@ -5,12 +5,23 @@ async fn fetch_source_pickup_viewer_count(
     pool: &SqlitePool,
     pickup: &CollaborationMirrorPickup,
 ) -> AppResult<i64> {
-    if let Some(session) =
-        fetch_active_live_ingest_session_unreconciled(pool, &pickup.host_creator_id).await?
+    if let Some(row) = sqlx::query(
+        r#"
+        SELECT viewers
+        FROM live_ingest_sessions
+        WHERE creator_id = ?
+          AND broadcast_id = ?
+          AND status = 'connected'
+        ORDER BY connected_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(&pickup.host_creator_id)
+    .bind(&pickup.source_broadcast_id)
+    .fetch_optional(pool)
+    .await?
     {
-        if session.broadcast_id == pickup.source_broadcast_id {
-            return Ok(session.viewers);
-        }
+        return Ok(row.get("viewers"));
     }
 
     let host_creator = fetch_creator_profile(pool, &pickup.host_creator_id).await?;

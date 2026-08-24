@@ -4,9 +4,20 @@ pub(crate) async fn list_my_notifications(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<Vec<UserNotification>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    if state.database_kind == crate::config::DatabaseKind::Postgres {
+        return Ok(Json(
+            crate::api::me::state::build_postgres_viewer_app_state(
+                &state.db,
+                &identity.user_id,
+                &identity.session_id,
+            )
+            .await?
+            .notifications,
+        ));
+    }
     Ok(Json(
-        fetch_user_notifications(&state.pool, &identity.user_id).await?,
+        fetch_user_notifications(state.db.sqlite_adapter(), &identity.user_id).await?,
     ))
 }
 
@@ -15,17 +26,14 @@ pub(crate) async fn mark_my_notification_read(
     headers: HeaderMap,
     Path(notification_id): Path<String>,
 ) -> AppResult<StatusCode> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let now = Utc::now().to_rfc3339();
-    let result = sqlx::query(
-        "UPDATE notification_deliveries SET read_at = COALESCE(read_at, ?) WHERE id = ? AND recipient_user_id = ?",
-    )
-    .bind(&now)
-    .bind(&notification_id)
-    .bind(&identity.user_id)
-    .execute(&state.pool)
-    .await?;
-    if result.rows_affected() == 0 {
+    if state
+        .db
+        .mark_user_notification_read(&identity.user_id, &notification_id, &now)
+        .await?
+        == 0
+    {
         return Err(AppError::NotFound);
     }
     Ok(StatusCode::NO_CONTENT)
@@ -56,10 +64,7 @@ pub(crate) async fn fetch_user_notifications_limited(
     if let Some(limit) = limit {
         query.push_str(&format!(" LIMIT {}", limit.max(1)));
     }
-    let rows = sqlx::query(&query)
-    .bind(user_id)
-    .fetch_all(pool)
-    .await?;
+    let rows = sqlx::query(&query).bind(user_id).fetch_all(pool).await?;
     Ok(rows
         .into_iter()
         .map(|row| UserNotification {

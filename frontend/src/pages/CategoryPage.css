@@ -16,7 +16,7 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.85) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.85) 100%),
     linear-gradient(90deg, #000 10%, transparent 80%);
 }
 
@@ -56,8 +56,13 @@
   letter-spacing: 0.08em;
   margin-bottom: 14px;
 }
-.ls-category__meta strong { color: var(--c-text); font-weight: 500; }
-.ls-category__sep { color: var(--c-text-ghost); }
+.ls-category__meta strong {
+  color: var(--c-text);
+  font-weight: 500;
+}
+.ls-category__sep {
+  color: var(--c-text-ghost);
+}
 
 .ls-category__tags {
   display: flex;
@@ -70,7 +75,7 @@
   padding: 4px 8px;
   border: 1px solid var(--c-border-hi);
   border-radius: var(--r-sm);
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -92,16 +97,20 @@
 
 .ls-category__live-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 360px));
+  justify-content: start;
   gap: 24px;
 }
 
 .ls-category__vod-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(168px, 180px));
+  justify-content: start;
   gap: 28px 16px;
 }
-.ls-category__vod-grid .ls-card { width: auto; }
+.ls-category__vod-grid .ls-card {
+  width: 100%;
+}
 
 .ls-category__empty {
   padding: 40px;
@@ -109,4 +118,30 @@
   color: var(--c-text-faint);
   border: 1px dashed var(--c-border);
   border-radius: var(--r-md);
+}
+
+.ls-category__load-more {
+  align-self: center;
+  margin-top: 24px;
+  padding: 9px 16px;
+  font-size: 11px;
+  color: var(--c-text);
+  background: var(--c-bg-elevated);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.ls-category__load-more:disabled {
+  color: var(--c-text-faint);
+}
+
+@media (max-width: 560px) {
+  .ls-category__live-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ls-category__vod-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

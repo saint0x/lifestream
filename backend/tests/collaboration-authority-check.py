@@ -3,8 +3,8 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-HOST = "Bearer lifestream-local-dev-token"
-COLLAB = "Bearer lifestream-local-collaborator-token"
+HOST = "Bearer vanta-local-dev-token"
+COLLAB = "Bearer vanta-local-collaborator-token"
 
 
 def req(path, method="GET", token=None, body=None):

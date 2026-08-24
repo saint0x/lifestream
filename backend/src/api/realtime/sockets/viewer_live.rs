@@ -7,10 +7,11 @@ pub(super) async fn handle_socket(
     viewer_identity: Option<RequestIdentity>,
     after_seq: i64,
     session_token: Option<String>,
+    attribution: LiveViewerAttribution,
 ) {
     let (mut sender, mut receiver) = socket.split();
     if let Some(identity) = viewer_identity.as_ref() {
-        if ensure_identity_session_active(&state.pool, identity)
+        if ensure_identity_session_active(state.db.sqlite_adapter(), identity)
             .await
             .is_err()
         {
@@ -18,10 +19,11 @@ pub(super) async fn handle_socket(
         }
     }
     let (presence_session_token, resumed, last_seen_at) = match register_live_viewer_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &stream_id,
         viewer_identity.as_ref(),
         session_token.as_deref(),
+        Some(&attribution),
     )
     .await
     {
@@ -29,7 +31,7 @@ pub(super) async fn handle_socket(
         Err(_) => return,
     };
     let history = fetch_chat_messages_for_viewer(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &stream_id,
         viewer_identity
             .as_ref()
@@ -40,7 +42,7 @@ pub(super) async fn handle_socket(
     .await
     .unwrap_or_default();
     let replay = fetch_chat_messages_for_viewer(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &stream_id,
         viewer_identity
             .as_ref()
@@ -51,14 +53,16 @@ pub(super) async fn handle_socket(
     .await
     .unwrap_or_default();
     let active_moderation_action = match viewer_identity.as_ref() {
-        Some(identity) => {
-            fetch_active_live_moderation_action(&state.pool, &stream_id, &identity.user_id)
-                .await
-                .unwrap_or_default()
-        }
+        Some(identity) => fetch_active_live_moderation_action(
+            state.db.sqlite_adapter(),
+            &stream_id,
+            &identity.user_id,
+        )
+        .await
+        .unwrap_or_default(),
         None => None,
     };
-    let total_viewers = effective_live_viewer_count(&state.pool, &stream_id)
+    let total_viewers = effective_live_viewer_count(state.db.sqlite_adapter(), &stream_id)
         .await
         .unwrap_or_default();
     let channel_id = stream_channel_id(&stream_id);
@@ -131,13 +135,13 @@ pub(super) async fn handle_socket(
         tokio::select! {
             _ = touch_interval.tick() => {
                 if let Some(identity) = viewer_identity.as_ref() {
-                    if ensure_identity_session_active(&state.pool, identity).await.is_err() {
+                    if ensure_identity_session_active(state.db.sqlite_adapter(), identity).await.is_err() {
                         close_websocket(&mut sender).await;
                         break;
                     }
                 }
                 let _ = touch_live_viewer_session(
-                    &state.pool,
+                    state.db.sqlite_adapter(),
                     &stream_id,
                     &presence_session_token,
                     &last_seen_at,
@@ -148,13 +152,13 @@ pub(super) async fn handle_socket(
                 match incoming {
                     Some(Ok(Message::Text(text))) => {
                         if let Some(identity) = viewer_identity.as_ref() {
-                            if ensure_identity_session_active(&state.pool, identity).await.is_err() {
+                            if ensure_identity_session_active(state.db.sqlite_adapter(), identity).await.is_err() {
                                 close_websocket(&mut sender).await;
                                 break;
                             }
                         }
                         let _ = touch_live_viewer_session(
-                            &state.pool,
+                            state.db.sqlite_adapter(),
                             &stream_id,
                             &presence_session_token,
                             &last_seen_at,
@@ -207,7 +211,7 @@ pub(super) async fn handle_socket(
                             break;
                         }
                         if let Some(identity) = viewer_identity.as_ref() {
-                            if ensure_identity_session_active(&state.pool, identity).await.is_err() {
+                            if ensure_identity_session_active(state.db.sqlite_adapter(), identity).await.is_err() {
                                 close_websocket(&mut sender).await;
                                 break;
                             }
@@ -237,7 +241,7 @@ pub(super) async fn handle_socket(
     }
 
     let _ = disconnect_live_viewer_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &stream_id,
         &presence_session_token,
         &last_seen_at,
@@ -250,7 +254,7 @@ pub(super) async fn handle_socket(
             .leave(&auth_session_channel_id(&identity.session_id))
             .await;
     }
-    let remaining = effective_live_viewer_count(&state.pool, &stream_id)
+    let remaining = effective_live_viewer_count(state.db.sqlite_adapter(), &stream_id)
         .await
         .unwrap_or_default();
     state

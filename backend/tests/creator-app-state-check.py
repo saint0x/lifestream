@@ -2,7 +2,7 @@ import json
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-HOST = "Bearer lifestream-local-dev-token"
+HOST = "Bearer vanta-local-dev-token"
 
 
 def req(path, token=None):

@@ -1,15 +1,15 @@
 use super::*;
 
-pub(crate) async fn check_database(pool: &SqlitePool) -> AppResult<bool> {
-    let db_ok: i64 = sqlx::query("SELECT 1").fetch_one(pool).await?.get(0);
-    Ok(db_ok == 1)
-}
-
 pub(crate) fn media_path_for_relative(
     state: &SharedState,
     relative_path: &str,
 ) -> std::path::PathBuf {
-    state.media_root.join(relative_path)
+    state.storage.local_artifact_path(relative_path)
+}
+
+#[allow(dead_code)]
+pub(crate) fn media_public_url(state: &SharedState, relative_path: &str) -> String {
+    state.storage.public_url(relative_path)
 }
 
 pub(crate) async fn ensure_parent_dir(path: &std::path::Path) -> AppResult<()> {
@@ -121,6 +121,7 @@ pub(crate) fn media_content_type(relative_path: &str) -> &'static str {
         .unwrap_or_default()
     {
         "m3u8" => "application/vnd.apple.mpegurl",
+        "m4s" => "video/iso.segment",
         "ts" => "video/mp2t",
         "mp4" => "video/mp4",
         "mov" => "video/quicktime",

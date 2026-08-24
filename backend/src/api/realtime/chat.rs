@@ -20,7 +20,7 @@ pub(crate) async fn persist_chat_message(
         Duration::from_secs(10),
     )
     .await?;
-    ensure_stream_exists(&state.pool, stream_id).await?;
+    ensure_stream_exists(state.db.sqlite_adapter(), stream_id).await?;
     let body = input.body.trim();
     if body.is_empty() {
         return Err(AppError::BadRequest("message body is required".to_string()));
@@ -31,26 +31,30 @@ pub(crate) async fn persist_chat_message(
         ));
     }
 
-    let stream_owner = fetch_live_stream_owner_context(&state.pool, stream_id).await?;
+    let stream_owner =
+        fetch_live_stream_owner_context(state.db.sqlite_adapter(), stream_id).await?;
     let stream_creator_id = stream_owner.creator_id.clone();
     enforce_collaboration_chat_participation_permissions(
-        &state.pool,
+        state.db.sqlite_adapter(),
         stream_owner.current_broadcast_id.as_deref(),
         &identity.user_id,
     )
     .await?;
-    let (stream_settings, bypass_restrictions, moderation_action, has_active_membership) =
-        tokio::try_join!(
-            fetch_creator_live_settings(&state.pool, &stream_creator_id),
-            can_bypass_live_chat_restrictions(&state.pool, &stream_creator_id, identity),
-            fetch_active_live_moderation_action(&state.pool, stream_id, &identity.user_id),
-            fetch_active_creator_membership(
-                &state.pool,
-                &identity.user_id,
-                &stream_creator_id,
-                None,
-            ),
-        )?;
+    let (stream_settings, bypass_restrictions, moderation_action, has_active_membership) = tokio::try_join!(
+        fetch_creator_live_settings(state.db.sqlite_adapter(), &stream_creator_id),
+        can_bypass_live_chat_restrictions(state.db.sqlite_adapter(), &stream_creator_id, identity),
+        fetch_active_live_moderation_action(
+            state.db.sqlite_adapter(),
+            stream_id,
+            &identity.user_id
+        ),
+        fetch_active_creator_membership(
+            state.db.sqlite_adapter(),
+            &identity.user_id,
+            &stream_creator_id,
+            None,
+        ),
+    )?;
     if let Some(action) = moderation_action.as_ref() {
         match action.action_type.as_str() {
             "ban" | "mute" => {
@@ -69,7 +73,7 @@ pub(crate) async fn persist_chat_message(
 
         if stream_settings.slow_mode_seconds > 0 {
             enforce_live_chat_slow_mode(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 stream_id,
                 &identity.user_id,
                 stream_settings.slow_mode_seconds,
@@ -86,7 +90,7 @@ pub(crate) async fn persist_chat_message(
         }
     }
 
-    let user = fetch_user(&state.pool, &identity.user_id).await?;
+    let user = fetch_user(state.db.sqlite_adapter(), &identity.user_id).await?;
     let mut badges = Vec::new();
     if has_active_membership {
         badges.push("subscriber".to_string());
@@ -97,7 +101,7 @@ pub(crate) async fn persist_chat_message(
 
     let message = ChatMessage {
         id: Uuid::new_v4().to_string(),
-        sequence: next_chat_message_sequence(&state.pool, stream_id).await?,
+        sequence: next_chat_message_sequence(state.db.sqlite_adapter(), stream_id).await?,
         user_handle: user.handle,
         display_name: user.display_name,
         color: input.color.unwrap_or_else(|| "#fafafa".to_string()),
@@ -125,7 +129,7 @@ pub(crate) async fn persist_chat_message(
     .bind(&message.sent_at)
     .bind(hidden_by_moderation as i64)
     .bind(message.sequence)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     if !hidden_by_moderation {

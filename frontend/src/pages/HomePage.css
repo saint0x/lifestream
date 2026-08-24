@@ -13,3 +13,9 @@
   z-index: 3;
   background: linear-gradient(180deg, transparent 0%, var(--c-bg) 80px);
 }
+
+.ls-home__state {
+  padding: 48px 40px 0;
+  color: var(--c-text-dim);
+  font-size: 13px;
+}

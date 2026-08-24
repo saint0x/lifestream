@@ -11,8 +11,8 @@ pub(crate) use profile::{
     user_settings_bundle_from_account_bundle,
 };
 pub(crate) use user_state::{
-    build_user_from_parts, fetch_continue_watching_entries, fetch_continue_watching_entries_limited,
-    fetch_creator_id_for_user,
+    build_user_from_parts, fetch_continue_watching_entries,
+    fetch_continue_watching_entries_limited, fetch_creator_id_for_user,
     fetch_following_feed_response, fetch_user, fetch_user_library, fetch_user_record,
     fetch_watch_history_limited, fetch_watchlist_response, followed_streamer_ids_from_response,
     watchlist_ids_from_response,

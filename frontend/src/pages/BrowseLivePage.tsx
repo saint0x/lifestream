@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { repository } from "@/lib/repository";
 import { LiveCard } from "@/components/content/LiveCard";
-import type { Genre } from "@/types";
+import type { Category, Genre, LiveStream } from "@/types";
 import "./BrowseLivePage.css";
 
 const allCategories: ReadonlyArray<"all" | Genre> = [
@@ -17,17 +17,43 @@ const allCategories: ReadonlyArray<"all" | Genre> = [
 export function BrowseLivePage() {
   const [filter, setFilter] = useState<"all" | Genre>("all");
   const [sort, setSort] = useState<"viewers" | "newest">("viewers");
+  const [streams, setStreams] = useState<ReadonlyArray<LiveStream>>([]);
+  const [categories, setCategories] = useState<ReadonlyArray<Category>>([]);
+  const [totalViewers, setTotalViewers] = useState(0);
+  const [totalChannels, setTotalChannels] = useState(0);
+  const [limit, setLimit] = useState(24);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const streams = repository.listLiveStreams();
-  const filtered = streams
-    .filter((s) => filter === "all" || s.category === filter)
-    .slice()
-    .sort((a, b) => {
-      if (sort === "viewers") return b.viewers - a.viewers;
-      return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
-    });
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    void repository
+      .fetchLiveDiscovery({ category: filter, sort, limit }, controller.signal)
+      .then((payload) => {
+        setStreams(payload.streams);
+        setCategories(payload.categories);
+        setTotalViewers(payload.totalViewers);
+        setTotalChannels(payload.totalChannels);
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setStreams([]);
+        setCategories([]);
+        setTotalViewers(0);
+        setTotalChannels(0);
+        setError(err instanceof Error ? err.message : "Unable to load live channels.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [filter, sort, limit]);
 
-  const totalViewers = streams.reduce((sum, s) => sum + s.viewers, 0);
+  useEffect(() => {
+    setLimit(24);
+  }, [filter, sort]);
 
   return (
     <div className="ls-browse">
@@ -36,8 +62,8 @@ export function BrowseLivePage() {
           <div className="ls-browse__kicker mono">/ live</div>
           <h1 className="ls-browse__title">Live, right now</h1>
           <p className="ls-browse__sub">
-            {streams.length} channels · {totalViewers.toLocaleString()} viewers ·
-            zero latency, zero lag
+            {totalChannels} channels · {totalViewers.toLocaleString()} viewers ·
+            live channels and active audiences
           </p>
         </div>
         <div className="ls-browse__filters">
@@ -81,7 +107,7 @@ export function BrowseLivePage() {
       <section className="ls-browse__categories">
         <div className="ls-browse__label mono">Browse categories</div>
         <div className="ls-browse__cat-grid">
-          {repository.listCategories().map((c) => (
+          {categories.map((c) => (
             <Link
               key={c.slug}
               to={`/category/${c.slug}`}
@@ -102,13 +128,27 @@ export function BrowseLivePage() {
 
       <section className="ls-browse__streams">
         <div className="ls-browse__label mono">
-          {filtered.length} channel{filtered.length === 1 ? "" : "s"}
+          {streams.length} channel{streams.length === 1 ? "" : "s"}
         </div>
+        {loading ? <div className="ls-browse__state mono">Loading live channels…</div> : null}
+        {error ? <div className="ls-browse__state ls-browse__state--error">{error}</div> : null}
+        {!loading && !error && streams.length === 0 ? (
+          <div className="ls-browse__state mono">No live channels match this view.</div>
+        ) : null}
         <div className="ls-browse__grid">
-          {filtered.map((s) => (
+          {streams.map((s) => (
             <LiveCard key={s.id} stream={s} />
           ))}
         </div>
+        {!loading && !error && streams.length < totalChannels ? (
+          <button
+            type="button"
+            className="ls-browse__load-more"
+            onClick={() => setLimit((current) => current + 24)}
+          >
+            Load more
+          </button>
+        ) : null}
       </section>
     </div>
   );

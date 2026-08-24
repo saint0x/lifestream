@@ -1,4 +1,4 @@
-# Lifestream Lattice
+# Vanta Lattice
 
 ## Remaining Media-Plane Scope
 

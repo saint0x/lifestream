@@ -9,7 +9,7 @@ pub(super) async fn handle_creator_live_socket(
 ) {
     let channel_id = creator_live_channel_id(&creator_id);
     let (mut sender, mut receiver) = socket.split();
-    if ensure_identity_session_active(&state.pool, &identity)
+    if ensure_identity_session_active(state.db.sqlite_adapter(), &identity)
         .await
         .is_err()
     {
@@ -21,7 +21,7 @@ pub(super) async fn handle_creator_live_socket(
         .join(&auth_session_channel_id(&identity.session_id))
         .await;
     let (presence_session_token, resumed, ready_at) = match register_creator_live_socket_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator_id,
         &identity.user_id,
         session_token.as_deref(),
@@ -40,7 +40,7 @@ pub(super) async fn handle_creator_live_socket(
             Ok(control) => control,
             Err(_) => {
                 let _ = disconnect_creator_live_socket_session(
-                    &state.pool,
+                    state.db.sqlite_adapter(),
                     &creator_id,
                     &presence_session_token,
                     &ready_at,
@@ -55,7 +55,7 @@ pub(super) async fn handle_creator_live_socket(
             Ok(runtime) => runtime,
             Err(_) => {
                 let _ = disconnect_creator_live_socket_session(
-                    &state.pool,
+                    state.db.sqlite_adapter(),
                     &creator_id,
                     &presence_session_token,
                     &ready_at,
@@ -91,12 +91,12 @@ pub(super) async fn handle_creator_live_socket(
     loop {
         tokio::select! {
             _ = touch_interval.tick() => {
-                if ensure_identity_session_active(&state.pool, &identity).await.is_err() {
+                if ensure_identity_session_active(state.db.sqlite_adapter(), &identity).await.is_err() {
                     close_websocket(&mut sender).await;
                     break;
                 }
                 let _ = touch_creator_live_socket_session(
-                    &state.pool,
+                    state.db.sqlite_adapter(),
                     &creator_id,
                     &presence_session_token,
                     &ready_at,
@@ -107,12 +107,12 @@ pub(super) async fn handle_creator_live_socket(
                 match incoming {
                     Some(Ok(Message::Close(_))) | None => break,
                     Some(Ok(Message::Text(_))) => {
-                        if ensure_identity_session_active(&state.pool, &identity).await.is_err() {
+                        if ensure_identity_session_active(state.db.sqlite_adapter(), &identity).await.is_err() {
                             close_websocket(&mut sender).await;
                             break;
                         }
                         let _ = touch_creator_live_socket_session(
-                            &state.pool,
+                            state.db.sqlite_adapter(),
                             &creator_id,
                             &presence_session_token,
                             &ready_at,
@@ -133,7 +133,7 @@ pub(super) async fn handle_creator_live_socket(
                             close_websocket(&mut sender).await;
                             break;
                         }
-                        if ensure_identity_session_active(&state.pool, &identity).await.is_err() {
+                        if ensure_identity_session_active(state.db.sqlite_adapter(), &identity).await.is_err() {
                             close_websocket(&mut sender).await;
                             break;
                         }
@@ -162,7 +162,7 @@ pub(super) async fn handle_creator_live_socket(
     }
 
     let _ = disconnect_creator_live_socket_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator_id,
         &presence_session_token,
         &ready_at,

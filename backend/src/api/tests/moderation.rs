@@ -3,7 +3,7 @@ use super::*;
 #[tokio::test]
 async fn shadowbanned_chat_history_is_visible_only_to_sender() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let stream_id = insert_live_stream_for_creator(&state.pool, &creator).await?;
+    let stream_id = insert_live_stream_for_creator(state.db.sqlite_adapter(), &creator).await?;
     let now = Utc::now().to_rfc3339();
 
     sqlx::query(
@@ -26,7 +26,7 @@ async fn shadowbanned_chat_history_is_visible_only_to_sender() -> AppResult<()> 
     .bind(&now)
     .bind(0_i64)
     .bind(1_i64)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     sqlx::query(
@@ -49,17 +49,36 @@ async fn shadowbanned_chat_history_is_visible_only_to_sender() -> AppResult<()> 
     .bind(&now)
     .bind(1_i64)
     .bind(2_i64)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let public_history =
-        fetch_chat_messages_for_viewer(&state.pool, &stream_id, None, 50, None).await?;
-    let sender_history =
-        fetch_chat_messages_for_viewer(&state.pool, &stream_id, Some("usr-2"), 50, None).await?;
-    let other_history =
-        fetch_chat_messages_for_viewer(&state.pool, &stream_id, Some("usr-1"), 50, None).await?;
-    let sender_replay =
-        fetch_chat_messages_for_viewer(&state.pool, &stream_id, Some("usr-2"), 50, Some(1)).await?;
+        fetch_chat_messages_for_viewer(state.db.sqlite_adapter(), &stream_id, None, 50, None)
+            .await?;
+    let sender_history = fetch_chat_messages_for_viewer(
+        state.db.sqlite_adapter(),
+        &stream_id,
+        Some("usr-2"),
+        50,
+        None,
+    )
+    .await?;
+    let other_history = fetch_chat_messages_for_viewer(
+        state.db.sqlite_adapter(),
+        &stream_id,
+        Some("usr-1"),
+        50,
+        None,
+    )
+    .await?;
+    let sender_replay = fetch_chat_messages_for_viewer(
+        state.db.sqlite_adapter(),
+        &stream_id,
+        Some("usr-2"),
+        50,
+        Some(1),
+    )
+    .await?;
     let sender_token = format!("test-viewer-token-{}", Uuid::new_v4().simple());
     let sender_session_now = Utc::now().to_rfc3339();
     sqlx::query(
@@ -78,7 +97,7 @@ async fn shadowbanned_chat_history_is_visible_only_to_sender() -> AppResult<()> 
     .bind((Utc::now() + chrono::Duration::hours(2)).to_rfc3339())
     .bind(Option::<String>::None)
     .bind(&sender_session_now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     let sender_rest_history = list_chat_messages(
         State(state.clone()),
@@ -137,8 +156,13 @@ async fn shadowbanned_chat_history_is_visible_only_to_sender() -> AppResult<()> 
 #[tokio::test]
 async fn collaboration_resume_bootstrap_does_not_duplicate_snapshot_events() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let first = publish_test_collaboration_event(
         &state,
         &session.id,
@@ -157,9 +181,14 @@ async fn collaboration_resume_bootstrap_does_not_duplicate_snapshot_events() -> 
     .await?;
 
     let (fresh_snapshot, fresh_replay) =
-        load_collaboration_socket_event_bootstrap(&state.pool, &session.id, 0).await?;
-    let (resumed_snapshot, resumed_replay) =
-        load_collaboration_socket_event_bootstrap(&state.pool, &session.id, first.sequence).await?;
+        load_collaboration_socket_event_bootstrap(state.db.sqlite_adapter(), &session.id, 0)
+            .await?;
+    let (resumed_snapshot, resumed_replay) = load_collaboration_socket_event_bootstrap(
+        state.db.sqlite_adapter(),
+        &session.id,
+        first.sequence,
+    )
+    .await?;
 
     assert_eq!(fresh_replay.len(), 0);
     assert!(fresh_snapshot.iter().any(|event| event.id == first.id));
@@ -179,9 +208,10 @@ async fn collaboration_resume_bootstrap_does_not_duplicate_snapshot_events() -> 
 #[tokio::test]
 async fn create_collaboration_session_rejects_invalid_chat_mode() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let broadcast = insert_ready_collaboration_broadcast(&state.pool, &creator).await?;
+    let broadcast =
+        insert_ready_collaboration_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let error = create_collaboration_session(
         State(state.clone()),
@@ -209,9 +239,10 @@ async fn create_collaboration_session_rejects_invalid_chat_mode() -> AppResult<(
 #[tokio::test]
 async fn create_collaboration_session_rejects_invalid_recording_policy() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let broadcast = insert_ready_collaboration_broadcast(&state.pool, &creator).await?;
+    let broadcast =
+        insert_ready_collaboration_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let error = create_collaboration_session(
         State(state.clone()),
@@ -243,11 +274,11 @@ async fn collaboration_participant_without_chat_speaking_rights_cannot_post() ->
         "UPDATE creator_live_settings SET subscriber_only = 0, slow_mode_seconds = 0 WHERE creator_id = ?",
     )
     .bind(&creator.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
-    let stream_id = insert_live_stream_for_creator(&state.pool, &creator).await?;
+    let stream_id = insert_live_stream_for_creator(state.db.sqlite_adapter(), &creator).await?;
     let (_session, participant) = insert_shared_chat_collaboration_for_current_broadcast(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator,
         "crt-atlas",
         "usr-2",
@@ -280,9 +311,9 @@ async fn collaboration_participant_without_chat_speaking_rights_cannot_post() ->
 #[tokio::test]
 async fn revoking_live_moderation_action_publishes_realtime_event() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let stream_id = insert_live_stream_for_creator(&state.pool, &creator).await?;
+    let stream_id = insert_live_stream_for_creator(state.db.sqlite_adapter(), &creator).await?;
 
     let created = create_live_moderation_action(
         State(state.clone()),
@@ -339,7 +370,7 @@ async fn revoking_live_moderation_action_publishes_realtime_event() -> AppResult
 #[tokio::test]
 async fn moderator_cannot_apply_action_to_stream_owner() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let stream_id = insert_live_stream_for_creator(&state.pool, &creator).await?;
+    let stream_id = insert_live_stream_for_creator(state.db.sqlite_adapter(), &creator).await?;
     sqlx::query(
         "INSERT INTO creator_moderators (creator_id, user_id, role, created_at) VALUES (?, ?, ?, ?)",
     )
@@ -347,9 +378,9 @@ async fn moderator_cannot_apply_action_to_stream_owner() -> AppResult<()> {
     .bind("usr-2")
     .bind("mod")
     .bind(Utc::now().to_rfc3339())
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
-    let token = insert_user_auth_session(&state.pool, "usr-2", &["user"]).await?;
+    let token = insert_user_auth_session(state.db.sqlite_adapter(), "usr-2", &["user"]).await?;
 
     let error = create_live_moderation_action(
         State(state),
@@ -377,9 +408,9 @@ async fn moderator_cannot_apply_action_to_stream_owner() -> AppResult<()> {
 #[tokio::test]
 async fn resolving_report_rejects_cross_stream_report_ids_without_audit_write() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let stream_id = insert_live_stream_for_creator(&state.pool, &creator).await?;
+    let stream_id = insert_live_stream_for_creator(state.db.sqlite_adapter(), &creator).await?;
 
     let other_broadcast = Broadcast {
         id: format!("test-other-bc-{}", Uuid::new_v4().simple()),
@@ -396,7 +427,7 @@ async fn resolving_report_rejects_cross_stream_report_ids_without_audit_write() 
         new_followers: 0,
         new_subscribers: 0,
         revenue: 0.0,
-        thumbnail: "https://cdn.lifestream.local/thumb/other-stream.jpg".to_string(),
+        thumbnail: "https://cdn.vanta.local/thumb/other-stream.jpg".to_string(),
         is_mature: false,
     };
     sqlx::query(
@@ -425,10 +456,10 @@ async fn resolving_report_rejects_cross_stream_report_ids_without_audit_write() 
     .bind(other_broadcast.revenue)
     .bind(&other_broadcast.thumbnail)
     .bind(other_broadcast.is_mature as i64)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     let other_stream_id = format!("lv-{}-other", Uuid::new_v4().simple());
-    let streamer = fetch_streamer_by_handle(&state.pool, &creator.handle).await?;
+    let streamer = fetch_streamer_by_handle(state.db.sqlite_adapter(), &creator.handle).await?;
     sqlx::query(
         r#"
         INSERT INTO live_streams (
@@ -447,7 +478,7 @@ async fn resolving_report_rejects_cross_stream_report_ids_without_audit_write() 
     .bind(&other_broadcast.thumbnail)
     .bind("EN")
     .bind(other_broadcast.is_mature as i64)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let report_id = format!("test-report-{}", Uuid::new_v4().simple());
@@ -461,14 +492,14 @@ async fn resolving_report_rejects_cross_stream_report_ids_without_audit_write() 
     .bind("spam")
     .bind("cross-stream mismatch")
     .bind(&created_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let before_audit_count: i64 = sqlx::query(
         "SELECT COUNT(*) AS count FROM moderation_audit_log WHERE creator_id = ? AND event_type = 'report_resolved'",
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?
     .get("count");
 
@@ -490,10 +521,10 @@ async fn resolving_report_rejects_cross_stream_report_ids_without_audit_write() 
         "SELECT COUNT(*) AS count FROM moderation_audit_log WHERE creator_id = ? AND event_type = 'report_resolved'",
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?
     .get("count");
-    let report = fetch_live_stream_report_by_id(&state.pool, &report_id).await?;
+    let report = fetch_live_stream_report_by_id(state.db.sqlite_adapter(), &report_id).await?;
 
     assert_eq!(before_audit_count, after_audit_count);
     assert_eq!(report.status, "open");
@@ -504,14 +535,14 @@ async fn resolving_report_rejects_cross_stream_report_ids_without_audit_write() 
 #[tokio::test]
 async fn removing_nonexistent_moderator_returns_not_found_without_audit_write() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
-    let stream_id = insert_live_stream_for_creator(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
+    let stream_id = insert_live_stream_for_creator(state.db.sqlite_adapter(), &creator).await?;
 
     let before_audit_count: i64 = sqlx::query(
         "SELECT COUNT(*) AS count FROM moderation_audit_log WHERE creator_id = ? AND event_type = 'moderator_removed'",
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?
     .get("count");
 
@@ -529,7 +560,7 @@ async fn removing_nonexistent_moderator_returns_not_found_without_audit_write() 
         "SELECT COUNT(*) AS count FROM moderation_audit_log WHERE creator_id = ? AND event_type = 'moderator_removed'",
     )
     .bind(&creator.id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?
     .get("count");
     assert_eq!(before_audit_count, after_audit_count);
@@ -540,7 +571,7 @@ async fn removing_nonexistent_moderator_returns_not_found_without_audit_write() 
 async fn expired_creator_enforcement_is_not_reported_active_before_reconciliation() -> AppResult<()>
 {
     let (state, creator) = setup_test_state().await?;
-    let before_state = fetch_creator_enforcement_state(&state.pool, &creator).await?;
+    let before_state = fetch_creator_enforcement_state(state.db.sqlite_adapter(), &creator).await?;
     let expired_at = (Utc::now() - chrono::Duration::minutes(5)).to_rfc3339();
     let action_id = format!("test-cea-{}", Uuid::new_v4().simple());
     let created_at = (Utc::now() - chrono::Duration::hours(1)).to_rfc3339();
@@ -558,10 +589,11 @@ async fn expired_creator_enforcement_is_not_reported_active_before_reconciliatio
     .bind(&creator.user_id)
     .bind(&created_at)
     .bind(&expired_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let enforcement_state = fetch_creator_enforcement_state(&state.pool, &creator).await?;
+    let enforcement_state =
+        fetch_creator_enforcement_state(state.db.sqlite_adapter(), &creator).await?;
 
     assert_eq!(
         enforcement_state.active_actions.len(),
@@ -587,15 +619,16 @@ async fn expired_creator_enforcement_is_not_reported_active_before_reconciliatio
             .iter()
             .all(|action| action.id != action_id)
     );
-    let by_id = fetch_creator_enforcement_action_by_id(&state.pool, &action_id).await?;
+    let by_id =
+        fetch_creator_enforcement_action_by_id(state.db.sqlite_adapter(), &action_id).await?;
     let stored_state: String =
         sqlx::query("SELECT state FROM creator_enforcement_actions WHERE id = ?")
             .bind(&action_id)
-            .fetch_one(&state.pool)
+            .fetch_one(state.db.sqlite_adapter())
             .await?
             .get("state");
-    let audit = fetch_moderation_audit_log(&state.pool, &creator.id, None).await?;
-    let notifications = fetch_notifications_rows(&state.pool, &creator.id).await?;
+    let audit = fetch_moderation_audit_log(state.db.sqlite_adapter(), &creator.id, None).await?;
+    let notifications = fetch_notifications_rows(state.db.sqlite_adapter(), &creator.id).await?;
     assert_eq!(by_id.state, "expired");
     assert_eq!(stored_state, "expired");
     assert!(
@@ -635,19 +668,20 @@ async fn expired_creator_enforcement_read_self_heals_operational_state_and_by_id
     .bind(&creator.user_id)
     .bind(&created_at)
     .bind(&expired_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let operational = fetch_creator_operational_state(&state.pool, &creator).await?;
-    let by_id = fetch_creator_enforcement_action_by_id(&state.pool, &action_id).await?;
+    let operational = fetch_creator_operational_state(state.db.sqlite_adapter(), &creator).await?;
+    let by_id =
+        fetch_creator_enforcement_action_by_id(state.db.sqlite_adapter(), &action_id).await?;
     let stored_state: String =
         sqlx::query("SELECT state FROM creator_enforcement_actions WHERE id = ?")
             .bind(&action_id)
-            .fetch_one(&state.pool)
+            .fetch_one(state.db.sqlite_adapter())
             .await?
             .get("state");
-    let audit = fetch_moderation_audit_log(&state.pool, &creator.id, None).await?;
-    let notifications = fetch_notifications_rows(&state.pool, &creator.id).await?;
+    let audit = fetch_moderation_audit_log(state.db.sqlite_adapter(), &creator.id, None).await?;
+    let notifications = fetch_notifications_rows(state.db.sqlite_adapter(), &creator.id).await?;
 
     assert!(operational.upload_ingest_enabled);
     assert!(
@@ -681,7 +715,7 @@ async fn expired_creator_enforcement_read_self_heals_operational_state_and_by_id
 #[tokio::test]
 async fn admin_can_inspect_and_reconcile_creator_enforcement_action_by_id() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let action_id = format!("test-cea-admin-{}", Uuid::new_v4().simple());
     let created_at = (Utc::now() - chrono::Duration::hours(2)).to_rfc3339();
@@ -700,7 +734,7 @@ async fn admin_can_inspect_and_reconcile_creator_enforcement_action_by_id() -> A
     .bind(&creator.user_id)
     .bind(&created_at)
     .bind(&expired_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let inspected = get_admin_creator_enforcement_action(
@@ -712,7 +746,7 @@ async fn admin_can_inspect_and_reconcile_creator_enforcement_action_by_id() -> A
     let stored_before: String =
         sqlx::query("SELECT state FROM creator_enforcement_actions WHERE id = ?")
             .bind(&action_id)
-            .fetch_one(&state.pool)
+            .fetch_one(state.db.sqlite_adapter())
             .await?
             .get("state");
 
@@ -730,7 +764,7 @@ async fn admin_can_inspect_and_reconcile_creator_enforcement_action_by_id() -> A
     let stored_after: String =
         sqlx::query("SELECT state FROM creator_enforcement_actions WHERE id = ?")
             .bind(&action_id)
-            .fetch_one(&state.pool)
+            .fetch_one(state.db.sqlite_adapter())
             .await?
             .get("state");
 

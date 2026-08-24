@@ -17,7 +17,38 @@
   position: relative;
 }
 
+.ls-layout__notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin: 0 var(--sp-6) var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: 0.88rem;
+}
+
+.ls-layout__notice button {
+  border: 0;
+  background: transparent;
+  color: var(--c-text-dim);
+  font: inherit;
+  cursor: pointer;
+}
+
 /* chromeless layout — used on /watch pages for immersive playback */
 .ls-layout--chromeless .ls-layout__content {
   padding: 0;
+}
+
+@media (max-width: 760px) {
+  .ls-layout {
+    flex-direction: column;
+  }
+
+  .ls-layout__main {
+    width: 100%;
+  }
 }

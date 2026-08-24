@@ -263,7 +263,8 @@ pub(crate) async fn reconcile_single_notification_delivery(
     state: SharedState,
     delivery_id: &str,
 ) -> AppResult<NotificationDeliveryReconciliationReport> {
-    let before = fetch_notification_delivery_by_id_raw(&state.pool, delivery_id).await?;
+    let before =
+        fetch_notification_delivery_by_id_raw(state.db.sqlite_adapter(), delivery_id).await?;
     let now = Utc::now().to_rfc3339();
     let mut actions = Vec::new();
 
@@ -274,7 +275,7 @@ pub(crate) async fn reconcile_single_notification_delivery(
             .unwrap_or(before.sent_at.as_str())
             <= now.as_str()
     {
-        let after = dispatch_notification_delivery(&state.pool, delivery_id).await?;
+        let after = dispatch_notification_delivery(state.db.sqlite_adapter(), delivery_id).await?;
         if after.state != before.state {
             let reason = match after.state.as_str() {
                 "delivered" => "notification delivery was dispatched successfully",
@@ -293,7 +294,8 @@ pub(crate) async fn reconcile_single_notification_delivery(
         }
     }
 
-    let delivery = fetch_notification_delivery_by_id_raw(&state.pool, delivery_id).await?;
+    let delivery =
+        fetch_notification_delivery_by_id_raw(state.db.sqlite_adapter(), delivery_id).await?;
     Ok(NotificationDeliveryReconciliationReport {
         delivery_id: delivery_id.to_string(),
         reconciled_at: now,

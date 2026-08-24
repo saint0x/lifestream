@@ -16,7 +16,7 @@ pub(crate) async fn get_playback_session(
 ) -> AppResult<Json<PlaybackGrant>> {
     let playback_token = query.playback_token.ok_or(AppError::Unauthorized)?;
     let session_record =
-        validate_playback_session_record(&state.pool, &session_id, &playback_token).await?;
+        validate_playback_session_record(&state.db, &session_id, &playback_token).await?;
     Ok(Json(
         build_playback_grant_from_session_record(&state, &session_record, &playback_token).await?,
     ))
@@ -29,9 +29,9 @@ pub(crate) async fn refresh_playback_session(
 ) -> AppResult<Json<PlaybackGrant>> {
     let playback_token = query.playback_token.ok_or(AppError::Unauthorized)?;
     let session_record =
-        validate_playback_session_record(&state.pool, &session_id, &playback_token).await?;
+        validate_playback_session_record(&state.db, &session_id, &playback_token).await?;
     let (refreshed_record, refreshed_token) =
-        rotate_playback_session_token_for_refresh(&state.pool, session_record, &playback_token)
+        rotate_playback_session_token_for_refresh(&state.db, session_record, &playback_token)
             .await?;
 
     Ok(Json(
@@ -40,8 +40,52 @@ pub(crate) async fn refresh_playback_session(
     ))
 }
 
+pub(crate) async fn issue_playback_cdn_cookie(
+    State(state): State<SharedState>,
+    Path(session_id): Path<String>,
+    Query(query): Query<PlaybackAccessQuery>,
+) -> AppResult<Response> {
+    let playback_token = query.playback_token.ok_or(AppError::Unauthorized)?;
+    if state.storage.cdn_cookie_domain().is_none() {
+        return Err(AppError::NotFound);
+    }
+    let session = validate_playback_session(&state.db, &session_id, &playback_token).await?;
+    let expires_at = chrono::DateTime::parse_from_rfc3339(&session.expires_at)
+        .map_err(|error| AppError::Internal(error.to_string()))?;
+    let expires_ts = expires_at.timestamp();
+    let signed_payload = format!("{}:{expires_ts}", session.id);
+    let signature = crate::auth::hash_token_with_secret(
+        &signed_payload,
+        state.config_token_hash_secret().as_deref(),
+    );
+    let cookie_value = format!("v1.{}.{}.{}", session.id, expires_ts, signature);
+    let max_age = (expires_at.with_timezone(&Utc) - Utc::now())
+        .num_seconds()
+        .max(0);
+    let cookie = format!(
+        "VANTA_CDN_PLAYBACK={cookie_value}; Domain={}; Path=/; Max-Age={max_age}; Secure; HttpOnly; SameSite=None",
+        state
+            .storage
+            .cdn_cookie_domain()
+            .expect("checked cdn cookie domain")
+    );
+    let cookie_header =
+        HeaderValue::from_str(&cookie).map_err(|error| AppError::Internal(error.to_string()))?;
+    Ok((
+        StatusCode::NO_CONTENT,
+        [
+            (header::SET_COOKIE, cookie_header),
+            (
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("private, no-store"),
+            ),
+        ],
+    )
+        .into_response())
+}
+
 pub(crate) async fn rotate_playback_session_token_for_refresh(
-    pool: &SqlitePool,
+    database: &crate::db::Database,
     session_record: PlaybackSessionRecord,
     playback_token: &str,
 ) -> AppResult<(PlaybackSessionRecord, String)> {
@@ -49,25 +93,15 @@ pub(crate) async fn rotate_playback_session_token_for_refresh(
     let refreshed_at = Utc::now().to_rfc3339();
     let refreshed_expires_at = (Utc::now() + chrono::Duration::hours(6)).to_rfc3339();
 
-    let update = sqlx::query(
-        r#"
-        UPDATE playback_sessions
-        SET token_hash = ?, expires_at = ?, last_used_at = ?
-        WHERE id = ? AND token_hash = ? AND expires_at > ?
-        "#,
-    )
-    .bind(hash_token(&refreshed_token))
-    .bind(&refreshed_expires_at)
-    .bind(&refreshed_at)
-    .bind(&session_record.id)
-    .bind(hash_token(playback_token))
-    .bind(&refreshed_at)
-    .execute(pool)
-    .await?;
-
-    if update.rows_affected() != 1 {
-        return Err(AppError::Unauthorized);
-    }
+    database
+        .rotate_playback_session_token(
+            &session_record.id,
+            playback_token,
+            &refreshed_token,
+            &refreshed_at,
+            &refreshed_expires_at,
+        )
+        .await?;
 
     Ok((
         PlaybackSessionRecord {

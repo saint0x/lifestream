@@ -48,11 +48,8 @@ pub(crate) async fn provision_live_runtime_workspace(
     ensure_parent_dir(&archive_path).await?;
     ensure_parent_dir(&archive_staging_path).await?;
     ensure_parent_dir(&spec_path).await?;
-    let output = fetch_live_runtime_output_for_session(&state.pool, &session.id).await?;
-    let variant_output = output.as_ref().ok_or_else(|| {
-        AppError::Internal("missing live runtime output while provisioning workspace".to_string())
-    })?;
-    for variant in build_live_runtime_variant_specs(session, variant_output)? {
+    let output = fetch_or_initialize_live_runtime_output(state, session).await?;
+    for variant in build_live_runtime_variant_specs(session, &output)? {
         let playlist_path = media_path_for_relative(state, &variant.relative_playlist_path);
         ensure_parent_dir(&playlist_path).await?;
     }
@@ -60,28 +57,53 @@ pub(crate) async fn provision_live_runtime_workspace(
     Ok(spec_relative_path)
 }
 
+async fn fetch_or_initialize_live_runtime_output(
+    state: &SharedState,
+    session: &LiveIngestSession,
+) -> AppResult<LiveRuntimeOutput> {
+    if let Some(output) =
+        fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session.id).await?
+    {
+        return Ok(output);
+    }
+    initialize_live_runtime_output(state.db.sqlite_adapter(), session).await?;
+    fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session.id)
+        .await?
+        .ok_or_else(|| {
+            AppError::Internal(
+                "missing live runtime output after workspace initialization".to_string(),
+            )
+        })
+}
+
 pub(crate) async fn persist_live_runtime_spec(
     state: &SharedState,
     session: &LiveIngestSession,
 ) -> AppResult<String> {
-    let spec_relative_path = provision_live_runtime_workspace(state, session).await?;
-    let output = fetch_live_runtime_output_for_session(&state.pool, &session.id)
+    let session = fetch_live_ingest_session_by_id_unreconciled(
+        state.db.sqlite_adapter(),
+        &session.creator_id,
+        &session.id,
+    )
+    .await?;
+    let spec_relative_path = provision_live_runtime_workspace(state, &session).await?;
+    let output = fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session.id)
         .await?
         .ok_or_else(|| {
             AppError::Internal("missing live runtime output while persisting spec".to_string())
         })?;
     let spec_path = media_path_for_relative(state, &spec_relative_path);
 
-    let spec = build_live_runtime_spec(state, session, &output, &spec_relative_path).await?;
+    let spec = build_live_runtime_spec(state, &session, &output, &spec_relative_path).await?;
     let target_sync = sync_live_runtime_targets(
-        &state.pool,
-        session,
-        &build_live_runtime_targets(session, &spec, &output),
+        state.db.sqlite_adapter(),
+        &session,
+        &build_live_runtime_targets(&session, &spec, &output),
     )
     .await?;
     if target_sync.created > 0 || target_sync.updated > 0 || target_sync.removed > 0 {
         write_live_ingest_event(
-            &state.pool,
+            state.db.sqlite_adapter(),
             &session.id,
             &session.creator_id,
             &session.broadcast_id,
@@ -96,7 +118,7 @@ pub(crate) async fn persist_live_runtime_spec(
             }),
         )
         .await?;
-        sync_runtime_target_dependents(state, session).await?;
+        sync_runtime_target_dependents(state, &session).await?;
     }
 
     tokio::fs::write(

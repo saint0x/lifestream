@@ -8,7 +8,7 @@ pub(crate) async fn initialize_live_runtime_output(
     let profile = derive_live_runtime_profile(pool, session).await?;
     sqlx::query(
         r#"
-        INSERT INTO live_runtime_outputs (
+        INSERT OR IGNORE INTO live_runtime_outputs (
             id, session_id, creator_id, broadcast_id, runtime_state, packaging_status,
             archive_status, runtime_class, latency_profile, segment_format,
             partial_segments_enabled, blocking_reload_enabled, target_segment_duration_sec,
@@ -16,7 +16,6 @@ pub(crate) async fn initialize_live_runtime_output(
             manifest_relative_path, archive_relative_path, last_error, last_runtime_event_at,
             created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(session_id) DO NOTHING
         "#,
     )
     .bind(format!("lro-{}", Uuid::new_v4().simple()))

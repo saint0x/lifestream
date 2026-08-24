@@ -53,7 +53,7 @@ pub(super) async fn handle_collaboration_socket(
     .await;
 
     let _ = disconnect_collaboration_socket_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session_id,
         &presence_session_token,
         &last_seen_at,
@@ -64,9 +64,10 @@ pub(super) async fn handle_collaboration_socket(
         .realtime
         .leave(&auth_session_channel_id(&identity.session_id))
         .await;
-    let remaining = count_active_collaboration_socket_sessions(&state.pool, &session_id)
-        .await
-        .unwrap_or_default();
+    let remaining =
+        count_active_collaboration_socket_sessions(state.db.sqlite_adapter(), &session_id)
+            .await
+            .unwrap_or_default();
     state
         .realtime
         .publish(

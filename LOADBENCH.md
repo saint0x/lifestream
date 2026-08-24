@@ -6,7 +6,7 @@ Date: Friday, August 21, 2026
 
 - Binary: `backend/target/debug/backend serve`
 - Bind: `127.0.0.1:8080`
-- Database: `backend/lifestream.db`
+- Database: `backend/vanta.db`
 - Media root: `backend/media`
 - Persistence mode: live SQLite state, no fixture reset inside the binary
 - Load tool: `/usr/local/bin/wrk`
@@ -40,6 +40,62 @@ Observed state:
 - Creator runtime showed `collabOutputs=3` and `collabPrograms=2`
 - Live playback session creation returned HTTP `200` with a real playback session and token
 
+## Media runtime verification
+
+Verified on Friday, August 21, 2026 against the same local backend and live SQLite state:
+
+- `python3 backend/tests/media-pipeline-check.py`
+  - passed with `ready|4|200|200|published|320x240`
+- `python3 backend/tests/media-processing-reliability-check.py`
+  - passed with `failed|3|failed`
+  - confirms the retry/failure path remains deterministic and operator-visible
+- `python3 backend/tests/live-playback-check.py`
+  - passed with `live-playback|stream|manifest|segment`
+- `python3 backend/tests/admin-live-ingest-operations-check.py`
+  - passed with `admin-live-ingest|inspect|stale|terminate`
+
+## Parallel ingest stress
+
+Added `backend/tests/load/live_ingest_stress.py` and verified parallel creator ingest lifecycle churn on Friday, August 21, 2026.
+
+Two-creator smoke run:
+
+- command:
+  - `python3 backend/tests/load/live_ingest_stress.py --iterations 4 --heartbeats 3 --heartbeat-sleep-ms 50`
+- result:
+  - `8` successful iterations
+  - `0` failed iterations
+  - `24` successful heartbeat writes
+  - `8` successful runtime reports
+  - `8` successful disconnects
+
+Larger sustained run:
+
+- command:
+  - `python3 backend/tests/load/live_ingest_stress.py --iterations 12 --heartbeats 5 --heartbeat-sleep-ms 25`
+- result:
+  - `24` successful parallel ingest lifecycles across `deepsaint` and `atlas_codes`
+  - `0` failed iterations
+  - elapsed time: `6.72 s`
+
+Stage latencies from the sustained run:
+
+| Stage | Count | Avg | p50 | Max |
+| --- | ---: | ---: | ---: | ---: |
+| `start_broadcast` | 24 | 74.81 ms | 82.42 ms | 174.89 ms |
+| `connect` | 24 | 19.69 ms | 17.79 ms | 42.06 ms |
+| `heartbeat` | 120 | 12.59 ms | 11.72 ms | 46.48 ms |
+| `runtime_report` | 24 | 21.81 ms | 18.42 ms | 73.90 ms |
+| `disconnect` | 24 | 86.21 ms | 86.03 ms | 235.86 ms |
+| `creator_live_snapshot` | 24 | 2.71 ms | 2.43 ms | 6.20 ms |
+| `creator_live_post_disconnect` | 24 | 2.14 ms | 2.06 ms | 3.04 ms |
+
+Notes:
+
+- The backend consistently returned `200` for the actual ingest lifecycle stages under concurrent churn.
+- `POST /api/v1/creator/me/broadcasts/:id/end` returned `400` after disconnect because the disconnect path had already fully cleaned up the broadcast state; the harness now validates that creator live state transitions to `offline` instead of treating that as a runtime failure.
+- After the sustained churn run, the direct media/admin/playback checks were rerun and all remained green.
+
 ## Deterministic coverage
 
 Passed:
@@ -55,6 +111,8 @@ Passed:
 - `fozzy trace verify backend/tests/live-chat-authority-20260821.trace.fozzy --strict --json`
 - `fozzy replay backend/tests/live-chat-authority-20260821.trace.fozzy --json`
 - `fozzy ci backend/tests/live-chat-authority-20260821.trace.fozzy --strict --json`
+- `fozzy doctor --deep --scenario backend/tests/live-playback.pass.fozzy.json --runs 5 --seed 20260821 --strict --proc-backend host --fs-backend host --http-backend host --json`
+- `fozzy doctor --deep --scenario backend/tests/admin-live-ingest-operations.pass.fozzy.json --runs 5 --seed 20260821 --strict --proc-backend host --fs-backend host --http-backend host --json`
 
 All deterministic runs passed with no reported compatibility, checksum, replay, or CI integrity failures.
 
@@ -539,11 +597,11 @@ Iteration 3:
 
 Startup path correction on the same Friday, August 21, 2026:
 
-- A real configuration footgun was uncovered during the load pass: when the binary was launched from the repo root without `LIFESTREAM_DATABASE_URL`, it silently opened `/Users/deepsaint/Desktop/lifestream/lifestream.db` instead of `/Users/deepsaint/Desktop/lifestream/backend/lifestream.db`.
+- A real configuration footgun was uncovered during the load pass: when the binary was launched from the repo root without `VANTA_DATABASE_URL`, it silently opened `/Users/deepsaint/Desktop/vanta/vanta.db` instead of `/Users/deepsaint/Desktop/vanta/backend/vanta.db`.
 - This was corrected in `backend/src/config.rs` by resolving the default database and media paths against the detected backend workspace root rather than the shell working directory.
 - Verified after rebuilding the binary by launching from the repo root and inspecting live file handles:
-  - DB path: `/Users/deepsaint/Desktop/lifestream/backend/lifestream.db`
-  - Media root: `/Users/deepsaint/Desktop/lifestream/backend/media`
+  - DB path: `/Users/deepsaint/Desktop/vanta/backend/vanta.db`
+  - Media root: `/Users/deepsaint/Desktop/vanta/backend/media`
   - `/health` returned `ready=true`
 
 Post-fix mixed sweep using the authoritative backend DB on the same Friday, August 21, 2026 build after trimming creator live history windows:
@@ -633,7 +691,7 @@ Post-watchlist/settings-parallelization mixed sweep on the same Friday, August 2
     - `python3 tests/creator-app-state-check.py` -> `creator-app-state|bootstrap|consistent`
     - `python3 tests/live-runtime-control-check.py` -> `runtime|socket-inspect|connected|terminated`
     - `fozzy test --det --strict-verify tests/live-runtime-control.pass.fozzy.json tests/stale-live-read-consistency.pass.fozzy.json --json` -> `pass`
-    - `/health` -> `ready=true` on the repo-root launched binary backed by `/Users/deepsaint/Desktop/lifestream/backend/lifestream.db`
+    - `/health` -> `ready=true` on the repo-root launched binary backed by `/Users/deepsaint/Desktop/vanta/backend/vanta.db`
 
 Post-bootstrap/watchlist-preview mixed sweep on the same Friday, August 21, 2026 authoritative backend DB:
 

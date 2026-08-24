@@ -11,12 +11,21 @@ pub(crate) async fn disconnect_live_ingest(
     headers: HeaderMap,
 ) -> AppResult<Json<LiveIngestSession>> {
     let ingest_token = require_ingest_token(&headers)?;
-    let session =
-        validate_live_ingest_session_any_status(&state.pool, &session_id, &ingest_token).await?;
+    let session = validate_live_ingest_session_any_status(
+        state.db.sqlite_adapter(),
+        &session_id,
+        &ingest_token,
+    )
+    .await?;
     if session.status == "connected" || session.status == "stale" {
         close_live_ingest_session(&state, &session, "ended", "disconnected", json!({})).await?;
         return Ok(Json(
-            fetch_live_ingest_session_by_id(&state.pool, &session.creator_id, &session_id).await?,
+            fetch_live_ingest_session_by_id(
+                state.db.sqlite_adapter(),
+                &session.creator_id,
+                &session_id,
+            )
+            .await?,
         ));
     }
     Ok(Json(session))
@@ -29,7 +38,8 @@ pub(crate) async fn terminate_live_ingest(
     Json(input): Json<TerminateLiveIngestRequest>,
 ) -> AppResult<Json<LiveIngestSession>> {
     let ingest_token = require_ingest_token(&headers)?;
-    let session = validate_live_ingest_session(&state.pool, &session_id, &ingest_token).await?;
+    let session =
+        validate_live_ingest_session(state.db.sqlite_adapter(), &session_id, &ingest_token).await?;
     close_live_ingest_session(
         &state,
         &session,
@@ -43,7 +53,12 @@ pub(crate) async fn terminate_live_ingest(
     )
     .await?;
     Ok(Json(
-        fetch_live_ingest_session_by_id(&state.pool, &session.creator_id, &session_id).await?,
+        fetch_live_ingest_session_by_id(
+            state.db.sqlite_adapter(),
+            &session.creator_id,
+            &session_id,
+        )
+        .await?,
     ))
 }
 
@@ -54,20 +69,31 @@ pub(crate) async fn report_live_runtime(
     Json(input): Json<UpdateLiveRuntimeStateRequest>,
 ) -> AppResult<Json<LiveRuntimeOutput>> {
     let ingest_token = require_ingest_token(&headers)?;
-    let session =
-        validate_live_ingest_session_any_status(&state.pool, &session_id, &ingest_token).await?;
-    let previous_output = fetch_live_runtime_output_for_session(&state.pool, &session.id).await?;
-    let output = update_live_runtime_output(&state.pool, &session, &input).await?;
+    let session = validate_live_ingest_session_any_status(
+        state.db.sqlite_adapter(),
+        &session_id,
+        &ingest_token,
+    )
+    .await?;
+    let previous_output =
+        fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session.id).await?;
+    let output = update_live_runtime_output(state.db.sqlite_adapter(), &session, &input).await?;
     sync_live_runtime_output_artifacts(&state, &session, &output).await?;
     let output = reconcile_live_runtime_output_artifacts(&state, &session)
         .await?
         .unwrap_or(output);
     sync_live_runtime_output_artifacts(&state, &session, &output).await?;
+    let session = fetch_live_ingest_session_by_id(
+        state.db.sqlite_adapter(),
+        &session.creator_id,
+        &session.id,
+    )
+    .await?;
     persist_live_runtime_spec(&state, &session).await?;
     let (cpu_percent, free_disk_gb) =
-        fetch_current_operational_telemetry(&state.pool, &session.creator_id).await?;
+        fetch_current_operational_telemetry(state.db.sqlite_adapter(), &session.creator_id).await?;
     record_live_runtime_telemetry(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session,
         "runtime_report",
         &output.runtime_state,
@@ -86,7 +112,7 @@ pub(crate) async fn report_live_runtime(
     )
     .await?;
     write_live_ingest_event(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session.id,
         &session.creator_id,
         &session.broadcast_id,

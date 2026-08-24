@@ -1,6 +1,21 @@
 use super::fs::{directory_size, make_even_dimension};
 use super::*;
 
+pub(crate) const VOD_HLS_VIDEO_CODEC: &str = "libx264";
+pub(crate) const VOD_HLS_AUDIO_CODEC: &str = "aac";
+pub(crate) const VOD_HLS_AUDIO_BITRATE_BPS: i64 = 128_000;
+pub(crate) const VOD_HLS_AUDIO_SAMPLE_RATE_HZ: i64 = 48_000;
+pub(crate) const VOD_HLS_AUDIO_CHANNELS: i64 = 2;
+pub(crate) const VOD_HLS_SEGMENT_DURATION_SEC: i64 = 6;
+const VOD_HLS_GOP_FRAMES: i64 = 48;
+const VOD_HLS_LADDER: [(i64, i64, i64, i64); 5] = [
+    (426, 240, 700_000, 96_000),
+    (640, 360, 1_200_000, 96_000),
+    (854, 480, 2_200_000, 128_000),
+    (1280, 720, 4_500_000, 128_000),
+    (1920, 1080, 8_000_000, 192_000),
+];
+
 pub(crate) async fn generate_hls(
     input_path: &FsPath,
     output_path: &FsPath,
@@ -41,17 +56,17 @@ pub(crate) async fn generate_hls(
             .arg(format!("0:{}", stream.stream_index))
             .arg("-vn")
             .arg("-c:a")
-            .arg("aac")
+            .arg(VOD_HLS_AUDIO_CODEC)
             .arg("-b:a")
-            .arg("128k")
+            .arg(format!("{}k", VOD_HLS_AUDIO_BITRATE_BPS / 1000))
             .arg("-ac")
-            .arg("2")
+            .arg(VOD_HLS_AUDIO_CHANNELS.to_string())
             .arg("-ar")
-            .arg("48000")
+            .arg(VOD_HLS_AUDIO_SAMPLE_RATE_HZ.to_string())
             .arg("-f")
             .arg("hls")
             .arg("-hls_time")
-            .arg("6")
+            .arg(VOD_HLS_SEGMENT_DURATION_SEC.to_string())
             .arg("-hls_playlist_type")
             .arg("vod")
             .arg("-hls_segment_filename")
@@ -71,7 +86,7 @@ pub(crate) async fn generate_hls(
             label: label.clone(),
             language: language.clone(),
             codec: "aac".to_string(),
-            bitrate_bps: 128_000,
+            bitrate_bps: VOD_HLS_AUDIO_BITRATE_BPS,
             relative_playlist_path: format!("{label}/playlist.m3u8"),
             file_size_bytes: directory_size(&track_dir).await?,
             is_default: ordinal == 0,
@@ -101,15 +116,15 @@ pub(crate) async fn generate_hls(
         if media.has_video {
             command
                 .arg("-c:v")
-                .arg("libx264")
+                .arg(VOD_HLS_VIDEO_CODEC)
                 .arg("-preset")
                 .arg("veryfast")
                 .arg("-pix_fmt")
                 .arg("yuv420p")
                 .arg("-g")
-                .arg("48")
+                .arg(VOD_HLS_GOP_FRAMES.to_string())
                 .arg("-keyint_min")
-                .arg("48")
+                .arg(VOD_HLS_GOP_FRAMES.to_string())
                 .arg("-sc_threshold")
                 .arg("0")
                 .arg("-vf")
@@ -130,7 +145,7 @@ pub(crate) async fn generate_hls(
             .arg("-f")
             .arg("hls")
             .arg("-hls_time")
-            .arg("6")
+            .arg(VOD_HLS_SEGMENT_DURATION_SEC.to_string())
             .arg("-hls_playlist_type")
             .arg("vod")
             .arg("-hls_segment_filename")
@@ -171,17 +186,10 @@ pub(crate) fn plan_hls_variants(media: &ProbedMedia) -> AppResult<Vec<HlsVariant
     let height = media
         .height
         .ok_or_else(|| AppError::BadRequest("video height could not be determined".to_string()))?;
-    let ladder = [
-        (426_i64, 240_i64, 700_000_i64, 96_000_i64),
-        (640, 360, 1_200_000, 96_000),
-        (854, 480, 2_200_000, 128_000),
-        (1280, 720, 4_500_000, 128_000),
-        (1920, 1080, 8_000_000, 192_000),
-    ];
     let mut planned = Vec::new();
     let mut seen_dimensions = std::collections::HashSet::new();
 
-    for (max_width, max_height, video_bitrate_bps, audio_bitrate_bps) in ladder {
+    for (max_width, max_height, video_bitrate_bps, audio_bitrate_bps) in VOD_HLS_LADDER {
         let (scaled_width, scaled_height) =
             scaled_dimensions_for_rung(width, height, max_width, max_height);
         if scaled_width < 144 || scaled_height < 144 {
@@ -212,4 +220,52 @@ pub(crate) fn plan_hls_variants(media: &ProbedMedia) -> AppResult<Vec<HlsVariant
     }
 
     Ok(planned)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn probed_video(width: i64, height: i64) -> ProbedMedia {
+        ProbedMedia {
+            container_format: Some("mp4".to_string()),
+            duration_sec: 120.0,
+            width: Some(width),
+            height: Some(height),
+            frame_rate: Some(24.0),
+            video_codec: Some("h264".to_string()),
+            audio_codec: Some("aac".to_string()),
+            audio_sample_rate_hz: Some(48_000),
+            audio_channels: Some(2),
+            has_video: true,
+            has_audio: true,
+            bitrate_bps: Some(8_000_000),
+            audio_streams: Vec::new(),
+            subtitle_streams: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn vod_hls_policy_is_standard_hls_h264_aac() {
+        assert_eq!(VOD_HLS_VIDEO_CODEC, "libx264");
+        assert_eq!(VOD_HLS_AUDIO_CODEC, "aac");
+        assert_eq!(VOD_HLS_AUDIO_BITRATE_BPS, 128_000);
+        assert_eq!(VOD_HLS_AUDIO_SAMPLE_RATE_HZ, 48_000);
+        assert_eq!(VOD_HLS_AUDIO_CHANNELS, 2);
+        assert_eq!(VOD_HLS_SEGMENT_DURATION_SEC, 6);
+    }
+
+    #[test]
+    fn vod_hls_ladder_caps_at_source_resolution() {
+        let variants = plan_hls_variants(&probed_video(1280, 720)).expect("variants");
+
+        assert_eq!(
+            variants
+                .iter()
+                .map(|variant| variant.label.as_str())
+                .collect::<Vec<_>>(),
+            vec!["240p", "360p", "480p", "720p"]
+        );
+        assert_eq!(variants.last().expect("last").video_bitrate_bps, 4_500_000);
+    }
 }

@@ -143,7 +143,7 @@ pub(crate) async fn insert_ready_broadcast(
         new_followers: 0,
         new_subscribers: 0,
         revenue: 0.0,
-        thumbnail: "https://cdn.lifestream.local/thumb/test.jpg".to_string(),
+        thumbnail: "https://cdn.vanta.local/thumb/test.jpg".to_string(),
         is_mature: false,
     };
 

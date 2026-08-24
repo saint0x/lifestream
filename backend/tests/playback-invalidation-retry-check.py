@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-CREATOR_HEADERS = {"Authorization": "Bearer lifestream-local-dev-token"}
+CREATOR_HEADERS = {"Authorization": "Bearer vanta-local-dev-token"}
 SUFFIX = str(int(time.time() * 1000))
 
 

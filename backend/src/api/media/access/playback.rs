@@ -1,12 +1,12 @@
 use super::*;
 
 pub(crate) async fn validate_playback_session_token_for_path(
-    pool: &SqlitePool,
+    database: &crate::db::Database,
     playback_token: &str,
     relative_path: &str,
 ) -> AppResult<PlaybackSession> {
     let session =
-        validate_playback_session_record_for_path(pool, playback_token, relative_path).await?;
+        validate_playback_session_record_for_path(database, playback_token, relative_path).await?;
     Ok(playback_session_from_record(&session))
 }
 
@@ -109,10 +109,10 @@ pub(crate) fn path_allowed_for_paths(
 }
 
 pub(crate) async fn validate_playback_session(
-    pool: &SqlitePool,
+    database: &crate::db::Database,
     session_id: &str,
     playback_token: &str,
 ) -> AppResult<PlaybackSession> {
-    let session = validate_playback_session_record(pool, session_id, playback_token).await?;
+    let session = validate_playback_session_record(database, session_id, playback_token).await?;
     Ok(playback_session_from_record(&session))
 }

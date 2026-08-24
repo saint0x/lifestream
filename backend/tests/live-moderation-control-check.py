@@ -5,10 +5,10 @@ import urllib.error
 import urllib.request
 import uuid
 
-BASE = os.environ.get("LIFESTREAM_BASE_URL", "http://127.0.0.1:8080")
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-OWNER = "Bearer lifestream-local-dev-token"
-USER = "Bearer lifestream-local-collaborator-token"
+BASE = os.environ.get("VANTA_BASE_URL", "http://127.0.0.1:8080")
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+OWNER = "Bearer vanta-local-dev-token"
+USER = "Bearer vanta-local-collaborator-token"
 
 
 def req(path, method="GET", token=None, body=None, extra_headers=None):

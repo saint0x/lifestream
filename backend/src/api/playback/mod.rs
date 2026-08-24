@@ -62,6 +62,10 @@ pub(super) fn routes() -> Router<SharedState> {
             post(grants::refresh_playback_session),
         )
         .route(
+            "/api/v1/playback/sessions/:session_id/cdn-cookie",
+            get(grants::issue_playback_cdn_cookie),
+        )
+        .route(
             "/api/v1/playback/sessions/:session_id/manifest",
             get(grants::get_playback_manifest),
         )

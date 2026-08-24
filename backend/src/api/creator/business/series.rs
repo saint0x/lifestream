@@ -4,9 +4,11 @@ pub(super) async fn list_creator_series(
     State(state): State<SharedState>,
     headers: HeaderMap,
 ) -> AppResult<Json<Vec<CreatorSeriesProject>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     let creator_id = identity.require_creator_scope()?;
-    Ok(Json(fetch_creator_series(&state.pool, creator_id).await?))
+    Ok(Json(
+        fetch_creator_series(state.db.sqlite_adapter(), creator_id).await?,
+    ))
 }
 
 pub(super) async fn create_creator_series(
@@ -14,7 +16,7 @@ pub(super) async fn create_creator_series(
     headers: HeaderMap,
     Json(input): Json<CreateCreatorSeriesRequest>,
 ) -> AppResult<Json<CreatorSeriesProject>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     enforce_rate_limit(
         &state,
         &format!("creator-series-create:{}", identity.user_id),
@@ -52,11 +54,11 @@ pub(super) async fn create_creator_series(
     .bind(input.status.trim())
     .bind(&now)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     Ok(Json(
-        fetch_creator_series_by_id(&state.pool, creator_id, &id).await?,
+        fetch_creator_series_by_id(state.db.sqlite_adapter(), creator_id, &id).await?,
     ))
 }
 
@@ -66,7 +68,7 @@ pub(super) async fn update_creator_series(
     Path(id): Path<String>,
     Json(input): Json<UpdateCreatorSeriesRequest>,
 ) -> AppResult<Json<CreatorSeriesProject>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     enforce_rate_limit(
         &state,
         &format!("creator-series-update:{}", identity.user_id),
@@ -75,7 +77,7 @@ pub(super) async fn update_creator_series(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    let current = fetch_creator_series_by_id(&state.pool, creator_id, &id).await?;
+    let current = fetch_creator_series_by_id(state.db.sqlite_adapter(), creator_id, &id).await?;
 
     sqlx::query(
         r#"
@@ -96,10 +98,10 @@ pub(super) async fn update_creator_series(
     .bind(Utc::now().to_rfc3339())
     .bind(&id)
     .bind(creator_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     Ok(Json(
-        fetch_creator_series_by_id(&state.pool, creator_id, &id).await?,
+        fetch_creator_series_by_id(state.db.sqlite_adapter(), creator_id, &id).await?,
     ))
 }

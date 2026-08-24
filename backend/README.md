@@ -1,12 +1,13 @@
-# LIFESTREAM Backend
+# VANTA Backend
 
-Production-grade Rust backend for the LIFESTREAM frontend contract.
+Production-grade Rust backend for the VANTA frontend contract.
 
 ## Stack
 
 - `axum` for HTTP and WebSocket delivery
-- `sqlx` + SQLite (WAL mode) for persistence
-- one process that owns catalog, user state, creator control plane, and live chat
+- `sqlx` with SQLite for local development and Postgres for production persistence
+- local filesystem storage for development and Cloudflare R2-backed object storage for production media
+- API and worker containers that own catalog, user state, creator control plane, media jobs, and live chat
 
 ## Run
 
@@ -14,13 +15,38 @@ Production-grade Rust backend for the LIFESTREAM frontend contract.
 cargo run
 ```
 
-The service listens on `127.0.0.1:8080` by default and creates `lifestream.db` in the backend directory.
+The service listens on `127.0.0.1:8080` by default and creates `vanta.db` in the backend directory.
+
+## Production Configuration
+
+Production is Railway/Cloudflare-first and cost-conscious:
+
+- Railway runs the API/runtime container.
+- Railway Postgres is the production database.
+- Cloudflare R2 owns persistent media artifacts.
+- R2 public/custom-domain CDN delivery serves playback manifests, segments, images, and captions.
+- SQLite and local media files are development-only providers.
+
+Required production env:
+
+```bash
+VANTA_ENV=production
+VANTA_DATABASE_KIND=postgres
+VANTA_DATABASE_URL=postgres://...
+VANTA_STORAGE_KIND=object
+VANTA_OBJECT_STORAGE_BUCKET=vanta-media
+VANTA_OBJECT_STORAGE_CDN_BASE_URL=https://pub-4cffb671265940d19168dde582d31087.r2.dev
+VANTA_CDN_COOKIE_DOMAIN=.streamvanta.tv
+VANTA_ALLOWED_ORIGINS=https://streamvanta.tv,https://www.streamvanta.tv
+VANTA_TOKEN_HASH_SECRET=at-least-32-characters
+VANTA_ADMIN_API_ENABLED=false
+```
 
 ## Auth
 
 Protected routes require `Authorization: Bearer <token>`.
 
-Auth sessions are persisted in SQLite. Provision users, creator profiles, and bearer sessions explicitly through the backend runtime commands:
+Auth sessions are persisted in the active database provider. Provision users, creator profiles, and bearer sessions explicitly through the backend runtime commands:
 
 ```bash
 cargo run -- provision-user \
@@ -98,9 +124,9 @@ Authenticated routes:
 
 - Every HTTP response includes `x-request-id`. Supply one on ingress if you want to preserve an upstream trace ID; otherwise the backend generates one.
 - `/metrics` exposes a Prometheus-style plaintext surface for HTTP totals, response codes, rate-limit counts, uptime, DB pool state, and websocket connection counts.
-- `/health/live` is process liveness only. `/health/ready` verifies SQLite readiness.
+- `/health/live` is process liveness only. `/health/ready` verifies the active database provider readiness.
 - Catalog detail reads return persisted playback progress when the caller is authenticated.
-- Search is backed by SQLite FTS5 instead of in-memory scans, so title/tag/streamer lookups stay fast as the catalog grows.
+- Search is backed by the active database provider instead of in-memory scans, so title/tag/streamer lookups stay fast as the catalog grows.
 
 ## Session Management
 

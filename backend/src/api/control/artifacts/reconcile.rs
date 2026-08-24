@@ -14,18 +14,21 @@ pub(crate) async fn reconcile_live_runtime_output_artifacts_background(
             OR o.archive_status IN ('finalizing', 'complete')
         )
         ORDER BY o.last_runtime_event_at ASC
-        LIMIT 100
         "#,
     )
-    .fetch_all(&state.pool)
+    .fetch_all(state.db.sqlite_adapter())
     .await?;
 
     let mut reconciled = 0_usize;
     for row in rows {
         let session_id: String = row.get("id");
-        let session =
-            fetch_live_ingest_session_by_id_global_unreconciled(&state.pool, &session_id).await?;
-        let before = fetch_live_runtime_output_for_session(&state.pool, &session_id).await?;
+        let session = fetch_live_ingest_session_by_id_global_unreconciled(
+            state.db.sqlite_adapter(),
+            &session_id,
+        )
+        .await?;
+        let before =
+            fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session_id).await?;
         let after = reconcile_live_runtime_output_artifacts(&state, &session).await?;
         if runtime_output_changed(before.as_ref(), after.as_ref()) {
             publish_current_creator_live_state(&state, &session.creator_id).await?;
@@ -39,7 +42,8 @@ pub(crate) async fn reconcile_live_runtime_output_artifacts(
     state: &SharedState,
     session: &LiveIngestSession,
 ) -> AppResult<Option<LiveRuntimeOutput>> {
-    let Some(current) = fetch_live_runtime_output_for_session(&state.pool, &session.id).await?
+    let Some(current) =
+        fetch_live_runtime_output_for_session(state.db.sqlite_adapter(), &session.id).await?
     else {
         return Ok(None);
     };
@@ -68,7 +72,7 @@ pub(crate) async fn reconcile_live_runtime_output_artifacts(
     }
 
     let (output, actions) = repair_live_runtime_output(
-        &state.pool,
+        state.db.sqlite_adapter(),
         session,
         &RepairLiveRuntimeOutputRequest {
             reason: "runtime artifact reconciliation".to_string(),
@@ -87,7 +91,7 @@ pub(crate) async fn reconcile_live_runtime_output_artifacts(
     persist_live_runtime_spec(state, session).await?;
 
     record_live_runtime_telemetry(
-        &state.pool,
+        state.db.sqlite_adapter(),
         session,
         "runtime_artifact_reconciled",
         &output.runtime_state,
@@ -102,7 +106,7 @@ pub(crate) async fn reconcile_live_runtime_output_artifacts(
     )
     .await?;
     write_live_ingest_event(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session.id,
         &session.creator_id,
         &session.broadcast_id,
@@ -140,7 +144,7 @@ async fn promote_archive_completion_from_artifacts(
         state => state,
     };
     let (output, actions) = repair_live_runtime_output(
-        &state.pool,
+        state.db.sqlite_adapter(),
         session,
         &RepairLiveRuntimeOutputRequest {
             reason: "runtime archive completion reconciliation".to_string(),
@@ -158,7 +162,7 @@ async fn promote_archive_completion_from_artifacts(
     .await?;
     persist_live_runtime_spec(state, session).await?;
     record_live_runtime_telemetry(
-        &state.pool,
+        state.db.sqlite_adapter(),
         session,
         "runtime_archive_completed",
         &output.runtime_state,
@@ -174,7 +178,7 @@ async fn promote_archive_completion_from_artifacts(
     )
     .await?;
     write_live_ingest_event(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session.id,
         &session.creator_id,
         &session.broadcast_id,

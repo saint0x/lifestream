@@ -1,3 +1,6 @@
+use super::super::ingest::get_creator_upload_job;
+use super::super::lifecycle::ensure_creator_upload_ingest_enabled_for_jobs;
+use super::asset::get_creator_media_asset_for_upload_job;
 use super::*;
 
 pub(crate) async fn publish_upload_job(
@@ -6,7 +9,7 @@ pub(crate) async fn publish_upload_job(
     Path(id): Path<String>,
     Json(input): Json<PublishUploadJobRequest>,
 ) -> AppResult<Json<Upload>> {
-    let identity = require_identity(&state.pool, &headers).await?;
+    let identity = require_identity(&state.db, &headers).await?;
     enforce_rate_limit(
         &state,
         &format!("creator-upload-publish:{}", identity.user_id),
@@ -15,15 +18,15 @@ pub(crate) async fn publish_upload_job(
     )
     .await?;
     let creator_id = identity.require_creator_scope()?;
-    ensure_creator_upload_ingest_enabled(&state.pool, creator_id).await?;
-    let job = fetch_upload_job_by_id(&state.pool, creator_id, &id).await?;
+    ensure_creator_upload_ingest_enabled_for_jobs(&state.db, creator_id).await?;
+    let job = get_creator_upload_job(&state.db, creator_id, &id).await?;
     if job.status != "ready" && job.status != "published" {
         return Err(AppError::BadRequest(
             "upload job must be ready before publish".to_string(),
         ));
     }
 
-    let asset = fetch_media_asset_by_upload_job(&state.pool, creator_id, &id).await?;
+    let asset = get_creator_media_asset_for_upload_job(&state.db, creator_id, &id).await?;
     if asset.playback_path.is_none() {
         return Err(AppError::BadRequest(
             "media asset does not yet have a playback manifest".to_string(),
@@ -42,20 +45,27 @@ pub(crate) async fn publish_upload_job(
         input.rental_window_hours,
     )?;
     if monetized_access_policy(&access_terms.access_policy) {
-        ensure_creator_can_publish_paid_content(&state.pool, creator_id).await?;
+        ensure_creator_can_publish_paid_content_for_upload(&state.db, creator_id).await?;
     }
-    validate_creator_access_tier(
-        &state.pool,
+    validate_creator_access_tier_for_upload(
+        &state.db,
         creator_id,
         &access_terms.access_policy,
         access_terms.access_tier_id.as_deref(),
     )
     .await?;
-    let slug = sanitize_slug(input.slug.as_deref().unwrap_or(&slugify(&asset.title)))?;
     let upload_id = job
         .upload_id
         .clone()
         .unwrap_or_else(|| format!("upl-{}", Uuid::new_v4().simple()));
+    let requested_slug = sanitize_slug(input.slug.as_deref().unwrap_or(&slugify(&asset.title)))?;
+    let slug = allocate_upload_slug(
+        &state.db,
+        creator_id,
+        Some(upload_id.as_str()),
+        &requested_slug,
+    )
+    .await?;
     let now = Utc::now().to_rfc3339();
     let release_at = input.release_at.clone().unwrap_or_else(|| now.clone());
     let is_released = release_at <= now;
@@ -64,7 +74,7 @@ pub(crate) async fn publish_upload_job(
         _ => "audio".to_string(),
     };
     let series_title = if let Some(series_id) = job.series_id.as_deref() {
-        fetch_creator_series_title(&state.pool, creator_id, series_id).await?
+        fetch_creator_series_title_for_upload(&state.db, creator_id, series_id).await?
     } else {
         None
     };
@@ -77,7 +87,7 @@ pub(crate) async fn publish_upload_job(
         })
         .map(|variant| variant.url.clone())
         .or_else(|| asset.poster_url.clone())
-        .unwrap_or_else(|| "https://cdn.lifestream.local/thumb/upload-default.jpg".to_string());
+        .unwrap_or_default();
     let upload_status = if is_released && (visibility == "public" || visibility == "unlisted") {
         "published"
     } else if !is_released {
@@ -92,7 +102,7 @@ pub(crate) async fn publish_upload_job(
     };
 
     upsert_upload_record(
-        &state.pool,
+        &state.db,
         &job,
         &asset,
         &input,
@@ -117,8 +127,8 @@ pub(crate) async fn publish_upload_job(
 
     if let (Some(series_id), Some(season_number)) = (job.series_id.as_deref(), input.season_number)
     {
-        ensure_creator_series_season(
-            &state.pool,
+        ensure_creator_series_season_for_upload(
+            &state.db,
             creator_id,
             series_id,
             season_number,
@@ -132,7 +142,7 @@ pub(crate) async fn publish_upload_job(
     }
 
     update_upload_publish_state(
-        &state.pool,
+        &state.db,
         creator_id,
         &id,
         &upload_id,
@@ -142,7 +152,7 @@ pub(crate) async fn publish_upload_job(
     )
     .await?;
     enqueue_upload_release_notification(
-        &state,
+        &state.db,
         &identity.user_id,
         creator_id,
         &asset.title,
@@ -156,12 +166,42 @@ pub(crate) async fn publish_upload_job(
     .await?;
 
     Ok(Json(
-        fetch_upload_by_id(&state.pool, creator_id, &upload_id).await?,
+        fetch_published_upload(&state.db, creator_id, &upload_id).await?,
     ))
 }
 
+async fn ensure_creator_can_publish_paid_content_for_upload(
+    database: &crate::db::Database,
+    creator_id: &str,
+) -> AppResult<()> {
+    ensure_creator_can_publish_paid_content(database.sqlite_adapter(), creator_id).await
+}
+
+async fn validate_creator_access_tier_for_upload(
+    database: &crate::db::Database,
+    creator_id: &str,
+    access_policy: &str,
+    access_tier_id: Option<&str>,
+) -> AppResult<()> {
+    validate_creator_access_tier(
+        database.sqlite_adapter(),
+        creator_id,
+        access_policy,
+        access_tier_id,
+    )
+    .await
+}
+
+async fn fetch_creator_series_title_for_upload(
+    database: &crate::db::Database,
+    creator_id: &str,
+    series_id: &str,
+) -> AppResult<Option<String>> {
+    fetch_creator_series_title(database.sqlite_adapter(), creator_id, series_id).await
+}
+
 async fn upsert_upload_record(
-    pool: &SqlitePool,
+    database: &crate::db::Database,
     job: &UploadJob,
     asset: &MediaAsset,
     input: &PublishUploadJobRequest,
@@ -244,13 +284,85 @@ async fn upsert_upload_record(
     .bind(resolution)
     .bind(1.0_f64)
     .bind(job.series_id.clone())
-    .execute(pool)
-    .await?;
+    .execute(database.sqlite_adapter())
+    .await
+    .map_err(AppError::Database)?;
     Ok(())
 }
 
+async fn allocate_upload_slug(
+    database: &crate::db::Database,
+    creator_id: &str,
+    current_upload_id: Option<&str>,
+    requested_slug: &str,
+) -> AppResult<String> {
+    let existing_rows =
+        sqlx::query("SELECT id, slug FROM uploads WHERE creator_id = ? AND slug IS NOT NULL")
+            .bind(creator_id)
+            .fetch_all(database.sqlite_adapter())
+            .await?;
+    let existing_slugs = existing_rows
+        .into_iter()
+        .filter_map(|row| {
+            let upload_id: String = row.get("id");
+            let slug: String = row.get("slug");
+            if current_upload_id.is_some_and(|current| current == upload_id) {
+                None
+            } else {
+                Some(slug)
+            }
+        })
+        .collect::<std::collections::HashSet<_>>();
+
+    if !existing_slugs.contains(requested_slug) {
+        return Ok(requested_slug.to_string());
+    }
+
+    for suffix_number in 2..=10_000 {
+        let candidate = build_upload_slug_candidate(requested_slug, suffix_number);
+        if !existing_slugs.contains(&candidate) {
+            return Ok(candidate);
+        }
+    }
+
+    Err(AppError::Internal(
+        "failed to allocate a unique upload slug".to_string(),
+    ))
+}
+
+async fn ensure_creator_series_season_for_upload(
+    database: &crate::db::Database,
+    creator_id: &str,
+    series_id: &str,
+    season_number: i64,
+    title: String,
+    synopsis: String,
+) -> AppResult<()> {
+    ensure_creator_series_season(
+        database.sqlite_adapter(),
+        creator_id,
+        series_id,
+        season_number,
+        title,
+        synopsis,
+    )
+    .await
+}
+
+fn build_upload_slug_candidate(requested_slug: &str, suffix_number: usize) -> String {
+    let suffix = format!("-{suffix_number}");
+    let base_limit = 120usize.saturating_sub(suffix.len());
+    let mut candidate = requested_slug.chars().take(base_limit).collect::<String>();
+    candidate = candidate.trim_matches('-').to_string();
+    if candidate.is_empty() {
+        candidate = requested_slug.to_string();
+    }
+    candidate.push_str(&suffix);
+    candidate
+}
+
 async fn update_upload_publish_state(
-    pool: &SqlitePool,
+    database: &crate::db::Database,
     creator_id: &str,
     job_id: &str,
     upload_id: &str,
@@ -266,7 +378,7 @@ async fn update_upload_publish_state(
     .bind(now)
     .bind(job_id)
     .bind(creator_id)
-    .execute(pool)
+    .execute(database.sqlite_adapter())
     .await?;
 
     sqlx::query(
@@ -279,13 +391,21 @@ async fn update_upload_publish_state(
     .bind(now)
     .bind(job_id)
     .bind(creator_id)
-    .execute(pool)
+    .execute(database.sqlite_adapter())
     .await?;
     Ok(())
 }
 
+async fn fetch_published_upload(
+    database: &crate::db::Database,
+    creator_id: &str,
+    upload_id: &str,
+) -> AppResult<Upload> {
+    fetch_upload_by_id(database.sqlite_adapter(), creator_id, upload_id).await
+}
+
 async fn enqueue_upload_release_notification(
-    state: &SharedState,
+    database: &crate::db::Database,
     user_id: &str,
     creator_id: &str,
     asset_title: &str,
@@ -296,9 +416,9 @@ async fn enqueue_upload_release_notification(
     visibility: &str,
     slug: &str,
 ) -> AppResult<()> {
-    let creator_profile = fetch_creator_profile(&state.pool, creator_id).await?;
+    let creator_profile = fetch_creator_profile(database.sqlite_adapter(), creator_id).await?;
     enqueue_notification_event(
-        &state.pool,
+        database.sqlite_adapter(),
         "content_release",
         &format!("{asset_title} is now {upload_status}."),
         Some(user_id),

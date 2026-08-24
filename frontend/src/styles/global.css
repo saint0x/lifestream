@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
-   LIFESTREAM — design tokens & global styles
+   VANTA — design tokens & global styles
    Aesthetic: refined black, geometric, monospaced accents, sharp
    typography. Vercel-influenced chrome; HBO-max-quality content art.
    ------------------------------------------------------------------ */
@@ -229,4 +229,55 @@ ul { list-style: none; }
 
 .fade-in {
   animation: fade-in 400ms var(--ease-out) both;
+}
+
+.ls-boot {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  width: min(520px, calc(100% - 48px));
+  margin: 0 auto;
+}
+.ls-boot__kicker {
+  font-size: 11px;
+  color: var(--c-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+.ls-boot__title {
+  font-size: clamp(40px, 7vw, 72px);
+}
+.ls-boot__sub {
+  color: var(--c-text-dim);
+  max-width: 420px;
+}
+.ls-boot__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+}
+.ls-boot__form input,
+.ls-boot__form button {
+  height: 40px;
+  border: 1px solid var(--c-border-hi);
+  border-radius: var(--r-md);
+  background: var(--c-bg-elevated);
+}
+.ls-boot__form input {
+  min-width: 0;
+  padding: 0 12px;
+}
+.ls-boot__form button {
+  padding: 0 14px;
+}
+.ls-boot__button {
+  width: fit-content;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--c-border-hi);
+  border-radius: var(--r-md);
+  background: var(--c-bg-elevated);
+  color: var(--c-text);
 }

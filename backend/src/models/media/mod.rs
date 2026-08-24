@@ -6,7 +6,9 @@ mod notifications;
 mod playback;
 mod uploads;
 
-pub use analytics::{AnalyticsPoint, RevenueEntry, TopContent, TrafficSource};
+pub use analytics::{
+    AnalyticsPoint, CreatorAttentionScore, RevenueEntry, TopContent, TrafficSource,
+};
 pub use catalog::{
     CreatorCatalogEpisode, CreatorCatalogFilm, CreatorCatalogSeason, CreatorCatalogSeries,
     CreatorSeriesProject, Upload,
@@ -17,8 +19,8 @@ pub use notifications::{
 };
 pub use playback::{
     AdminPlaybackSessionRecord, PlaybackAudioTrack, PlaybackCaptionTrack, PlaybackGrant,
-    PlaybackPreviewTrack, PlaybackReconciliationAction, PlaybackReconciliationReport,
-    PlaybackSession,
+    PlaybackMediaAuthorization, PlaybackPreviewTrack, PlaybackReconciliationAction,
+    PlaybackReconciliationReport, PlaybackSession,
 };
 pub use uploads::{
     AdminMediaJobRecord, MediaAsset, MediaAssetVariant, MediaJobReconciliationAction,

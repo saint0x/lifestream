@@ -3,9 +3,10 @@ use super::*;
 #[tokio::test]
 async fn ending_session_publishes_invite_revoked_event() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let broadcast = insert_ready_collaboration_broadcast(&state.pool, &creator).await?;
+    let broadcast =
+        insert_ready_collaboration_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         "INSERT INTO users (id, handle, display_name, avatar, tier, joined_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -13,10 +14,10 @@ async fn ending_session_publishes_invite_revoked_event() -> AppResult<()> {
     .bind("usr-pending")
     .bind("pending_guest")
     .bind("Pending Guest")
-    .bind("https://cdn.lifestream.local/avatar/pending-guest.jpg")
+    .bind("https://cdn.vanta.local/avatar/pending-guest.jpg")
     .bind("free")
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let session = create_collaboration_session(
@@ -84,7 +85,7 @@ async fn ending_session_publishes_invite_revoked_event() -> AppResult<()> {
     }
 
     assert!(saw_invite_revoked);
-    let events = fetch_collaboration_events(&state.pool, &session.id, 0, 100).await?;
+    let events = fetch_collaboration_events(state.db.sqlite_adapter(), &session.id, 0, 100).await?;
     assert!(events.iter().any(|event| {
         event.event_type == "invite_revoked"
             && event.payload["inviteId"] == Value::String(invite.id.clone())
@@ -101,9 +102,10 @@ async fn ending_session_publishes_invite_revoked_event() -> AppResult<()> {
 #[tokio::test]
 async fn host_can_revoke_pending_collaboration_invite_and_emit_event() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let broadcast = insert_ready_collaboration_broadcast(&state.pool, &creator).await?;
+    let broadcast =
+        insert_ready_collaboration_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         "INSERT INTO users (id, handle, display_name, avatar, tier, joined_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -111,10 +113,10 @@ async fn host_can_revoke_pending_collaboration_invite_and_emit_event() -> AppRes
     .bind("usr-revoke-pending")
     .bind("revoke_pending")
     .bind("Revoke Pending")
-    .bind("https://cdn.lifestream.local/avatar/revoke-pending.jpg")
+    .bind("https://cdn.vanta.local/avatar/revoke-pending.jpg")
     .bind("free")
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let session = create_collaboration_session(
@@ -184,7 +186,7 @@ async fn host_can_revoke_pending_collaboration_invite_and_emit_event() -> AppRes
         other => panic!("unexpected realtime event for invite revoke: {other:?}"),
     }
 
-    let events = fetch_collaboration_events(&state.pool, &session.id, 0, 100).await?;
+    let events = fetch_collaboration_events(state.db.sqlite_adapter(), &session.id, 0, 100).await?;
     assert!(events.iter().any(|event| {
         event.event_type == "invite_revoked"
             && event.payload["inviteId"] == Value::String(invite.id.clone())
@@ -200,7 +202,8 @@ async fn host_can_revoke_pending_collaboration_invite_and_emit_event() -> AppRes
 #[tokio::test]
 async fn collaboration_socket_host_command_can_revoke_invite() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let broadcast = insert_ready_collaboration_broadcast(&state.pool, &creator).await?;
+    let broadcast =
+        insert_ready_collaboration_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         "INSERT INTO users (id, handle, display_name, avatar, tier, joined_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -208,15 +211,15 @@ async fn collaboration_socket_host_command_can_revoke_invite() -> AppResult<()> 
     .bind("usr-socket-revoke")
     .bind("socket_revoke")
     .bind("Socket Revoke")
-    .bind("https://cdn.lifestream.local/avatar/socket-revoke.jpg")
+    .bind("https://cdn.vanta.local/avatar/socket-revoke.jpg")
     .bind("free")
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let session = create_collaboration_session(
         State(state.clone()),
-        auth_headers(&insert_creator_auth_session(&state.pool, &creator).await?),
+        auth_headers(&insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?),
         Json(CreateCollaborationSessionRequest {
             broadcast_id: Some(broadcast.id.clone()),
             title: Some("invite revoke socket".to_string()),
@@ -228,7 +231,7 @@ async fn collaboration_socket_host_command_can_revoke_invite() -> AppResult<()> 
     .0;
     let invite = create_collaboration_invite(
         State(state.clone()),
-        auth_headers(&insert_creator_auth_session(&state.pool, &creator).await?),
+        auth_headers(&insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?),
         Path(session.id.clone()),
         Json(CreateCollaborationInviteRequest {
             invitee_user_id: "usr-socket-revoke".to_string(),
@@ -262,7 +265,7 @@ async fn collaboration_socket_host_command_can_revoke_invite() -> AppResult<()> 
 
     assert_eq!(outcome.command_type, "revokeInvite");
     assert_eq!(outcome.state.as_deref(), Some("revoked"));
-    let refreshed = fetch_collaboration_invite_by_id(&state.pool, &invite.id).await?;
+    let refreshed = fetch_collaboration_invite_by_id(state.db.sqlite_adapter(), &invite.id).await?;
     assert_eq!(refreshed.state, "revoked");
     assert!(refreshed.responded_at.is_some());
     Ok(())
@@ -271,12 +274,14 @@ async fn collaboration_socket_host_command_can_revoke_invite() -> AppResult<()> 
 #[tokio::test]
 async fn collaboration_invite_inbox_only_returns_pending_invites() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let host_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let host_headers = auth_headers(&host_token);
-    let collab_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    let collab_token = insert_creator_auth_session(&state.pool, &collab_creator).await?;
+    let collab_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    let collab_token =
+        insert_creator_auth_session(state.db.sqlite_adapter(), &collab_creator).await?;
     let collab_headers = auth_headers(&collab_token);
-    let broadcast = insert_ready_collaboration_broadcast(&state.pool, &creator).await?;
+    let broadcast =
+        insert_ready_collaboration_broadcast(state.db.sqlite_adapter(), &creator).await?;
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         "INSERT INTO users (id, handle, display_name, avatar, tier, joined_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -284,10 +289,10 @@ async fn collaboration_invite_inbox_only_returns_pending_invites() -> AppResult<
     .bind("usr-pending-inbox")
     .bind("pending_inbox")
     .bind("Pending Inbox")
-    .bind("https://cdn.lifestream.local/avatar/pending-inbox.jpg")
+    .bind("https://cdn.vanta.local/avatar/pending-inbox.jpg")
     .bind("free")
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     let pending_token = "test-pending-inbox-token".to_string();
     sqlx::query(
@@ -306,7 +311,7 @@ async fn collaboration_invite_inbox_only_returns_pending_invites() -> AppResult<
     .bind((Utc::now() + chrono::Duration::hours(2)).to_rfc3339())
     .bind(Option::<String>::None)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     let pending_headers = auth_headers(&pending_token);
 
@@ -403,14 +408,15 @@ async fn collaboration_invite_inbox_only_returns_pending_invites() -> AppResult<
 #[tokio::test]
 async fn participant_collaboration_runtime_only_exposes_own_grants() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let host_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let host_headers = auth_headers(&host_token);
-    let collab_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    let collab_token = insert_creator_auth_session(&state.pool, &collab_creator).await?;
+    let collab_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    let collab_token =
+        insert_creator_auth_session(state.db.sqlite_adapter(), &collab_creator).await?;
     let collab_headers = auth_headers(&collab_token);
     let now = Utc::now().to_rfc3339();
     insert_test_user_with_creator_profile(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "usr-collab-other",
         "collab_other",
         "Collab Other",
@@ -437,14 +443,19 @@ async fn participant_collaboration_runtime_only_exposes_own_grants() -> AppResul
     .bind((Utc::now() + chrono::Duration::hours(2)).to_rfc3339())
     .bind(Option::<String>::None)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     let other_guest_headers = auth_headers(&other_guest_token);
 
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let other_participant = insert_collaboration_participant(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session.id,
         "usr-collab-other",
         Some("crt-guest-other"),
@@ -456,10 +467,20 @@ async fn participant_collaboration_runtime_only_exposes_own_grants() -> AppResul
     )
     .await?;
     let expires_at = (Utc::now() + chrono::Duration::minutes(30)).to_rfc3339();
-    let primary_grant =
-        insert_mirror_grant(&state.pool, &session, &participant, &expires_at).await?;
-    let other_grant =
-        insert_mirror_grant(&state.pool, &session, &other_participant, &expires_at).await?;
+    let primary_grant = insert_mirror_grant(
+        state.db.sqlite_adapter(),
+        &session,
+        &participant,
+        &expires_at,
+    )
+    .await?;
+    let other_grant = insert_mirror_grant(
+        state.db.sqlite_adapter(),
+        &session,
+        &other_participant,
+        &expires_at,
+    )
+    .await?;
 
     let participant_runtime = get_my_collaboration_runtime(
         State(state.clone()),
@@ -512,10 +533,11 @@ async fn participant_collaboration_runtime_only_exposes_own_grants() -> AppResul
 #[tokio::test]
 async fn participant_collaboration_events_hide_other_invites_and_grants() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let host_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let host_headers = auth_headers(&host_token);
-    let collab_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    let collab_token = insert_creator_auth_session(&state.pool, &collab_creator).await?;
+    let collab_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    let collab_token =
+        insert_creator_auth_session(state.db.sqlite_adapter(), &collab_creator).await?;
     let collab_headers = auth_headers(&collab_token);
     let now = Utc::now().to_rfc3339();
 
@@ -525,13 +547,13 @@ async fn participant_collaboration_events_hide_other_invites_and_grants() -> App
     .bind("usr-hidden-invite")
     .bind("hidden_invite")
     .bind("Hidden Invite")
-    .bind("https://cdn.lifestream.local/avatar/hidden-invite.jpg")
+    .bind("https://cdn.vanta.local/avatar/hidden-invite.jpg")
     .bind("free")
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     insert_test_user_with_creator_profile(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "usr-hidden-guest",
         "hidden_guest",
         "Hidden Guest",
@@ -541,8 +563,13 @@ async fn participant_collaboration_events_hide_other_invites_and_grants() -> App
     )
     .await?;
 
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let self_grant =
         issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
 
@@ -562,7 +589,7 @@ async fn participant_collaboration_events_hide_other_invites_and_grants() -> App
     .0;
 
     let hidden_participant = insert_collaboration_participant(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session.id,
         "usr-hidden-guest",
         Some("crt-hidden-guest"),

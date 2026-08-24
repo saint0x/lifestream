@@ -1,4 +1,5 @@
 import { useParams, Link, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Play, Plus, Check, Share2, Star } from "lucide-react";
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
@@ -6,20 +7,65 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ContentRow } from "@/components/content/ContentRow";
 import { formatRuntime } from "@/lib/format";
+import { shareCurrentPage } from "@/lib/share";
+import type { Film, Series } from "@/types";
 import "./DetailPage.css";
 
 export function FilmPage() {
   const { slug } = useParams<{ slug: string }>();
-  const film = slug ? repository.getFilmBySlug(slug) : undefined;
+  const [film, setFilm] = useState(repository.hasState() && slug ? repository.getFilmBySlug(slug) : undefined);
+  const [related, setRelated] = useState<ReadonlyArray<Series | Film>>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const inWatchlist = useAppStore((s) => (film ? s.watchlist.has(film.id) : false));
   const toggleWatchlist = useAppStore((s) => s.toggleWatchlist);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
 
-  if (!film) return <Navigate to="/" replace />;
+  useEffect(() => {
+    if (!slug) return;
+    const controller = new AbortController();
+    setLoading(true);
+    setLoadError(null);
 
-  const related = repository
-    .listByGenre(film.genres[0] ?? "Drama")
-    .filter((c) => c.id !== film.id)
-    .slice(0, 10);
+    void repository
+      .fetchFilmBySlug(slug, controller.signal)
+      .then(async (item) => {
+        setFilm(item);
+        const [seriesPage, filmsPage] = await Promise.all([
+          repository.fetchSeriesPage({ genre: item.genres[0] ?? "Drama", limit: 10 }, controller.signal),
+          repository.fetchFilmsPage({ genre: item.genres[0] ?? "Drama", limit: 10 }, controller.signal),
+        ]);
+        setRelated(
+          [...seriesPage.items, ...filmsPage.items]
+            .filter((candidate) => candidate.id !== item.id)
+            .slice(0, 10),
+        );
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setFilm(undefined);
+          setLoadError(err instanceof Error ? err.message : "Unable to load this title.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [slug]);
+
+  if (!slug) return <Navigate to="/" replace />;
+  if (!film) {
+    return (
+      <div className="ls-detail">
+        <div className="ls-detail__content">
+          <div className="ls-detail__status">
+            {loading ? "Loading title…" : loadError ?? "Title is unavailable."}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ls-detail" style={{ ["--hero-accent" as string]: film.heroColor }}>
@@ -36,7 +82,7 @@ export function FilmPage() {
           <div>
             <div className="ls-detail__kicker mono">
               <span className="ls-detail__kicker-dot" />
-              {film.isOriginal ? "LIFESTREAM ORIGINAL" : "FILM"}
+              {film.isOriginal ? "VANTA ORIGINAL" : "FILM"}
               <span className="ls-detail__kicker-sep">—</span>
               {formatRuntime(film.durationSec)}
             </div>
@@ -72,20 +118,41 @@ export function FilmPage() {
               >
                 {inWatchlist ? "On Watchlist" : "Add to Watchlist"}
               </Button>
-              <Button variant="ghost" size="lg" icon={<Share2 />}>
+              <Button
+                variant="ghost"
+                size="lg"
+                icon={<Share2 />}
+                onClick={() => {
+                  void shareCurrentPage(film.title)
+                    .then(setShareStatus)
+                    .catch(() => setShareStatus("Unable to share this title."));
+                }}
+              >
                 Share
               </Button>
             </div>
+            {shareStatus ? <div className="ls-detail__status">{shareStatus}</div> : null}
           </div>
 
           <aside className="ls-detail__credits">
             <div className="ls-detail__credit-label mono">Credits</div>
             {film.credits.map((c) => (
               <div key={c.id} className="ls-detail__credit">
-                <div className="ls-detail__credit-name">{c.name}</div>
-                <div className="ls-detail__credit-role mono">
-                  {c.role}
-                  {c.character !== undefined && ` · ${c.character}`}
+                {c.avatar ? (
+                  <img className="ls-detail__credit-avatar" src={c.avatar} alt="" />
+                ) : null}
+                <div className="ls-detail__credit-copy">
+                  {c.personSlug ? (
+                    <Link className="ls-detail__credit-name" to={`/@${c.personSlug}`}>
+                      {c.name}
+                    </Link>
+                  ) : (
+                    <div className="ls-detail__credit-name">{c.name}</div>
+                  )}
+                  <div className="ls-detail__credit-role mono">
+                    {c.role}
+                    {c.character != null && ` · ${c.character}`}
+                  </div>
                 </div>
               </div>
             ))}

@@ -5,10 +5,11 @@ pub(crate) async fn list_live_stream_moderators(
     headers: HeaderMap,
     Path(stream_id): Path<String>,
 ) -> AppResult<Json<Vec<CreatorModerator>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = authorize_live_stream_moderation(&state.pool, &stream_id, &identity).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let creator_id =
+        authorize_live_stream_moderation(state.db.sqlite_adapter(), &stream_id, &identity).await?;
     Ok(Json(
-        fetch_creator_moderators(&state.pool, &creator_id).await?,
+        fetch_creator_moderators(state.db.sqlite_adapter(), &creator_id).await?,
     ))
 }
 
@@ -18,9 +19,10 @@ pub(crate) async fn add_live_stream_moderator(
     Path(stream_id): Path<String>,
     Json(input): Json<CreateCreatorModeratorRequest>,
 ) -> AppResult<Json<CreatorModerator>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = authorize_live_stream_owner(&state.pool, &stream_id, &identity).await?;
-    fetch_user(&state.pool, &input.user_id).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let creator_id =
+        authorize_live_stream_owner(state.db.sqlite_adapter(), &stream_id, &identity).await?;
+    fetch_user(state.db.sqlite_adapter(), &input.user_id).await?;
     validate_creator_moderator_role(&input.role)?;
     let created_at = Utc::now().to_rfc3339();
     sqlx::query(
@@ -34,10 +36,10 @@ pub(crate) async fn add_live_stream_moderator(
     .bind(&input.user_id)
     .bind(&input.role)
     .bind(&created_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     write_moderation_audit_entry(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator_id,
         Some(&stream_id),
         &identity.user_id,
@@ -47,7 +49,7 @@ pub(crate) async fn add_live_stream_moderator(
     )
     .await?;
     Ok(Json(
-        fetch_creator_moderator(&state.pool, &creator_id, &input.user_id).await?,
+        fetch_creator_moderator(state.db.sqlite_adapter(), &creator_id, &input.user_id).await?,
     ))
 }
 
@@ -56,18 +58,19 @@ pub(crate) async fn remove_live_stream_moderator(
     headers: HeaderMap,
     Path((stream_id, user_id)): Path<(String, String)>,
 ) -> AppResult<StatusCode> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = authorize_live_stream_owner(&state.pool, &stream_id, &identity).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let creator_id =
+        authorize_live_stream_owner(state.db.sqlite_adapter(), &stream_id, &identity).await?;
     let result = sqlx::query("DELETE FROM creator_moderators WHERE creator_id = ? AND user_id = ?")
         .bind(&creator_id)
         .bind(&user_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
     write_moderation_audit_entry(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator_id,
         Some(&stream_id),
         &identity.user_id,
@@ -84,10 +87,11 @@ pub(crate) async fn list_live_moderation_actions(
     headers: HeaderMap,
     Path(stream_id): Path<String>,
 ) -> AppResult<Json<Vec<LiveModerationAction>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = authorize_live_stream_moderation(&state.pool, &stream_id, &identity).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let creator_id =
+        authorize_live_stream_moderation(state.db.sqlite_adapter(), &stream_id, &identity).await?;
     Ok(Json(
-        fetch_live_moderation_actions(&state.pool, &stream_id, &creator_id).await?,
+        fetch_live_moderation_actions(state.db.sqlite_adapter(), &stream_id, &creator_id).await?,
     ))
 }
 
@@ -96,9 +100,11 @@ pub(crate) async fn get_live_moderation_action(
     headers: HeaderMap,
     Path((stream_id, action_id)): Path<(String, String)>,
 ) -> AppResult<Json<LiveModerationAction>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = authorize_live_stream_moderation(&state.pool, &stream_id, &identity).await?;
-    let action = fetch_live_moderation_action_by_id_raw(&state.pool, &action_id).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let creator_id =
+        authorize_live_stream_moderation(state.db.sqlite_adapter(), &stream_id, &identity).await?;
+    let action =
+        fetch_live_moderation_action_by_id_raw(state.db.sqlite_adapter(), &action_id).await?;
     if action.stream_id != stream_id || action.creator_id != creator_id {
         return Err(AppError::NotFound);
     }
@@ -110,9 +116,11 @@ pub(crate) async fn reconcile_live_moderation_action(
     headers: HeaderMap,
     Path((stream_id, action_id)): Path<(String, String)>,
 ) -> AppResult<Json<LiveModerationReconciliationReport>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = authorize_live_stream_moderation(&state.pool, &stream_id, &identity).await?;
-    let action = fetch_live_moderation_action_by_id_raw(&state.pool, &action_id).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let creator_id =
+        authorize_live_stream_moderation(state.db.sqlite_adapter(), &stream_id, &identity).await?;
+    let action =
+        fetch_live_moderation_action_by_id_raw(state.db.sqlite_adapter(), &action_id).await?;
     if action.stream_id != stream_id || action.creator_id != creator_id {
         return Err(AppError::NotFound);
     }
@@ -127,15 +135,22 @@ pub(crate) async fn create_live_moderation_action(
     Path(stream_id): Path<String>,
     Json(input): Json<CreateLiveModerationActionRequest>,
 ) -> AppResult<Json<LiveModerationAction>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = authorize_live_stream_moderation(&state.pool, &stream_id, &identity).await?;
-    let subject = fetch_user(&state.pool, &input.subject_user_id).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let creator_id =
+        authorize_live_stream_moderation(state.db.sqlite_adapter(), &stream_id, &identity).await?;
+    let subject = fetch_user(state.db.sqlite_adapter(), &input.subject_user_id).await?;
     validate_live_moderation_action_type(&input.action_type)?;
     if input.reason.trim().is_empty() {
         return Err(AppError::BadRequest("reason is required".to_string()));
     }
-    validate_live_moderation_subject(&state.pool, &stream_id, &creator_id, &identity, &subject.id)
-        .await?;
+    validate_live_moderation_subject(
+        state.db.sqlite_adapter(),
+        &stream_id,
+        &creator_id,
+        &identity,
+        &subject.id,
+    )
+    .await?;
     let now = Utc::now();
     let action_id = format!("lma-{}", Uuid::new_v4().simple());
     let created_at = now.to_rfc3339();
@@ -159,11 +174,11 @@ pub(crate) async fn create_live_moderation_action(
     .bind(input.reason.trim())
     .bind(&expires_at)
     .bind(&created_at)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
-    let action = fetch_live_moderation_action_by_id(&state.pool, &action_id).await?;
+    let action = fetch_live_moderation_action_by_id(state.db.sqlite_adapter(), &action_id).await?;
     write_moderation_audit_entry(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator_id,
         Some(&stream_id),
         &identity.user_id,
@@ -177,9 +192,9 @@ pub(crate) async fn create_live_moderation_action(
         }),
     )
     .await?;
-    let actor = fetch_user(&state.pool, &identity.user_id).await?;
+    let actor = fetch_user(state.db.sqlite_adapter(), &identity.user_id).await?;
     enqueue_notification_event(
-        &state.pool,
+        state.db.sqlite_adapter(),
         "moderation_action",
         &format!(
             "{} applied a moderation action to your live chat access.",
@@ -217,9 +232,10 @@ pub(crate) async fn revoke_live_moderation_action(
     headers: HeaderMap,
     Path((stream_id, action_id)): Path<(String, String)>,
 ) -> AppResult<Json<LiveModerationAction>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = authorize_live_stream_moderation(&state.pool, &stream_id, &identity).await?;
-    let action = fetch_live_moderation_action_by_id(&state.pool, &action_id).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let creator_id =
+        authorize_live_stream_moderation(state.db.sqlite_adapter(), &stream_id, &identity).await?;
+    let action = fetch_live_moderation_action_by_id(state.db.sqlite_adapter(), &action_id).await?;
     if action.stream_id != stream_id || action.creator_id != creator_id {
         return Err(AppError::NotFound);
     }
@@ -229,10 +245,10 @@ pub(crate) async fn revoke_live_moderation_action(
     )
     .bind(&now)
     .bind(&action_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     write_moderation_audit_entry(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator_id,
         Some(&stream_id),
         &identity.user_id,
@@ -244,7 +260,7 @@ pub(crate) async fn revoke_live_moderation_action(
         }),
     )
     .await?;
-    let revoked = fetch_live_moderation_action_by_id(&state.pool, &action_id).await?;
+    let revoked = fetch_live_moderation_action_by_id(state.db.sqlite_adapter(), &action_id).await?;
     state
         .realtime
         .publish(
@@ -262,10 +278,10 @@ pub(crate) async fn list_live_stream_reports(
     headers: HeaderMap,
     Path(stream_id): Path<String>,
 ) -> AppResult<Json<Vec<LiveStreamReportRecord>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    authorize_live_stream_moderation(&state.pool, &stream_id, &identity).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    authorize_live_stream_moderation(state.db.sqlite_adapter(), &stream_id, &identity).await?;
     Ok(Json(
-        fetch_live_stream_reports(&state.pool, &stream_id).await?,
+        fetch_live_stream_reports(state.db.sqlite_adapter(), &stream_id).await?,
     ))
 }
 
@@ -275,10 +291,11 @@ pub(crate) async fn resolve_live_stream_report(
     Path((stream_id, report_id)): Path<(String, String)>,
     Json(input): Json<ResolveLiveStreamReportRequest>,
 ) -> AppResult<Json<LiveStreamReportRecord>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = authorize_live_stream_moderation(&state.pool, &stream_id, &identity).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let creator_id =
+        authorize_live_stream_moderation(state.db.sqlite_adapter(), &stream_id, &identity).await?;
     validate_live_report_status(&input.status)?;
-    let report = fetch_live_stream_report_by_id(&state.pool, &report_id).await?;
+    let report = fetch_live_stream_report_by_id(state.db.sqlite_adapter(), &report_id).await?;
     if report.stream_id != stream_id {
         return Err(AppError::NotFound);
     }
@@ -296,13 +313,13 @@ pub(crate) async fn resolve_live_stream_report(
     .bind(&now)
     .bind(&report_id)
     .bind(&stream_id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
     write_moderation_audit_entry(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &creator_id,
         Some(&stream_id),
         &identity.user_id,
@@ -316,7 +333,7 @@ pub(crate) async fn resolve_live_stream_report(
     )
     .await?;
     Ok(Json(
-        fetch_live_stream_report_by_id(&state.pool, &report_id).await?,
+        fetch_live_stream_report_by_id(state.db.sqlite_adapter(), &report_id).await?,
     ))
 }
 
@@ -325,9 +342,11 @@ pub(crate) async fn list_live_moderation_audit_log(
     headers: HeaderMap,
     Path(stream_id): Path<String>,
 ) -> AppResult<Json<Vec<ModerationAuditEntry>>> {
-    let identity = require_identity(&state.pool, &headers).await?;
-    let creator_id = authorize_live_stream_moderation(&state.pool, &stream_id, &identity).await?;
+    let identity = require_identity(&state.db, &headers).await?;
+    let creator_id =
+        authorize_live_stream_moderation(state.db.sqlite_adapter(), &stream_id, &identity).await?;
     Ok(Json(
-        fetch_moderation_audit_log(&state.pool, &creator_id, Some(&stream_id)).await?,
+        fetch_moderation_audit_log(state.db.sqlite_adapter(), &creator_id, Some(&stream_id))
+            .await?,
     ))
 }

@@ -3,7 +3,8 @@ use super::*;
 pub(crate) async fn reconcile_expired_creator_enforcement_actions(
     state: SharedState,
 ) -> AppResult<()> {
-    reconcile_expired_creator_enforcement_actions_for_read(&state.pool, None, None).await
+    reconcile_expired_creator_enforcement_actions_for_read(state.db.sqlite_adapter(), None, None)
+        .await
 }
 
 pub(crate) async fn reconcile_expired_creator_enforcement_actions_for_read(
@@ -87,7 +88,8 @@ pub(crate) async fn reconcile_single_creator_enforcement_action(
     state: SharedState,
     action_id: &str,
 ) -> AppResult<CreatorEnforcementReconciliationReport> {
-    let before = fetch_creator_enforcement_action_by_id_raw(&state.pool, action_id).await?;
+    let before =
+        fetch_creator_enforcement_action_by_id_raw(state.db.sqlite_adapter(), action_id).await?;
     let now = Utc::now().to_rfc3339();
     let mut actions = Vec::new();
 
@@ -102,10 +104,10 @@ pub(crate) async fn reconcile_single_creator_enforcement_action(
         )
         .bind(&now)
         .bind(action_id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
         let _ = write_moderation_audit_entry(
-            &state.pool,
+            state.db.sqlite_adapter(),
             &before.creator_id,
             None,
             &before.created_by_user_id,
@@ -119,7 +121,7 @@ pub(crate) async fn reconcile_single_creator_enforcement_action(
         )
         .await?;
         let _ = enqueue_notification_event(
-            &state.pool,
+            state.db.sqlite_adapter(),
             "creator_enforcement_expired",
             &format!(
                 "An enforcement restriction for scope '{}' has expired.",
@@ -149,7 +151,8 @@ pub(crate) async fn reconcile_single_creator_enforcement_action(
         });
     }
 
-    let action = fetch_creator_enforcement_action_by_id_raw(&state.pool, action_id).await?;
+    let action =
+        fetch_creator_enforcement_action_by_id_raw(state.db.sqlite_adapter(), action_id).await?;
     Ok(CreatorEnforcementReconciliationReport {
         action_id: action_id.to_string(),
         reconciled_at: now,

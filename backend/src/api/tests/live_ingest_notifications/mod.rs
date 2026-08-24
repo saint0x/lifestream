@@ -24,12 +24,19 @@ fn runtime_spec_path(session: &LiveIngestSession) -> String {
     canonical_live_runtime_spec_relative_path(session)
 }
 
+async fn response_json<T: serde::de::DeserializeOwned>(response: Response) -> AppResult<T> {
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .map_err(|error| AppError::Internal(error.to_string()))?;
+    Ok(serde_json::from_slice(&body)?)
+}
+
 #[tokio::test]
 async fn creator_can_inspect_and_reconcile_live_ingest_session_by_id() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let connected = connect_live_ingest(
         State(state.clone()),
@@ -97,7 +104,7 @@ async fn creator_can_inspect_and_reconcile_live_ingest_session_by_id() -> AppRes
     sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
         .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
         .bind(&connected.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     let report = reconcile_creator_live_ingest_session(
@@ -141,9 +148,9 @@ async fn creator_can_inspect_and_reconcile_live_ingest_session_by_id() -> AppRes
 async fn ingest_heartbeat_persists_source_probe_and_normalized_contribution_state() -> AppResult<()>
 {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let connected = connect_live_ingest(
         State(state.clone()),
@@ -321,9 +328,9 @@ async fn ingest_heartbeat_persists_source_probe_and_normalized_contribution_stat
 #[tokio::test]
 async fn ingest_heartbeat_marks_unsupported_source_validation_as_degraded() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let auth_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let auth_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&auth_token);
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let connected = connect_live_ingest(
         State(state.clone()),
@@ -465,9 +472,9 @@ async fn ingest_heartbeat_marks_unsupported_source_validation_as_degraded() -> A
 async fn ingest_heartbeat_surfaces_repairable_source_validation_to_operator_views() -> AppResult<()>
 {
     let (state, creator) = setup_test_state().await?;
-    let auth_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let auth_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&auth_token);
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let connected = connect_live_ingest(
         State(state.clone()),
@@ -575,7 +582,8 @@ async fn ingest_heartbeat_surfaces_repairable_source_validation_to_operator_view
             .any(|action| action.code == "audio_channels_excessive")
     );
 
-    let runtime = fetch_creator_live_runtime_response(&state.pool, &creator.id).await?;
+    let runtime =
+        fetch_creator_live_runtime_response(state.db.sqlite_adapter(), &creator.id).await?;
     assert_eq!(runtime.runtime_advisory.status, "repairable");
     assert_eq!(
         runtime
@@ -608,9 +616,9 @@ async fn ingest_heartbeat_surfaces_repairable_source_validation_to_operator_view
 #[tokio::test]
 async fn admin_can_inspect_and_reconcile_live_ingest_session_by_id() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let connected = connect_live_ingest(
         State(state.clone()),
@@ -649,7 +657,7 @@ async fn admin_can_inspect_and_reconcile_live_ingest_session_by_id() -> AppResul
     sqlx::query("UPDATE live_ingest_sessions SET last_heartbeat_at = ? WHERE id = ?")
         .bind((Utc::now() - chrono::Duration::seconds(60)).to_rfc3339())
         .bind(&connected.session.id)
-        .execute(&state.pool)
+        .execute(state.db.sqlite_adapter())
         .await?;
 
     let report = reconcile_admin_live_ingest_session(
@@ -672,57 +680,53 @@ async fn admin_can_inspect_and_reconcile_live_ingest_session_by_id() -> AppResul
 #[tokio::test]
 async fn creator_contract_surfaces_do_not_leak_ready_statuses() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
-    let broadcast = insert_ready_broadcast(&state.pool, &creator).await?;
+    let broadcast = insert_ready_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
-    let creator_state = get_creator_state(State(state.clone()), headers.clone())
-        .await?
-        .0;
-    assert_eq!(creator_state.dashboard.profile.live_status, "starting");
-    assert!(creator_state.dashboard.current_broadcast.is_none());
+    let creator_state: Value =
+        response_json(get_creator_state(State(state.clone()), headers.clone()).await?).await?;
+    assert_eq!(
+        creator_state["dashboard"]["profile"]["liveStatus"],
+        Value::String("starting".to_string())
+    );
+    assert_eq!(creator_state["dashboard"]["currentBroadcast"], Value::Null);
     assert!(
-        creator_state
-            .dashboard
-            .scheduled_broadcasts
-            .iter()
-            .any(|item| item.id == broadcast.id && item.status == "scheduled")
+        creator_state["dashboard"]["scheduledBroadcasts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|item| {
+                item["id"] == Value::String(broadcast.id.clone())
+                    && item["status"] == Value::String("scheduled".to_string())
+            })
     );
     assert!(
-        creator_state
-            .dashboard
-            .scheduled_broadcasts
-            .iter()
-            .all(|item| item.status != "ready")
+        creator_state["dashboard"]["scheduledBroadcasts"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .all(|item| item["status"] != Value::String("ready".to_string()))
     );
     assert_eq!(
-        creator_state.live_control.snapshot.profile.live_status,
-        "starting"
+        creator_state["liveControl"]["snapshot"]["profile"]["liveStatus"],
+        Value::String("starting".to_string())
     );
     assert_eq!(
-        creator_state
-            .live_control
-            .snapshot
-            .pending_broadcast
-            .as_ref()
-            .map(|item| item.status.as_str()),
-        Some("scheduled")
+        creator_state["liveControl"]["snapshot"]["pendingBroadcast"]["status"],
+        Value::String("scheduled".to_string())
     );
     assert_eq!(
-        creator_state.live_runtime.snapshot.profile.live_status,
-        "starting"
+        creator_state["liveRuntime"]["snapshot"]["profile"]["liveStatus"],
+        Value::String("starting".to_string())
     );
     assert_eq!(
-        creator_state
-            .live_runtime
-            .snapshot
-            .pending_broadcast
-            .as_ref()
-            .map(|item| item.status.as_str()),
-        Some("scheduled")
+        creator_state["liveRuntime"]["snapshot"]["pendingBroadcast"]["status"],
+        Value::String("scheduled".to_string())
     );
 
-    let bootstrap_payload = bootstrap(State(state.clone()), headers).await?.0;
+    let bootstrap_payload: Value =
+        response_json(bootstrap(State(state.clone()), headers).await?).await?;
     assert_eq!(
         bootstrap_payload["creator"]["profile"]["liveStatus"],
         Value::String("starting".to_string())

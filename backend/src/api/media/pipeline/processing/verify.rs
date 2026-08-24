@@ -7,7 +7,7 @@ pub(crate) async fn run_probe_stage(
     attempt: &MediaProcessingAttempt,
 ) -> Result<ProbedMedia, (AppError, String)> {
     let probe_run_id = start_media_processing_run(
-        &state.pool,
+        state.db.sqlite_adapter(),
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -22,7 +22,7 @@ pub(crate) async fn run_probe_stage(
             validate_probed_media(&attempt.job, &probed)
                 .map_err(|error| (error, attempt.lease_updated_at.clone()))?;
             finish_media_processing_run(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 &probe_run_id,
                 "completed",
                 json!({
@@ -43,7 +43,7 @@ pub(crate) async fn run_probe_stage(
         }
         Err(error) => {
             let _ = finish_media_processing_run(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 &probe_run_id,
                 "failed",
                 json!({ "error": error.to_string() }),
@@ -62,7 +62,7 @@ pub(crate) async fn run_integrity_stage(
     probed: &ProbedMedia,
 ) -> Result<(), (AppError, String)> {
     let integrity_run_id = start_media_processing_run(
-        &state.pool,
+        state.db.sqlite_adapter(),
         creator_id,
         job_id,
         &attempt.asset.id,
@@ -76,7 +76,7 @@ pub(crate) async fn run_integrity_stage(
     match verify_media_integrity(&attempt.source_path, probed).await {
         Ok(()) => {
             finish_media_processing_run(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 &integrity_run_id,
                 "completed",
                 json!({
@@ -91,7 +91,7 @@ pub(crate) async fn run_integrity_stage(
         }
         Err(error) => {
             let _ = finish_media_processing_run(
-                &state.pool,
+                state.db.sqlite_adapter(),
                 &integrity_run_id,
                 "failed",
                 json!({

@@ -132,8 +132,8 @@ pub(crate) async fn build_collaboration_runtime_response_for_participant(
         session,
         CollaborationRuntimeBuildOptions::FULL,
     )
-        .await?
-        .runtime)
+    .await?
+    .runtime)
 }
 
 pub(crate) async fn build_collaboration_runtime_response_for_host(
@@ -147,8 +147,8 @@ pub(crate) async fn build_collaboration_runtime_response_for_host(
         view,
         CollaborationRuntimeBuildOptions::FULL,
     )
-        .await?
-        .runtime)
+    .await?
+    .runtime)
 }
 
 pub(crate) async fn build_creator_collaboration_control_response_for_host(

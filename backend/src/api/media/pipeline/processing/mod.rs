@@ -34,10 +34,16 @@ pub(crate) async fn process_media_job(
     creator_id: &str,
     job_id: &str,
 ) -> Result<(), (AppError, String)> {
+    tracing::info!(creator_id, job_id, "media processing job started");
     let Some(attempt) = begin_media_processing_attempt(&state, creator_id, job_id)
         .await
         .map_err(|error| (error, String::new()))?
     else {
+        tracing::info!(
+            creator_id,
+            job_id,
+            "media processing job skipped because no attempt was acquired"
+        );
         return Ok(());
     };
 
@@ -47,7 +53,7 @@ pub(crate) async fn process_media_job(
         generate_derivatives_and_package(&state, creator_id, job_id, &attempt, &probed).await?;
 
     if !jobs::media_processing_lease_is_active(
-        &state.pool,
+        state.db.sqlite_adapter(),
         creator_id,
         job_id,
         &attempt.lease_updated_at,
@@ -55,9 +61,21 @@ pub(crate) async fn process_media_job(
     .await
     .map_err(|error| (error, attempt.lease_updated_at.clone()))?
     {
+        tracing::warn!(
+            creator_id,
+            job_id,
+            "media processing job lost its active lease before persistence"
+        );
         return Ok(());
     }
 
     persist_media_variants(&state, &attempt, &probed, &generated).await?;
-    finalize_media_processing(&state, creator_id, job_id, &attempt, &probed, &generated).await
+    finalize_media_processing(&state, creator_id, job_id, &attempt, &probed, &generated).await?;
+    tracing::info!(
+        creator_id,
+        job_id,
+        asset_id = %attempt.asset.id,
+        "media processing job finalized"
+    );
+    Ok(())
 }

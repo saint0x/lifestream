@@ -1,6 +1,6 @@
 wrk.method = "POST"
 wrk.headers["Content-Type"] = "application/json"
-wrk.headers["Authorization"] = "Bearer lifestream-local-dev-token"
+wrk.headers["Authorization"] = "Bearer vanta-local-dev-token"
 
 local counter = 0
 

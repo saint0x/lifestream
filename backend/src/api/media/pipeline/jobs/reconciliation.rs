@@ -13,14 +13,14 @@ pub(crate) async fn reconcile_stale_media_processing_jobs(state: SharedState) ->
         "#,
     )
     .bind(&cutoff)
-    .fetch_all(&state.pool)
+    .fetch_all(state.db.sqlite_adapter())
     .await?;
 
     for row in rows {
         let job_id: String = row.get("id");
         let creator_id: String = row.get("creator_id");
         let _ = super::failures::fail_media_job(
-            &state.pool,
+            state.db.sqlite_adapter(),
             &creator_id,
             &job_id,
             "media processing watchdog timed out and requeued the job",
@@ -80,15 +80,16 @@ pub(crate) async fn reconcile_single_media_job(
     state: SharedState,
     job_id: &str,
 ) -> AppResult<MediaJobReconciliationReport> {
-    let creator_id = fetch_upload_job_creator_id(&state.pool, job_id).await?;
+    let creator_id = fetch_upload_job_creator_id(state.db.sqlite_adapter(), job_id).await?;
     let before =
-        super::queries::fetch_upload_job_by_id_raw(&state.pool, &creator_id, job_id).await?;
+        super::queries::fetch_upload_job_by_id_raw(state.db.sqlite_adapter(), &creator_id, job_id)
+            .await?;
     let now = Utc::now().to_rfc3339();
     let mut actions = Vec::new();
 
     if before.status == "processing" && is_upload_job_stale(&before) {
         let transitioned = fail_media_job_for_lease(
-            &state.pool,
+            state.db.sqlite_adapter(),
             &creator_id,
             job_id,
             "media processing watchdog timed out and requeued the job",
@@ -97,9 +98,12 @@ pub(crate) async fn reconcile_single_media_job(
         )
         .await?;
         if transitioned {
-            let after =
-                super::queries::fetch_upload_job_by_id_raw(&state.pool, &creator_id, job_id)
-                    .await?;
+            let after = super::queries::fetch_upload_job_by_id_raw(
+                state.db.sqlite_adapter(),
+                &creator_id,
+                job_id,
+            )
+            .await?;
             actions.push(MediaJobReconciliationAction {
                 action_type: "job_reconciled".to_string(),
                 target_id: job_id.to_string(),
@@ -112,7 +116,8 @@ pub(crate) async fn reconcile_single_media_job(
         }
     }
 
-    let record = fetch_admin_media_job_record(&state.pool, &creator_id, job_id).await?;
+    let record =
+        fetch_admin_media_job_record(state.db.sqlite_adapter(), &creator_id, job_id).await?;
     Ok(MediaJobReconciliationReport {
         job_id: job_id.to_string(),
         reconciled_at: now,

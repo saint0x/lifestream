@@ -3,17 +3,25 @@ name = "backend"
 version = "0.1.0"
 edition = "2024"
 
+[lints.rust]
+warnings = "deny"
+
 [dependencies]
 axum = { version = "0.7", features = ["http1", "json", "macros", "ws"] }
+better-auth-core = "1.0.0-alpha.2"
 chrono = { version = "0.4", features = ["clock", "serde"] }
 futures-util = "0.3"
+hmac = "0.12"
+rand_core = { version = "0.6", features = ["getrandom"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "sqlite", "macros", "migrate"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "sqlite", "postgres", "macros", "migrate"] }
 thiserror = "2"
 tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower-http = { version = "0.6", features = ["compression-full", "cors", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tokio-util = { version = "0.7", features = ["io"] }
 uuid = { version = "1", features = ["serde", "v4"] }

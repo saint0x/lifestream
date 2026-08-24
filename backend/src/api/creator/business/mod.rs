@@ -1,6 +1,7 @@
 use super::discovery::fetch_user;
 use super::*;
 
+mod credits;
 mod metrics;
 mod series;
 mod subscriptions;
@@ -27,6 +28,10 @@ pub(super) fn routes() -> Router<SharedState> {
         .route(
             "/api/v1/creator/me/series/:id",
             patch(series::update_creator_series),
+        )
+        .route(
+            "/api/v1/creator/me/content/:content_kind/:content_id/credits",
+            put(credits::replace_project_credits),
         )
         .route(
             "/api/v1/creator/subscriptions/:creator_id/tiers/:tier_id",

@@ -10,12 +10,25 @@ interface AvatarProps {
 }
 
 export function Avatar({ src, alt, size = 32, live = false, className }: AvatarProps) {
+  const initials = alt
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "V";
+
   return (
     <span
       className={clsx("ls-avatar", live && "ls-avatar--live", className)}
       style={{ width: size, height: size }}
     >
-      <img src={src} alt={alt} width={size} height={size} loading="lazy" />
+      {src.trim() ? (
+        <img src={src} alt={alt} width={size} height={size} loading="lazy" />
+      ) : (
+        <span className="ls-avatar__fallback" aria-label={alt}>
+          {initials}
+        </span>
+      )}
     </span>
   );
 }

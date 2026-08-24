@@ -5,8 +5,8 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-DB = "/Users/deepsaint/Desktop/lifestream/backend/lifestream.db"
-HOST = "Bearer lifestream-local-dev-token"
+DB = "/Users/deepsaint/Desktop/vanta/backend/vanta.db"
+HOST = "Bearer vanta-local-dev-token"
 
 
 def req(path, method="GET", token=None, body=None, extra_headers=None):
@@ -42,7 +42,7 @@ def ensure_owner_session():
             "sess-user-state-authority-owner",
             "usr-1",
             "user-state-authority-owner",
-            hashlib.sha256("lifestream-local-dev-token".encode()).hexdigest(),
+            hashlib.sha256("vanta-local-dev-token".encode()).hexdigest(),
             json.dumps(["user", "creator", "creator:write", "admin"]),
             now,
         ),

@@ -1,12 +1,13 @@
 use super::*;
 
 pub(crate) async fn fetch_admin_playback_sessions(
-    pool: &SqlitePool,
+    database: &crate::db::Database,
     creator_filter: Option<&str>,
     content_filter: Option<&str>,
     state_filter: Option<&str>,
     limit: i64,
 ) -> AppResult<Vec<AdminPlaybackSessionRecord>> {
+    let pool = database.sqlite_adapter();
     reconcile_playback_sessions_for_read(pool, creator_filter, content_filter, None).await?;
     let limit = limit.clamp(1, 250);
     let now = Utc::now().to_rfc3339();
@@ -71,15 +72,16 @@ pub(crate) async fn fetch_admin_playback_sessions(
     let mut sessions = Vec::with_capacity(rows.len());
     for row in rows {
         let session_id: String = row.get("id");
-        sessions.push(fetch_admin_playback_session_record(pool, &session_id).await?);
+        sessions.push(fetch_admin_playback_session_record(database, &session_id).await?);
     }
     Ok(sessions)
 }
 
 pub(crate) async fn fetch_admin_playback_session_record(
-    pool: &SqlitePool,
+    database: &crate::db::Database,
     session_id: &str,
 ) -> AppResult<AdminPlaybackSessionRecord> {
+    let pool = database.sqlite_adapter();
     reconcile_playback_sessions_for_read(pool, None, None, Some(session_id)).await?;
     let mut session = fetch_playback_session_record_by_id(pool, session_id).await?;
     let now = Utc::now().to_rfc3339();
@@ -102,4 +104,20 @@ pub(crate) async fn fetch_admin_playback_session_record(
         active,
         valid_access,
     })
+}
+
+pub(crate) async fn expire_admin_playback_session(
+    database: &crate::db::Database,
+    session_id: &str,
+) -> AppResult<()> {
+    expire_playback_session_by_id(database.sqlite_adapter(), session_id).await
+}
+
+pub(crate) async fn ensure_admin_playback_session_exists(
+    database: &crate::db::Database,
+    session_id: &str,
+) -> AppResult<()> {
+    fetch_playback_session_record_by_id(database.sqlite_adapter(), session_id)
+        .await
+        .map(|_| ())
 }

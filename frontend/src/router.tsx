@@ -14,11 +14,7 @@ import { LibraryPage } from "@/pages/LibraryPage";
 import { FollowingPage } from "@/pages/FollowingPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { SettingsPage } from "@/pages/SettingsPage";
-import { CreatorOverviewPage } from "@/pages/creator/CreatorOverviewPage";
-import { CreatorLivePage } from "@/pages/creator/CreatorLivePage";
-import { CreatorContentPage } from "@/pages/creator/CreatorContentPage";
-import { CreatorAnalyticsPage } from "@/pages/creator/CreatorAnalyticsPage";
-import { CreatorRevenuePage } from "@/pages/creator/CreatorRevenuePage";
+import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 
 function Shell() {
   return (
@@ -39,7 +35,7 @@ export const router = createBrowserRouter([
       { path: "/series/:slug", element: <SeriesPage /> },
       { path: "/films", element: <CatalogPage kind="film" /> },
       { path: "/film/:slug", element: <FilmPage /> },
-      { path: "/browse", element: <BrowseLivePage /> },
+      { path: "/originals", element: <CatalogPage kind="all" originalsOnly /> },
       { path: "/category/:slug", element: <CategoryPage /> },
       { path: "/search", element: <SearchPage /> },
       { path: "/watch/episode/:id", element: <WatchPage kind="episode" /> },
@@ -49,11 +45,8 @@ export const router = createBrowserRouter([
       { path: "/following", element: <FollowingPage /> },
       { path: "/profile", element: <ProfilePage /> },
       { path: "/settings", element: <SettingsPage /> },
-      { path: "/creator", element: <CreatorOverviewPage /> },
-      { path: "/creator/live", element: <CreatorLivePage /> },
-      { path: "/creator/content", element: <CreatorContentPage /> },
-      { path: "/creator/analytics", element: <CreatorAnalyticsPage /> },
-      { path: "/creator/revenue", element: <CreatorRevenuePage /> },
+      { path: "/auth/callback", element: <AuthCallbackPage /> },
+      { path: "/:profileHandle", element: <ProfilePage /> },
       { path: "*", element: <HomePage /> },
     ],
   },

@@ -79,7 +79,10 @@ pub(crate) async fn fetch_watchlist_response(
     }
 
     let series_ids = fetch_existing_series_watchlist_ids(pool, &watchlist_ids).await?;
-    let series_id_set = series_ids.iter().cloned().collect::<std::collections::HashSet<_>>();
+    let series_id_set = series_ids
+        .iter()
+        .cloned()
+        .collect::<std::collections::HashSet<_>>();
     let film_ids = watchlist_ids
         .iter()
         .filter(|id| !series_id_set.contains(*id))
@@ -153,24 +156,22 @@ pub(crate) async fn fetch_watch_history_limited(
     if let Some(limit) = limit {
         query.push_str(&format!(" LIMIT {}", limit.max(1)));
     }
-    Ok(sqlx::query(
-        &query,
-    )
-    .bind(user_id)
-    .fetch_all(pool)
-    .await?
-    .into_iter()
-    .map(|item| WatchHistoryEntry {
-        content_id: item.get("content_id"),
-        kind: item.get("kind"),
-        episode_id: item.get("episode_id"),
-        progress_sec: item.get("progress_sec"),
-        duration_sec: item.get("duration_sec"),
-        completed: item.get::<i64, _>("completed") == 1,
-        completed_at: item.get("completed_at"),
-        last_watched_at: item.get("last_watched_at"),
-    })
-    .collect())
+    Ok(sqlx::query(&query)
+        .bind(user_id)
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|item| WatchHistoryEntry {
+            content_id: item.get("content_id"),
+            kind: item.get("kind"),
+            episode_id: item.get("episode_id"),
+            progress_sec: item.get("progress_sec"),
+            duration_sec: item.get("duration_sec"),
+            completed: item.get::<i64, _>("completed") == 1,
+            completed_at: item.get("completed_at"),
+            last_watched_at: item.get("last_watched_at"),
+        })
+        .collect())
 }
 
 async fn fetch_watchlist_ids(pool: &SqlitePool, user_id: &str) -> AppResult<Vec<String>> {
@@ -240,25 +241,22 @@ pub(crate) async fn fetch_continue_watching_entries_limited(
         query.push_str(&format!(" LIMIT {}", limit.max(1)));
     }
     Ok(sqlx::query(&query)
-    .bind(user_id)
-    .fetch_all(pool)
-    .await?
-    .into_iter()
-    .map(|item| ContinueWatchingEntry {
-        content_id: item.get("content_id"),
-        kind: item.get("kind"),
-        episode_id: item.get("episode_id"),
-        progress_sec: item.get("progress_sec"),
-        duration_sec: item.get("duration_sec"),
-        last_watched_at: item.get("last_watched_at"),
-    })
-    .collect())
+        .bind(user_id)
+        .fetch_all(pool)
+        .await?
+        .into_iter()
+        .map(|item| ContinueWatchingEntry {
+            content_id: item.get("content_id"),
+            kind: item.get("kind"),
+            episode_id: item.get("episode_id"),
+            progress_sec: item.get("progress_sec"),
+            duration_sec: item.get("duration_sec"),
+            last_watched_at: item.get("last_watched_at"),
+        })
+        .collect())
 }
 
-async fn fetch_followed_streamers(
-    pool: &SqlitePool,
-    user_id: &str,
-) -> AppResult<Vec<Streamer>> {
+async fn fetch_followed_streamers(pool: &SqlitePool, user_id: &str) -> AppResult<Vec<Streamer>> {
     Ok(
         sqlx::query(
             r#"
@@ -298,8 +296,7 @@ async fn fetch_existing_series_watchlist_ids(
     }
 
     let placeholders = vec!["?"; watchlist_ids.len()].join(", ");
-    let query =
-        format!("SELECT id FROM series WHERE id IN ({placeholders}) ORDER BY id ASC");
+    let query = format!("SELECT id FROM series WHERE id IN ({placeholders}) ORDER BY id ASC");
     let mut statement = sqlx::query(&query);
     for id in watchlist_ids {
         statement = statement.bind(id);

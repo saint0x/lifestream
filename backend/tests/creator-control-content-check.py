@@ -3,7 +3,7 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8080"
-HEADERS = {"Authorization": "Bearer lifestream-local-dev-token"}
+HEADERS = {"Authorization": "Bearer vanta-local-dev-token"}
 
 
 def req(path, method="GET", body=None):

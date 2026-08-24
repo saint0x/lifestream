@@ -16,14 +16,19 @@ pub(super) async fn emit_collaboration_route_artifacts(
     session: &LiveIngestSession,
     output: &LiveRuntimeOutput,
 ) -> AppResult<()> {
-    let Some(collaboration_session) =
-        fetch_active_collaboration_session_for_broadcast(&state.pool, &session.broadcast_id)
-            .await?
+    let Some(collaboration_session) = fetch_active_collaboration_session_for_broadcast(
+        state.db.sqlite_adapter(),
+        &session.broadcast_id,
+    )
+    .await?
     else {
         return Ok(());
     };
-    let runtime =
-        build_collaboration_runtime_response_for_host(&state.pool, collaboration_session).await?;
+    let runtime = build_collaboration_runtime_response_for_host(
+        state.db.sqlite_adapter(),
+        collaboration_session,
+    )
+    .await?;
     let variants = build_live_runtime_variant_specs(session, output)?;
     let runtime_bundle = build_collaboration_runtime_bundle(session, &runtime.topology)?;
     let media_runtime = build_collaboration_media_runtime(&runtime_bundle)?;
@@ -151,6 +156,12 @@ async fn emit_collaboration_program_artifact(
 ) -> AppResult<()> {
     let relative_path = collaboration_program_relative_path(session, program);
     let path = media_path_for_relative(state, &relative_path);
+    if program.target_broadcast_id.is_none() {
+        if tokio::fs::try_exists(&path).await.map_err(AppError::Io)? {
+            tokio::fs::remove_file(&path).await.map_err(AppError::Io)?;
+        }
+        return Ok(());
+    }
     ensure_parent_dir(&path).await?;
     tokio::fs::write(
         &path,

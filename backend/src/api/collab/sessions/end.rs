@@ -7,19 +7,20 @@ pub(crate) async fn end_collaboration_session_internal_raw(
     payload: Value,
 ) -> AppResult<CollaborationSession> {
     if session.status == "ended" {
-        return fetch_collaboration_session_by_id(&state.pool, &session.id).await;
+        return fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &session.id).await;
     }
 
     let now = Utc::now().to_rfc3339();
     let revoked_invites =
-        fetch_pending_collaboration_invites_for_session(&state.pool, &session.id).await?;
+        fetch_pending_collaboration_invites_for_session(state.db.sqlite_adapter(), &session.id)
+            .await?;
     sqlx::query(
         "UPDATE collaboration_sessions SET status = 'ended', ended_at = ?, updated_at = ? WHERE id = ?",
     )
     .bind(&now)
     .bind(&now)
     .bind(&session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE collaboration_participants SET state = CASE WHEN state IN ('left', 'removed') THEN state ELSE 'left' END, left_at = COALESCE(left_at, ?), updated_at = ? WHERE session_id = ?",
@@ -27,14 +28,14 @@ pub(crate) async fn end_collaboration_session_internal_raw(
     .bind(&now)
     .bind(&now)
     .bind(&session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE collaboration_invites SET state = CASE WHEN state = 'pending' THEN 'revoked' ELSE state END, responded_at = COALESCE(responded_at, ?) WHERE session_id = ?",
     )
     .bind(&now)
     .bind(&session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     publish_collaboration_invite_revoked_events_raw(
         state,
@@ -68,7 +69,7 @@ pub(crate) async fn end_collaboration_session_internal_raw(
     )
     .await?;
 
-    fetch_collaboration_session_by_id(&state.pool, &session.id).await
+    fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &session.id).await
 }
 
 pub(crate) async fn end_collaboration_session_internal(
@@ -78,19 +79,20 @@ pub(crate) async fn end_collaboration_session_internal(
     payload: Value,
 ) -> AppResult<CollaborationSession> {
     if session.status == "ended" {
-        return fetch_collaboration_session_by_id(&state.pool, &session.id).await;
+        return fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &session.id).await;
     }
 
     let now = Utc::now().to_rfc3339();
     let revoked_invites =
-        fetch_pending_collaboration_invites_for_session(&state.pool, &session.id).await?;
+        fetch_pending_collaboration_invites_for_session(state.db.sqlite_adapter(), &session.id)
+            .await?;
     sqlx::query(
         "UPDATE collaboration_sessions SET status = 'ended', ended_at = ?, updated_at = ? WHERE id = ?",
     )
     .bind(&now)
     .bind(&now)
     .bind(&session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE collaboration_participants SET state = CASE WHEN state IN ('left', 'removed') THEN state ELSE 'left' END, left_at = COALESCE(left_at, ?), updated_at = ? WHERE session_id = ?",
@@ -98,14 +100,14 @@ pub(crate) async fn end_collaboration_session_internal(
     .bind(&now)
     .bind(&now)
     .bind(&session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     sqlx::query(
         "UPDATE collaboration_invites SET state = CASE WHEN state = 'pending' THEN 'revoked' ELSE state END, responded_at = COALESCE(responded_at, ?) WHERE session_id = ?",
     )
     .bind(&now)
     .bind(&session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     publish_collaboration_invite_revoked_events(
         state,
@@ -139,5 +141,5 @@ pub(crate) async fn end_collaboration_session_internal(
     )
     .await?;
 
-    fetch_collaboration_session_by_id(&state.pool, &session.id).await
+    fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &session.id).await
 }

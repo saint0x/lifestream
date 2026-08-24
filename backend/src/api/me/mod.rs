@@ -1,7 +1,7 @@
 use super::discovery::{
-    fetch_billing_plan, fetch_following_feed_response, fetch_streamer_by_id, fetch_user, fetch_user_library,
-    fetch_user_profile_details, fetch_user_settings_bundle, fetch_viewer_app_state, fetch_watchlist_response, resolve_progress_target,
-    validate_watchlist_content,
+    fetch_billing_plan, fetch_following_feed_response, fetch_user_library,
+    fetch_user_profile_details, fetch_user_settings_bundle, fetch_viewer_app_state,
+    fetch_watchlist_response,
 };
 use super::notifications::{list_my_notifications, mark_my_notification_read};
 use super::realtime::auth_session_channel_id;
@@ -10,7 +10,7 @@ use super::*;
 mod entitlements;
 mod profile;
 mod sessions;
-mod state;
+pub(crate) mod state;
 mod watch;
 
 #[cfg(test)]
@@ -52,6 +52,11 @@ pub(super) fn routes() -> Router<SharedState> {
         .route(
             "/api/v1/me/profile",
             get(profile::get_my_profile).patch(profile::update_my_profile),
+        )
+        .route(
+            "/api/v1/me/person-profile",
+            get(super::public::people::get_my_person_profile)
+                .patch(super::public::people::update_my_person_profile),
         )
         .route(
             "/api/v1/me/settings",

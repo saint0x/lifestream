@@ -32,8 +32,12 @@ export function ContentCard({
 
   const poster =
     layout === "poster"
-      ? (item.kind === "live" ? item.thumbnail : item.images.poster)
-      : (item.kind === "live" ? item.thumbnail : item.images.thumbnail);
+      ? item.kind === "live"
+        ? item.thumbnail
+        : item.images.poster
+      : item.kind === "live"
+        ? item.thumbnail
+        : item.images.thumbnail;
 
   const accent = item.kind === "live" ? "#ff2d55" : item.heroColor;
 
@@ -50,9 +54,11 @@ export function ContentCard({
           {item.kind === "live" ? (
             <Badge tone="live">LIVE</Badge>
           ) : item.isOriginal ? (
-            <Badge tone="original">LS ORIGINAL</Badge>
+            <Badge tone="original">VANTA</Badge>
           ) : null}
-          {item.kind !== "live" && item.isOriginal === false && item.trending ? (
+          {item.kind !== "live" &&
+          item.isOriginal === false &&
+          item.trending ? (
             <Badge tone="new">NEW</Badge>
           ) : null}
         </div>
@@ -62,7 +68,9 @@ export function ContentCard({
             "ls-card__watchlist",
             isInWatchlist && "ls-card__watchlist--active",
           )}
-          aria-label={isInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+          aria-label={
+            isInWatchlist ? "Remove from watchlist" : "Add to watchlist"
+          }
           onClick={(e) => {
             e.preventDefault();
             toggleWatchlist(item.id);
@@ -109,7 +117,9 @@ export function ContentCard({
             <>
               <span>{item.year}</span>
               <span className="ls-card__meta-sep">·</span>
-              <span>{item.seasons.length} season{item.seasons.length > 1 ? "s" : ""}</span>
+              <span>
+                {item.seasons.length} season{item.seasons.length > 1 ? "s" : ""}
+              </span>
               <span className="ls-card__meta-sep">·</span>
               <span>{item.rating}</span>
             </>

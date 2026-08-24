@@ -7,7 +7,7 @@
       "cmd": "python3",
       "args": [
         "-c",
-        "import os, urllib.request; base=os.environ.get('LIFESTREAM_BASE_URL','http://127.0.0.1:8080'); assert urllib.request.urlopen(base + '/health').status == 200; print('health-ok')"
+        "import os, urllib.request; base=os.environ.get('VANTA_BASE_URL','http://127.0.0.1:8080'); assert urllib.request.urlopen(base + '/health').status == 200; print('health-ok')"
       ],
       "exit_code": 0,
       "times": 1

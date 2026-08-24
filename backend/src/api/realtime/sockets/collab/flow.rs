@@ -71,10 +71,10 @@ async fn refresh_socket_session(
     last_seen_at: &str,
     session: &mut CollaborationSessionView,
 ) -> AppResult<()> {
-    ensure_identity_session_active(&state.pool, identity).await?;
+    ensure_identity_session_active(state.db.sqlite_adapter(), identity).await?;
     *session = fetch_current_collaboration_socket_session_view(state, session_id, identity).await?;
     let _ = touch_collaboration_socket_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         session_id,
         presence_session_token,
         last_seen_at,
@@ -184,7 +184,7 @@ async fn handle_outbound_event(
                 close_websocket(sender).await;
                 return false;
             }
-            if ensure_identity_session_active(&state.pool, identity)
+            if ensure_identity_session_active(state.db.sqlite_adapter(), identity)
                 .await
                 .is_err()
             {

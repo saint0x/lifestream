@@ -1,11 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Bell, Settings, Command } from "lucide-react";
+import {
+  Search,
+  Bell,
+  Settings,
+  Command,
+  Mail,
+  LockKeyhole,
+  User,
+  X,
+  Globe,
+  LogIn,
+  UserPlus,
+} from "lucide-react";
 import { repository } from "@/lib/repository";
 import { useAppStore } from "@/lib/store";
+import { signInWithEmail, signUpWithEmail, startGoogleSignIn } from "@/lib/api";
 import type { ContentItem } from "@/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { formatViewers } from "@/lib/format";
 import "./Header.css";
 
@@ -15,12 +30,26 @@ export function Header() {
   const [open, setOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authDisplayName, setAuthDisplayName] = useState("");
+  const [authPending, setAuthPending] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const user = useAppStore((s) => s.user);
   const notifications = useAppStore((s) => s.notifications);
-  const results: ReadonlyArray<ContentItem> = query ? repository.search(query).slice(0, 8) : [];
+  const signOut = useAppStore((s) => s.signOut);
+  const hydrate = useAppStore((s) => s.hydrate);
+  const markNotificationRead = useAppStore((s) => s.markNotificationRead);
+  const isGuest =
+    user.id.startsWith("guest-") || user.handle.startsWith("guest");
+  const [results, setResults] = useState<ReadonlyArray<ContentItem>>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -33,12 +62,46 @@ export function Header() {
         setOpen(false);
         setNotifOpen(false);
         setUserOpen(false);
+        setAuthOpen(false);
         inputRef.current?.blur();
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, []);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setResults([]);
+      setSearchLoading(false);
+      setSearchError(null);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setSearchLoading(true);
+      setSearchError(null);
+      void repository
+        .searchRemote(trimmed, controller.signal)
+        .then((items) => setResults(items.slice(0, 8)))
+        .catch((error) => {
+          if (!controller.signal.aborted) {
+            setResults([]);
+            setSearchError(
+              error instanceof Error ? error.message : "Search failed.",
+            );
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setSearchLoading(false);
+        });
+    }, 180);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -67,17 +130,43 @@ export function Header() {
     }
   };
 
+  const openAuth = (mode: "sign-in" | "sign-up") => {
+    setAuthMode(mode);
+    setAuthError(null);
+    setAuthOpen(true);
+    setUserOpen(false);
+  };
+
+  const submitAuth = async () => {
+    setAuthPending(true);
+    setAuthError(null);
+    try {
+      if (authMode === "sign-up") {
+        await signUpWithEmail({
+          email: authEmail,
+          password: authPassword,
+          displayName: authDisplayName || undefined,
+        });
+      } else {
+        await signInWithEmail({ email: authEmail, password: authPassword });
+      }
+      setAuthOpen(false);
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthDisplayName("");
+      await hydrate();
+    } catch (error) {
+      setAuthError(
+        error instanceof Error ? error.message : "Unable to continue.",
+      );
+    } finally {
+      setAuthPending(false);
+    }
+  };
+
   return (
     <header className="ls-header" ref={rootRef}>
       <div className="ls-header__grid">
-        <div className="ls-header__crumbs mono">
-          <span>lifestream</span>
-          <span className="ls-header__crumb-sep">/</span>
-          <span>platform</span>
-          <span className="ls-header__crumb-sep">/</span>
-          <span className="ls-header__crumb-cur">production</span>
-        </div>
-
         <form
           className="ls-header__search-wrap"
           onSubmit={(e) => {
@@ -104,7 +193,11 @@ export function Header() {
           </label>
           {open && query && (
             <div className="ls-header__results">
-              {results.length === 0 ? (
+              {searchLoading ? (
+                <div className="ls-header__results-empty">Searching…</div>
+              ) : searchError ? (
+                <div className="ls-header__results-empty">{searchError}</div>
+              ) : results.length === 0 ? (
                 <div className="ls-header__results-empty">
                   No results for <span className="mono">{query}</span>
                 </div>
@@ -120,12 +213,18 @@ export function Header() {
                     }}
                   >
                     <img
-                      src={item.kind === "live" ? item.thumbnail : item.images.thumbnail}
+                      src={
+                        item.kind === "live"
+                          ? item.thumbnail
+                          : item.images.thumbnail
+                      }
                       alt=""
                       className="ls-header__result-img"
                     />
                     <div className="ls-header__result-body">
-                      <div className="ls-header__result-title">{item.title}</div>
+                      <div className="ls-header__result-title">
+                        {item.title}
+                      </div>
                       <div className="ls-header__result-meta mono">
                         {item.kind === "live" ? (
                           <>
@@ -136,7 +235,9 @@ export function Header() {
                           </>
                         ) : (
                           <>
-                            <span>{item.kind === "series" ? "Series" : "Film"}</span>
+                            <span>
+                              {item.kind === "series" ? "Series" : "Film"}
+                            </span>
                             <span>·</span>
                             <span>{item.year}</span>
                             <span>·</span>
@@ -160,7 +261,9 @@ export function Header() {
             onClick={() => setNotifOpen((v) => !v)}
           >
             <Bell size={16} strokeWidth={1.75} />
-            {notifications.some((item) => item.readAt === null || item.readAt === undefined) ? (
+            {notifications.some(
+              (item) => item.readAt === null || item.readAt === undefined,
+            ) ? (
               <span className="ls-header__dot" />
             ) : null}
           </button>
@@ -174,7 +277,19 @@ export function Header() {
                   </div>
                 ) : (
                   notifications.slice(0, 6).map((notification) => (
-                    <div key={notification.id} className="ls-header__notif">
+                    <button
+                      key={notification.id}
+                      type="button"
+                      className="ls-header__notif"
+                      onClick={() => {
+                        if (
+                          notification.readAt === null ||
+                          notification.readAt === undefined
+                        ) {
+                          void markNotificationRead(notification.id);
+                        }
+                      }}
+                    >
                       <div
                         className="ls-header__notif-mark"
                         style={{
@@ -192,26 +307,54 @@ export function Header() {
                           {notification.sentAt}
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
             </div>
           )}
-          <button className="ls-header__icon-btn" aria-label="Settings" type="button">
+          <button
+            className="ls-header__icon-btn"
+            aria-label="Settings"
+            type="button"
+            onClick={() => navigate("/settings?section=account")}
+          >
             <Settings size={16} strokeWidth={1.75} />
           </button>
-          <button
-            className="ls-header__user"
-            type="button"
-            onClick={() => setUserOpen((v) => !v)}
-          >
-            <Avatar src={user.avatar} alt={user.displayName} size={28} />
-            <div className="ls-header__user-meta">
-              <div className="ls-header__user-name">{user.displayName}</div>
-              <div className="ls-header__user-tier mono">{user.tier}</div>
+          {isGuest ? (
+            <div className="ls-header__auth-actions">
+              <button
+                type="button"
+                className="ls-header__auth-link"
+                onClick={() => openAuth("sign-in")}
+              >
+                <LogIn size={14} strokeWidth={1.8} />
+                <span className="ls-header__auth-label">Sign in</span>
+                <span className="ls-header__auth-label-short">In</span>
+              </button>
+              <button
+                type="button"
+                className="ls-header__auth-link is-primary"
+                onClick={() => openAuth("sign-up")}
+              >
+                <UserPlus size={14} strokeWidth={1.8} />
+                <span className="ls-header__auth-label">Sign up</span>
+                <span className="ls-header__auth-label-short">Join</span>
+              </button>
             </div>
-          </button>
+          ) : (
+            <button
+              className="ls-header__user"
+              type="button"
+              onClick={() => setUserOpen((v) => !v)}
+            >
+              <Avatar src={user.avatar} alt={user.displayName} size={28} />
+              <div className="ls-header__user-meta">
+                <div className="ls-header__user-name">{user.displayName}</div>
+                <div className="ls-header__user-tier mono">{user.tier}</div>
+              </div>
+            </button>
+          )}
           {userOpen && (
             <div className="ls-header__popover ls-header__popover--user">
               <div className="ls-header__popover-title mono">Account</div>
@@ -246,12 +389,151 @@ export function Header() {
                 Watchlist
               </button>
               <div className="ls-header__menu-sep" />
-              <button type="button" className="ls-header__menu-item">Preferences</button>
-              <button type="button" className="ls-header__menu-item">Sign out</button>
+              <button
+                type="button"
+                className="ls-header__menu-item"
+                onClick={() => {
+                  setUserOpen(false);
+                  navigate("/settings?section=playback");
+                }}
+              >
+                Preferences
+              </button>
+              <button
+                type="button"
+                className="ls-header__menu-item"
+                onClick={signOut}
+              >
+                Sign out
+              </button>
             </div>
           )}
         </div>
       </div>
+      {authOpen ? (
+        <div
+          className="ls-header__auth-backdrop"
+          role="presentation"
+          onMouseDown={() => setAuthOpen(false)}
+        >
+          <form
+            className="ls-header__auth-modal"
+            onMouseDown={(event) => event.stopPropagation()}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitAuth();
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="vanta-auth-title"
+          >
+            <button
+              className="ls-header__auth-close"
+              type="button"
+              aria-label="Close"
+              onClick={() => setAuthOpen(false)}
+            >
+              <X size={15} strokeWidth={1.8} />
+            </button>
+            <div className="ls-header__auth-heading">
+              <div className="ls-header__auth-mark" aria-hidden="true">
+                <span />
+              </div>
+              <div className="ls-header__popover-title mono">
+                {authMode === "sign-up" ? "Create account" : "Welcome back"}
+              </div>
+              <h2 className="ls-header__auth-title" id="vanta-auth-title">
+                {authMode === "sign-up"
+                  ? "Sign up for VANTA"
+                  : "Sign in to VANTA"}
+              </h2>
+              <p>
+                {authMode === "sign-up"
+                  ? "Start watching with a VANTA account."
+                  : "Continue to your VANTA account."}
+              </p>
+            </div>
+            <div className="ls-header__auth-tabs">
+              <button
+                type="button"
+                className={authMode === "sign-in" ? "is-active" : ""}
+                onClick={() => setAuthMode("sign-in")}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                className={authMode === "sign-up" ? "is-active" : ""}
+                onClick={() => setAuthMode("sign-up")}
+              >
+                Sign up
+              </button>
+            </div>
+            <div className="ls-header__auth-fields">
+              {authMode === "sign-up" ? (
+                <Input
+                  className="ls-input--full"
+                  icon={<User />}
+                  value={authDisplayName}
+                  onChange={(event) => setAuthDisplayName(event.target.value)}
+                  placeholder="Display name"
+                  aria-label="Display name"
+                />
+              ) : null}
+              <Input
+                className="ls-input--full"
+                icon={<Mail />}
+                value={authEmail}
+                onChange={(event) => setAuthEmail(event.target.value)}
+                placeholder="Email"
+                aria-label="Email"
+                type="email"
+                autoComplete="email"
+              />
+              <Input
+                className="ls-input--full"
+                icon={<LockKeyhole />}
+                value={authPassword}
+                onChange={(event) => setAuthPassword(event.target.value)}
+                placeholder="Password"
+                aria-label="Password"
+                type="password"
+                autoComplete={
+                  authMode === "sign-up" ? "new-password" : "current-password"
+                }
+              />
+            </div>
+            {authError ? (
+              <div className="ls-header__auth-error">{authError}</div>
+            ) : null}
+            <Button
+              className="ls-header__auth-submit"
+              type="submit"
+              disabled={authPending}
+              full
+            >
+              {authPending
+                ? "Working…"
+                : authMode === "sign-up"
+                  ? "Create account"
+                  : "Sign in"}
+            </Button>
+            <div className="ls-header__auth-divider">
+              <span>or</span>
+            </div>
+            <Button
+              variant="outline"
+              className="ls-header__auth-google"
+              type="button"
+              icon={<Globe />}
+              onClick={startGoogleSignIn}
+              full
+            >
+              Continue with Google
+            </Button>
+          </form>
+        </div>
+      ) : null}
     </header>
   );
 }

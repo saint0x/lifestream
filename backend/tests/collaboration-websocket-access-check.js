@@ -1,6 +1,6 @@
 const BASE = "http://127.0.0.1:8080";
-const HOST = "Bearer lifestream-local-dev-token";
-const COLLAB = "Bearer lifestream-local-collaborator-token";
+const HOST = "Bearer vanta-local-dev-token";
+const COLLAB = "Bearer vanta-local-collaborator-token";
 const SUFFIX = String(Date.now());
 
 async function req(path, { method = "GET", token = null, body = null, headers = {} } = {}) {
@@ -243,14 +243,14 @@ async function main() {
   if (acceptStatus !== 200) throw new Error(`accept failed: ${acceptStatus}`);
 
   const hostSocket = createSocketClient(
-    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=lifestream-local-dev-token`,
+    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=vanta-local-dev-token`,
   );
   await hostSocket.open();
   await hostSocket.waitFor((event) => event.type === "sessionReady");
   await hostSocket.waitFor((event) => event.type === "collaborationSnapshot");
 
   const socket1 = createSocketClient(
-    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=lifestream-local-collaborator-token`,
+    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=vanta-local-collaborator-token`,
   );
   await socket1.open();
   const ready1 = await socket1.waitFor((event) => event.type === "sessionReady");
@@ -261,7 +261,7 @@ async function main() {
   await new Promise((resolve) => setTimeout(resolve, 150));
 
   const socket2 = createSocketClient(
-    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=lifestream-local-collaborator-token&session_token=${encodeURIComponent(
+    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=vanta-local-collaborator-token&session_token=${encodeURIComponent(
       ready1.sessionToken,
     )}&after_seq=${lastSeq}`,
   );
@@ -356,7 +356,7 @@ async function main() {
   await socket2.waitForClose(4000);
 
   await expectSocketRejected(
-    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=lifestream-local-collaborator-token&session_token=${encodeURIComponent(
+    `ws://127.0.0.1:8080/ws/live/collabs/${session.id}?access_token=vanta-local-collaborator-token&session_token=${encodeURIComponent(
       ready1.sessionToken,
     )}&after_seq=${lastSeq}`,
   );

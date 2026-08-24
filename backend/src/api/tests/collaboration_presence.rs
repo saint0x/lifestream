@@ -4,12 +4,14 @@ use crate::api::control::fetch_live_runtime_targets_for_session;
 #[tokio::test]
 async fn collaboration_invite_read_self_heals_expired_pending_invite() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let host_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let host_headers = auth_headers(&host_token);
-    let collab_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    let collab_token = insert_creator_auth_session(&state.pool, &collab_creator).await?;
+    let collab_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    let collab_token =
+        insert_creator_auth_session(state.db.sqlite_adapter(), &collab_creator).await?;
     let collab_headers = auth_headers(&collab_token);
-    let broadcast = insert_ready_collaboration_broadcast(&state.pool, &creator).await?;
+    let broadcast =
+        insert_ready_collaboration_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let session = create_collaboration_session(
         State(state.clone()),
@@ -44,14 +46,15 @@ async fn collaboration_invite_read_self_heals_expired_pending_invite() -> AppRes
     )
     .bind((Utc::now() - chrono::Duration::minutes(1)).to_rfc3339())
     .bind(&invite.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let inbox = list_my_collaboration_invites(State(state.clone()), collab_headers)
         .await?
         .0;
-    let refreshed_invite = fetch_collaboration_invite_by_id(&state.pool, &invite.id).await?;
-    let events = fetch_collaboration_events(&state.pool, &session.id, 0, 100).await?;
+    let refreshed_invite =
+        fetch_collaboration_invite_by_id(state.db.sqlite_adapter(), &invite.id).await?;
+    let events = fetch_collaboration_events(state.db.sqlite_adapter(), &session.id, 0, 100).await?;
 
     assert!(inbox.iter().all(|item| item.id != invite.id));
     assert_eq!(refreshed_invite.state, "expired");
@@ -81,13 +84,19 @@ fn collaboration_runtime_read_self_heals_expired_mirror_grant() -> AppResult<()>
 
 async fn collaboration_runtime_read_self_heals_expired_mirror_grant_async() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let host_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let host_headers = auth_headers(&host_token);
-    let collab_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    let collab_token = insert_creator_auth_session(&state.pool, &collab_creator).await?;
+    let collab_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    let collab_token =
+        insert_creator_auth_session(state.db.sqlite_adapter(), &collab_creator).await?;
     let collab_headers = auth_headers(&collab_token);
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
 
     let grant = issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
     sqlx::query(
@@ -95,7 +104,7 @@ async fn collaboration_runtime_read_self_heals_expired_mirror_grant_async() -> A
     )
     .bind((Utc::now() - chrono::Duration::minutes(1)).to_rfc3339())
     .bind(&grant.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let runtime = get_my_collaboration_runtime(
@@ -105,7 +114,8 @@ async fn collaboration_runtime_read_self_heals_expired_mirror_grant_async() -> A
     )
     .await?
     .0;
-    let refreshed_grant = fetch_collaboration_mirror_grant_by_id(&state.pool, &grant.id).await?;
+    let refreshed_grant =
+        fetch_collaboration_mirror_grant_by_id(state.db.sqlite_adapter(), &grant.id).await?;
     let participant_events = list_my_collaboration_events(
         State(state.clone()),
         collab_headers,
@@ -145,15 +155,20 @@ async fn collaboration_runtime_read_self_heals_expired_mirror_grant_async() -> A
 #[tokio::test]
 async fn collaboration_control_read_self_heals_stale_socket_presence() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let host_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let host_headers = auth_headers(&host_token);
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let cutoff =
         (Utc::now() - chrono::Duration::seconds(WS_PRESENCE_TTL_SECONDS + 30)).to_rfc3339();
 
     insert_collaboration_socket_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session.id,
         "usr-2",
         Some("crt-atlas"),
@@ -183,10 +198,15 @@ async fn collaboration_control_read_self_heals_stale_socket_presence() -> AppRes
 #[tokio::test]
 async fn host_can_inspect_and_reconcile_collaboration_socket_session_by_id() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let host_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let host_headers = auth_headers(&host_token);
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let cutoff =
         (Utc::now() - chrono::Duration::seconds(WS_PRESENCE_TTL_SECONDS + 30)).to_rfc3339();
     let socket_id = format!("css-test-{}", Uuid::new_v4().simple());
@@ -206,7 +226,7 @@ async fn host_can_inspect_and_reconcile_collaboration_socket_session_by_id() -> 
     .bind(hash_token(&format!("socket-{socket_id}")))
     .bind(&cutoff)
     .bind(&cutoff)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let inspected = get_creator_collaboration_socket_session(
@@ -219,7 +239,7 @@ async fn host_can_inspect_and_reconcile_collaboration_socket_session_by_id() -> 
     let disconnected_before: Option<String> =
         sqlx::query("SELECT disconnected_at FROM collaboration_socket_sessions WHERE id = ?")
             .bind(&socket_id)
-            .fetch_one(&state.pool)
+            .fetch_one(state.db.sqlite_adapter())
             .await?
             .get("disconnected_at");
 
@@ -238,7 +258,7 @@ async fn host_can_inspect_and_reconcile_collaboration_socket_session_by_id() -> 
     let disconnected_after: Option<String> =
         sqlx::query("SELECT disconnected_at FROM collaboration_socket_sessions WHERE id = ?")
             .bind(&socket_id)
-            .fetch_one(&state.pool)
+            .fetch_one(state.db.sqlite_adapter())
             .await?
             .get("disconnected_at");
 
@@ -279,12 +299,14 @@ fn collaboration_session_read_self_heals_dead_source_broadcast() -> AppResult<()
 
 async fn collaboration_session_read_self_heals_dead_source_broadcast_async() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let host_token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let host_token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let host_headers = auth_headers(&host_token);
-    let collab_creator = fetch_creator_profile(&state.pool, "crt-atlas").await?;
-    let collab_token = insert_creator_auth_session(&state.pool, &collab_creator).await?;
+    let collab_creator = fetch_creator_profile(state.db.sqlite_adapter(), "crt-atlas").await?;
+    let collab_token =
+        insert_creator_auth_session(state.db.sqlite_adapter(), &collab_creator).await?;
     let collab_headers = auth_headers(&collab_token);
-    let broadcast = insert_ready_collaboration_broadcast(&state.pool, &creator).await?;
+    let broadcast =
+        insert_ready_collaboration_broadcast(state.db.sqlite_adapter(), &creator).await?;
 
     let session = create_collaboration_session(
         State(state.clone()),
@@ -325,7 +347,7 @@ async fn collaboration_session_read_self_heals_dead_source_broadcast_async() -> 
     )
     .bind(Utc::now().to_rfc3339())
     .bind(&broadcast.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let session_view = get_creator_collaboration_session(
@@ -342,7 +364,7 @@ async fn collaboration_session_read_self_heals_dead_source_broadcast_async() -> 
     )
     .await
     .expect_err("ended collaboration should no longer be visible to the departed participant");
-    let events = fetch_collaboration_events(&state.pool, &session.id, 0, 100).await?;
+    let events = fetch_collaboration_events(state.db.sqlite_adapter(), &session.id, 0, 100).await?;
 
     assert_eq!(session_view.status, "ended");
     assert!(matches!(participant_error, AppError::Forbidden));
@@ -357,8 +379,13 @@ async fn collaboration_session_read_self_heals_dead_source_broadcast_async() -> 
 #[tokio::test]
 async fn collaboration_presence_counts_distinct_participants_not_socket_tabs() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let host_participant = session
         .participants
         .iter()
@@ -368,7 +395,7 @@ async fn collaboration_presence_counts_distinct_participants_not_socket_tabs() -
     let now = Utc::now().to_rfc3339();
 
     insert_collaboration_socket_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session.id,
         "usr-2",
         Some("crt-atlas"),
@@ -379,7 +406,7 @@ async fn collaboration_presence_counts_distinct_participants_not_socket_tabs() -
     )
     .await?;
     insert_collaboration_socket_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session.id,
         "usr-2",
         Some("crt-atlas"),
@@ -390,7 +417,7 @@ async fn collaboration_presence_counts_distinct_participants_not_socket_tabs() -
     )
     .await?;
     insert_collaboration_socket_session(
-        &state.pool,
+        state.db.sqlite_adapter(),
         &session.id,
         "usr-1",
         Some("crt-deepsaint"),
@@ -401,11 +428,13 @@ async fn collaboration_presence_counts_distinct_participants_not_socket_tabs() -
     )
     .await?;
 
-    let per_session = count_active_collaboration_socket_sessions(&state.pool, &session.id).await?;
-    let all_active = count_all_active_collaboration_socket_sessions(&state.pool).await?;
+    let per_session =
+        count_active_collaboration_socket_sessions(state.db.sqlite_adapter(), &session.id).await?;
+    let all_active =
+        count_all_active_collaboration_socket_sessions(state.db.sqlite_adapter()).await?;
     let runtime = build_collaboration_runtime_response_for_host(
-        &state.pool,
-        fetch_collaboration_session_by_id(&state.pool, &session.id).await?,
+        state.db.sqlite_adapter(),
+        fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &session.id).await?,
     )
     .await?;
 
@@ -438,15 +467,21 @@ fn collaboration_runtime_topology_exposes_contributions_and_split_archive_output
 async fn collaboration_runtime_topology_exposes_contributions_and_split_archive_outputs_async()
 -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     sqlx::query(
         "UPDATE collaboration_sessions SET recording_policy = 'split_archive' WHERE id = ?",
     )
     .bind(&session.id)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
     let now = Utc::now().to_rfc3339();
+    let live_session_id = format!("ing-test-{}", Uuid::new_v4().simple());
     sqlx::query(
         r#"
         INSERT INTO live_ingest_sessions (
@@ -456,7 +491,7 @@ async fn collaboration_runtime_topology_exposes_contributions_and_split_archive_
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'connected', ?, ?, ?, ?, ?, NULL)
         "#,
     )
-    .bind(format!("ing-test-{}", Uuid::new_v4().simple()))
+    .bind(&live_session_id)
     .bind(&creator.id)
     .bind(&session.source_broadcast_id)
     .bind(hash_token(&creator.stream_key))
@@ -473,14 +508,18 @@ async fn collaboration_runtime_topology_exposes_contributions_and_split_archive_
     .bind(0_i64)
     .bind(&now)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
+    let live_session =
+        fetch_live_ingest_session_by_id(state.db.sqlite_adapter(), &creator.id, &live_session_id)
+            .await?;
+    initialize_live_runtime_output(state.db.sqlite_adapter(), &live_session).await?;
     let _grant =
         issue_mirror_grant_for_participant(&state, &session, &participant, "usr-1").await?;
 
     let runtime = build_collaboration_runtime_response_for_host(
-        &state.pool,
-        fetch_collaboration_session_by_id(&state.pool, &session.id).await?,
+        state.db.sqlite_adapter(),
+        fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &session.id).await?,
     )
     .await?;
     let host_contribution = runtime
@@ -583,8 +622,13 @@ async fn collaboration_runtime_topology_exposes_contributions_and_split_archive_
 async fn collaboration_runtime_topology_skips_guest_outputs_without_authorized_mirror_route()
 -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         r#"
@@ -612,12 +656,12 @@ async fn collaboration_runtime_topology_skips_guest_outputs_without_authorized_m
     .bind(0_i64)
     .bind(&now)
     .bind(&now)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let runtime = build_collaboration_runtime_response_for_host(
-        &state.pool,
-        fetch_collaboration_session_by_id(&state.pool, &session.id).await?,
+        state.db.sqlite_adapter(),
+        fetch_collaboration_session_by_id(state.db.sqlite_adapter(), &session.id).await?,
     )
     .await?;
     let guest_contribution = runtime
@@ -682,8 +726,13 @@ fn collaboration_event_syncs_runtime_targets_for_active_ingest() -> AppResult<()
 
 async fn collaboration_event_syncs_runtime_targets_for_active_ingest_async() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let (session, participant) =
-        insert_active_collaboration_session(&state.pool, &creator, "crt-atlas", "usr-2").await?;
+    let (session, participant) = insert_active_collaboration_session(
+        state.db.sqlite_adapter(),
+        &creator,
+        "crt-atlas",
+        "usr-2",
+    )
+    .await?;
 
     let connected = connect_live_ingest(
         State(state.clone()),
@@ -697,7 +746,9 @@ async fn collaboration_event_syncs_runtime_targets_for_active_ingest_async() -> 
     .await?
     .0;
 
-    let before = fetch_live_runtime_targets_for_session(&state.pool, &connected.session.id).await?;
+    let before =
+        fetch_live_runtime_targets_for_session(state.db.sqlite_adapter(), &connected.session.id)
+            .await?;
     assert!(
         before
             .iter()
@@ -710,20 +761,23 @@ async fn collaboration_event_syncs_runtime_targets_for_active_ingest_async() -> 
 
     issue_mirror_grant_for_participant(&state, &session, &participant, &creator.user_id).await?;
 
-    let after = fetch_live_runtime_targets_for_session(&state.pool, &connected.session.id).await?;
+    let after =
+        fetch_live_runtime_targets_for_session(state.db.sqlite_adapter(), &connected.session.id)
+            .await?;
     let mirror_target = after
         .iter()
         .find(|target| {
             target.target_kind == "mirror_channel"
                 && target.target_creator_id.as_deref() == Some("crt-atlas")
         })
-    .expect("mirror target should be persisted after topology publication");
+        .expect("mirror target should be persisted after topology publication");
 
     assert_eq!(mirror_target.route_state, "issued");
     assert!(!mirror_target.playback_enabled);
     assert!(mirror_target.relative_path.is_none());
 
-    let runtime = fetch_creator_live_runtime_response(&state.pool, &creator.id).await?;
+    let runtime =
+        fetch_creator_live_runtime_response(state.db.sqlite_adapter(), &creator.id).await?;
     assert!(runtime.active_runtime_targets.iter().any(|target| {
         target.target_kind == "mirror_channel"
             && target.target_creator_id.as_deref() == Some("crt-atlas")
@@ -752,10 +806,11 @@ async fn creator_live_read_self_heals_stale_socket_presence() -> AppResult<()> {
     .bind(hash_token("creator-live-stale"))
     .bind(&cutoff)
     .bind(&cutoff)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
-    let _control = fetch_creator_live_control_response(&state.pool, &creator.id).await?;
+    let _control =
+        fetch_creator_live_control_response(state.db.sqlite_adapter(), &creator.id).await?;
 
     let disconnected_at: Option<String> = sqlx::query(
         "SELECT disconnected_at FROM creator_live_socket_sessions WHERE creator_id = ? AND user_id = ? AND session_token_hash = ?",
@@ -763,10 +818,11 @@ async fn creator_live_read_self_heals_stale_socket_presence() -> AppResult<()> {
     .bind(&creator.id)
     .bind("usr-1")
     .bind(hash_token("creator-live-stale"))
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?
     .get("disconnected_at");
-    let active_count = count_all_active_creator_live_socket_sessions(&state.pool).await?;
+    let active_count =
+        count_all_active_creator_live_socket_sessions(state.db.sqlite_adapter()).await?;
 
     assert!(disconnected_at.is_some());
     assert_eq!(active_count, 0);
@@ -776,7 +832,7 @@ async fn creator_live_read_self_heals_stale_socket_presence() -> AppResult<()> {
 #[tokio::test]
 async fn creator_can_inspect_and_reconcile_live_socket_session_by_id() -> AppResult<()> {
     let (state, creator) = setup_test_state().await?;
-    let token = insert_creator_auth_session(&state.pool, &creator).await?;
+    let token = insert_creator_auth_session(state.db.sqlite_adapter(), &creator).await?;
     let headers = auth_headers(&token);
     let cutoff =
         (Utc::now() - chrono::Duration::seconds(WS_PRESENCE_TTL_SECONDS + 30)).to_rfc3339();
@@ -795,7 +851,7 @@ async fn creator_can_inspect_and_reconcile_live_socket_session_by_id() -> AppRes
     .bind(hash_token(&format!("creator-live-socket-{socket_id}")))
     .bind(&cutoff)
     .bind(&cutoff)
-    .execute(&state.pool)
+    .execute(state.db.sqlite_adapter())
     .await?;
 
     let inspected = get_creator_live_socket_session(
@@ -810,7 +866,7 @@ async fn creator_can_inspect_and_reconcile_live_socket_session_by_id() -> AppRes
     )
     .bind(&creator.id)
     .bind(&socket_id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?
     .get("disconnected_at");
 
@@ -831,7 +887,7 @@ async fn creator_can_inspect_and_reconcile_live_socket_session_by_id() -> AppRes
     )
     .bind(&creator.id)
     .bind(&socket_id)
-    .fetch_one(&state.pool)
+    .fetch_one(state.db.sqlite_adapter())
     .await?
     .get("disconnected_at");
 
