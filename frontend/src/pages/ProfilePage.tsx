@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link as RouterLink, Navigate, useParams } from "react-router-dom";
 import {
   Check,
+  ChevronDown,
   Copy,
   ExternalLink,
   Film,
   Link as LinkIcon,
   Pencil,
   Plus,
-  Save,
   Trash2,
   Tv,
   X,
@@ -188,6 +188,8 @@ export function ProfilePage() {
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedWorkGroup, setExpandedWorkGroup] = useState<"series" | "film" | "all" | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const avatarUploadRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!isOwnProfile && !publicSlug) {
@@ -226,15 +228,6 @@ export function ProfilePage() {
 
     return () => controller.abort();
   }, [isOwnProfile, publicSlug]);
-
-  const groupedCredits = useMemo(() => {
-    const groups = new Map<string, PersonProfile["credits"]>();
-    for (const credit of profile?.credits ?? []) {
-      const key = credit.role;
-      groups.set(key, [...(groups.get(key) ?? []), credit]);
-    }
-    return Array.from(groups.entries());
-  }, [profile]);
 
   const mediaGroups = useMemo(() => {
     const credits = profile?.credits ?? [];
@@ -280,6 +273,32 @@ export function ProfilePage() {
           publicLinks: current.publicLinks.filter((_, linkIndex) => linkIndex !== index),
         }
       : current);
+  };
+
+  const beginEditing = () => {
+    setEditing(true);
+    setStatus(null);
+    setError(null);
+  };
+
+  const handleAvatarFile = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Choose an image file for the avatar.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (!result) return;
+      setForm((current) => current ? { ...current, avatar: result } : current);
+      setProfile((current) => current ? { ...current, avatar: result } : current);
+      beginEditing();
+      setStatus("Avatar selected. Save your profile to publish it.");
+    };
+    reader.onerror = () => setError("Unable to read that image file.");
+    reader.readAsDataURL(file);
   };
 
   const saveProfile = async () => {
@@ -397,13 +416,34 @@ export function ProfilePage() {
       >
         <div className="ls-profile__hero-scrim" />
         <div className="ls-profile__identity">
-          {profile.avatar ? (
-            <img className="ls-profile__avatar" src={profile.avatar} alt="" />
-          ) : (
-            <div className="ls-profile__avatar ls-profile__avatar--fallback">
-              {profileInitials(profile.displayName)}
-            </div>
-          )}
+          <div className="ls-profile__avatar-wrap">
+            {profile.avatar ? (
+              <img className="ls-profile__avatar" src={profile.avatar} alt="" />
+            ) : (
+              <div className="ls-profile__avatar ls-profile__avatar--fallback">
+                {profileInitials(profile.displayName)}
+              </div>
+            )}
+            {isOwnProfile ? (
+              <>
+                <button
+                  className="ls-profile__avatar-edit"
+                  type="button"
+                  aria-label="Change avatar"
+                  onClick={() => avatarUploadRef.current?.click()}
+                >
+                  <Plus size={18} />
+                </button>
+                <input
+                  ref={avatarUploadRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(event) => handleAvatarFile(event.currentTarget.files?.[0] ?? null)}
+                />
+              </>
+            ) : null}
+          </div>
           <div className="ls-profile__intro">
             <PageTrail
               className="ls-profile__kicker mono"
@@ -412,13 +452,24 @@ export function ProfilePage() {
                 { label: profile.displayName },
               ]}
             />
-            <h1 className="ls-profile__name">{profile.displayName}</h1>
-            <div className="ls-profile__headline">{profile.headline || `@${profile.slug}`}</div>
+            <div className="ls-profile__editable-line">
+              <h1 className="ls-profile__name">{profile.displayName}</h1>
+              {isOwnProfile ? (
+                <button className="ls-profile__edit-mark" type="button" aria-label="Edit display name" onClick={beginEditing}>
+                  <Pencil size={15} />
+                </button>
+              ) : null}
+            </div>
+            <div className="ls-profile__editable-line ls-profile__editable-line--subtle">
+              <div className="ls-profile__headline">{profile.headline || `@${profile.slug}`}</div>
+              {isOwnProfile ? (
+                <button className="ls-profile__edit-mark" type="button" aria-label="Edit headline" onClick={beginEditing}>
+                  <Pencil size={14} />
+                </button>
+              ) : null}
+            </div>
             <div className="ls-profile__meta mono">
               {profile.location ? <span>{profile.location}</span> : null}
-              <span>{profile.credits.length} credits</span>
-              {seriesCount > 0 ? <span>{seriesCount} series</span> : null}
-              {filmCount > 0 ? <span>{filmCount} films</span> : null}
               {profile.knownFor.map((item) => (
                 <span key={item}>{item}</span>
               ))}
@@ -429,10 +480,9 @@ export function ProfilePage() {
             <>
               <Button
                 variant={editing ? "primary" : "outline"}
-                icon={editing ? <Save /> : <Pencil />}
                 onClick={() => {
                   if (editing) void saveProfile();
-                  else setEditing(true);
+                  else beginEditing();
                 }}
               >
                 {editing ? "Save" : "Edit"}
@@ -533,10 +583,17 @@ export function ProfilePage() {
         </section>
       ) : (
         <>
-          <section className="ls-profile__proof-grid" aria-label="Profile summary">
+          <section className="ls-profile__profile-top" aria-label="Profile summary">
             <div className="ls-profile__link-card" aria-label="Public VANTA profile link">
               <div>
-                <div className="ls-list__label mono">VANTA link</div>
+                <div className="ls-profile__editable-label">
+                  <div className="ls-list__label mono">VANTA link</div>
+                  {isOwnProfile ? (
+                    <button className="ls-profile__edit-mark" type="button" aria-label="Edit VANTA link" onClick={beginEditing}>
+                      <Pencil size={13} />
+                    </button>
+                  ) : null}
+                </div>
                 <div className="ls-profile__link-url">{profileUrl}</div>
               </div>
               <Button
@@ -548,24 +605,72 @@ export function ProfilePage() {
               </Button>
             </div>
 
-            <div className="ls-profile__quick-stats" aria-label="Portfolio stats">
-              <div><strong>{profile.credits.length}</strong><span className="mono">Credits</span></div>
-              <div><strong>{seriesCount}</strong><span className="mono">Series</span></div>
-              <div><strong>{filmCount}</strong><span className="mono">Films</span></div>
-              <div><strong>{roleCount}</strong><span className="mono">Roles</span></div>
-            </div>
-
-            <div className="ls-profile__external-links">
-              <div className="ls-list__label mono">Connected</div>
-              <div className="ls-profile__link-pills">
-                {links.length === 0 ? <span className="ls-profile__empty-pill">No public links yet</span> : null}
-                {links.map(({ label, href, Icon }) => (
-                  <a className="ls-profile__link-pill" key={`${label}-${href}`} href={href} target="_blank" rel="noreferrer">
-                    <Icon size={14} />
-                    <span>{label}</span>
-                    <ExternalLink size={12} />
-                  </a>
-                ))}
+            <div className="ls-profile__summary-row">
+              <div className="ls-profile__bio">
+                <div className="ls-profile__editable-label">
+                  <div className="ls-list__label mono">About</div>
+                  {isOwnProfile ? (
+                    <button className="ls-profile__edit-mark" type="button" aria-label="Edit bio" onClick={beginEditing}>
+                      <Pencil size={13} />
+                    </button>
+                  ) : null}
+                </div>
+                <p>{profile.about || `${profile.displayName} has not added a bio yet.`}</p>
+              </div>
+              <div className="ls-profile__profile-links">
+                <div className="ls-profile__editable-label">
+                  <div className="ls-list__label mono">Connected</div>
+                  {isOwnProfile ? (
+                    <button className="ls-profile__edit-mark" type="button" aria-label="Edit connected links" onClick={beginEditing}>
+                      <Pencil size={13} />
+                    </button>
+                  ) : null}
+                </div>
+                <div className="ls-profile__link-pills">
+                  {links.length === 0 ? <span className="ls-profile__empty-link">No public links yet</span> : null}
+                  {links.map(({ label, href, Icon }) => (
+                    <a className="ls-profile__link-pill" key={`${label}-${href}`} href={href} target="_blank" rel="noreferrer">
+                      <Icon size={14} />
+                      <span>{label}</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+              <div className="ls-profile__known-for">
+                <div className="ls-profile__editable-label">
+                  <div className="ls-list__label mono">Known for</div>
+                  {isOwnProfile ? (
+                    <button className="ls-profile__edit-mark" type="button" aria-label="Edit known for" onClick={beginEditing}>
+                      <Pencil size={13} />
+                    </button>
+                  ) : null}
+                </div>
+                <div className="ls-profile__known-list">
+                  {profile.knownFor.length === 0 ? (
+                    <span>Not listed yet</span>
+                  ) : profile.knownFor.map((item) => (
+                    <span key={item}>{item}</span>
+                  ))}
+                </div>
+                <div className="ls-profile__stats-disclosure">
+                  <button
+                    type="button"
+                    aria-expanded={statsOpen}
+                    onClick={() => setStatsOpen((open) => !open)}
+                  >
+                    <span>Stats</span>
+                    <ChevronDown size={14} />
+                  </button>
+                  {statsOpen ? (
+                    <div className="ls-profile__stats-list">
+                      <div><span>Projects</span><strong>{profile.credits.length}</strong></div>
+                      <div><span>Series</span><strong>{seriesCount}</strong></div>
+                      <div><span>Films</span><strong>{filmCount}</strong></div>
+                      <div><span>Roles</span><strong>{roleCount}</strong></div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
           </section>
@@ -576,111 +681,85 @@ export function ProfilePage() {
               <h2>Work at a glance</h2>
             </div>
             {featuredCredit ? (
-              <RouterLink className="ls-profile__featured-work" to={creditHref(featuredCredit)}>
-                <CreditImage credit={featuredCredit} className="ls-profile__featured-image" />
-                <div className="ls-profile__featured-scrim" />
-                <div className="ls-profile__featured-copy">
-                  <span className="mono">{creditDescriptor(featuredCredit)}</span>
-                  <strong>{featuredCredit.title}</strong>
-                  <em>{featuredCredit.character ? `As ${featuredCredit.character}` : "View project"}</em>
-                </div>
-              </RouterLink>
+              <>
+                <RouterLink className="ls-profile__featured-work" to={creditHref(featuredCredit)}>
+                  <CreditImage credit={featuredCredit} className="ls-profile__featured-image" />
+                  <div className="ls-profile__featured-scrim" />
+                  <div className="ls-profile__featured-copy">
+                    <span className="mono">{creditDescriptor(featuredCredit)}</span>
+                    <strong>{featuredCredit.title}</strong>
+                    <em>{featuredCredit.character ? `As ${featuredCredit.character}` : "View project"}</em>
+                  </div>
+                </RouterLink>
+                {mediaGroups.map((group) => (
+                  <div className="ls-profile__media-rail" key={group.key}>
+                    <div className="ls-profile__rail-head">
+                      <span className="mono">{group.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedWorkGroup(group.key)}
+                      >
+                        {group.credits.length > 6 ? `See all ${group.credits.length}` : "Open"}
+                      </button>
+                    </div>
+                    <div className="ls-profile__media-strip">
+                      {group.credits.slice(0, 6).map((credit) => (
+                        <RouterLink className="ls-profile__media-card" key={`${credit.contentKind}-${credit.contentId}-${credit.role}`} to={creditHref(credit)}>
+                          <CreditImage credit={credit} />
+                          <span className="ls-profile__media-kind">
+                            {credit.contentKind === "series" ? <Tv size={14} /> : <Film size={14} />}
+                            {creditKindLabel(credit.contentKind)}
+                          </span>
+                          <strong>{credit.title}</strong>
+                          <em>{credit.year} / {credit.role}</em>
+                        </RouterLink>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {profile.credits.length > 10 ? (
+                  <Button variant="outline" onClick={() => setExpandedWorkGroup("all")}>
+                    See full portfolio
+                  </Button>
+                ) : null}
+              </>
             ) : (
               <div className="ls-profile__state">No published VANTA work yet.</div>
             )}
-            {mediaGroups.map((group) => (
-              <div className="ls-profile__media-rail" key={group.key}>
-                <div className="ls-profile__rail-head">
-                  <span className="mono">{group.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedWorkGroup(group.key)}
-                  >
-                    {group.credits.length > 6 ? `See all ${group.credits.length}` : `Open ${group.credits.length}`}
-                  </button>
-                </div>
-                <div className="ls-profile__media-strip">
-                  {group.credits.slice(0, 6).map((credit) => (
-                    <RouterLink className="ls-profile__media-card" key={`${credit.contentKind}-${credit.contentId}-${credit.role}`} to={creditHref(credit)}>
-                      <CreditImage credit={credit} />
-                      <span className="ls-profile__media-kind">
-                        {credit.contentKind === "series" ? <Tv size={14} /> : <Film size={14} />}
-                        {creditKindLabel(credit.contentKind)}
-                      </span>
-                      <strong>{credit.title}</strong>
-                      <em>{credit.year} / {credit.role}</em>
-                    </RouterLink>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {profile.credits.length > 10 ? (
-              <Button variant="outline" onClick={() => setExpandedWorkGroup("all")}>
-                See full portfolio
-              </Button>
-            ) : null}
-          </section>
-
-          <section className="ls-profile__about">
-            <div>
-              <div className="ls-list__label mono">About</div>
-              <p>{profile.about || `${profile.displayName} has not added a bio yet.`}</p>
-            </div>
-            <div className="ls-profile__side">
-              <div className="ls-list__label mono">Known for</div>
-              {profile.knownFor.length === 0 ? (
-                <div className="ls-profile__side-row">
-                  <span>Focus</span>
-                  <span>Not listed yet</span>
-                </div>
-              ) : profile.knownFor.map((item) => (
-                <div className="ls-profile__side-row" key={item}>
-                  <span>Focus</span>
-                  <span>{item}</span>
-                </div>
-              ))}
-              <div className="ls-profile__side-row">
-                <span>Profile</span>
-                <span>{profileUrlPath}</span>
-              </div>
-            </div>
           </section>
         </>
       )}
 
-      <section className="ls-profile__filmography">
-        <div className="ls-profile__section-head">
-          <div className="ls-list__label mono">Credits</div>
-          <h2>Full credit list</h2>
-        </div>
-        {groupedCredits.length === 0 ? (
-          <div className="ls-profile__state">No credits yet.</div>
-        ) : (
-          groupedCredits.map(([role, credits]) => (
-            <div className="ls-profile__credit-group" key={role}>
-              <div className="ls-profile__role mono">{role}</div>
-              <div className="ls-profile__credits">
-                {credits.map((credit) => (
-                  <RouterLink
-                    className="ls-profile__credit"
-                    key={`${credit.contentKind}-${credit.contentId}-${credit.role}`}
-                    to={creditHref(credit)}
-                  >
-                    <CreditImage credit={credit} />
-                    <div>
-                      <div className="ls-profile__credit-title">{credit.title}</div>
-                      <div className="ls-profile__credit-meta mono">
-                        {credit.year}
-                        {credit.character ? ` / ${credit.character}` : ""}
-                      </div>
+      {editing ? (
+        <section className="ls-profile__filmography">
+          <div className="ls-profile__section-head">
+            <div className="ls-list__label mono">Credits</div>
+            <h2>Full credit list</h2>
+          </div>
+          {profile.credits.length === 0 ? (
+            <div className="ls-profile__state">No credits yet.</div>
+          ) : (
+            <div className="ls-profile__credits">
+              {profile.credits.map((credit) => (
+                <RouterLink
+                  className="ls-profile__credit"
+                  key={`${credit.contentKind}-${credit.contentId}-${credit.role}`}
+                  to={creditHref(credit)}
+                >
+                  <CreditImage credit={credit} />
+                  <div>
+                    <div className="ls-profile__credit-title">{credit.title}</div>
+                    <div className="ls-profile__credit-meta mono">
+                      {credit.year}
+                      {credit.character ? ` / ${credit.character}` : ""}
                     </div>
-                  </RouterLink>
-                ))}
-              </div>
+                  </div>
+                </RouterLink>
+              ))}
             </div>
-          ))
-        )}
-      </section>
+          )}
+        </section>
+      ) : null}
 
       {expandedWorkGroup ? (
         <div className="ls-profile__modal-backdrop" role="presentation" onMouseDown={() => setExpandedWorkGroup(null)}>
