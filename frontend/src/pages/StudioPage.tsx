@@ -4,14 +4,18 @@ import { useNavigate } from "react-router-dom";
 import {
   Activity,
   BarChart3,
+  CalendarClock,
   Check,
   ChevronRight,
   Clapperboard,
+  Clock3,
   Edit3,
   Eye,
   FileVideo,
   FolderOpen,
+  Gauge,
   MessageSquare,
+  PlayCircle,
   Radio,
   RefreshCw,
   Save,
@@ -154,36 +158,6 @@ function ToolCard({
   );
 }
 
-function RecentBroadcastRow({ broadcast }: { readonly broadcast: Broadcast }) {
-  return (
-    <div className="ls-studio__recent-row">
-      <img src={broadcast.thumbnail} alt="" />
-      <span>
-        <strong>{broadcast.title}</strong>
-        <span className="mono">
-          {broadcast.status} / {broadcast.category} / {formatViewers(broadcast.peakViewers)} peak
-        </span>
-      </span>
-      <em>{money(broadcast.revenue)}</em>
-    </div>
-  );
-}
-
-function RecentUploadRow({ upload }: { readonly upload: Upload }) {
-  return (
-    <div className="ls-studio__recent-row">
-      <img src={upload.thumbnail} alt="" />
-      <span>
-        <strong>{upload.title}</strong>
-        <span className="mono">
-          {upload.status} / {uploadLabel(upload)} / {formatRuntime(upload.durationSec)}
-        </span>
-      </span>
-      <em>{formatNumber(upload.views)} views</em>
-    </div>
-  );
-}
-
 function TopContentRow({ item }: { readonly item: TopContent }) {
   return (
     <div className="ls-studio__top-row">
@@ -196,6 +170,60 @@ function TopContentRow({ item }: { readonly item: TopContent }) {
       </span>
       <em className={item.trend >= 0 ? "is-positive" : ""}>{item.trend >= 0 ? "+" : ""}{pct(item.trend)}</em>
     </div>
+  );
+}
+
+function SpotlightMedia({
+  eyebrow,
+  title,
+  subtitle,
+  image,
+  meta,
+  children,
+}: {
+  readonly eyebrow: string;
+  readonly title: string;
+  readonly subtitle: string;
+  readonly image: string;
+  readonly meta: string;
+  readonly children: ReactNode;
+}) {
+  return (
+    <div className="ls-studio__spotlight">
+      <img src={image} alt="" />
+      <div className="ls-studio__spotlight-shade" />
+      <div className="ls-studio__spotlight-copy">
+        <span className="ls-studio__pill mono">{eyebrow}</span>
+        <h2>{title}</h2>
+        <p>{subtitle}</p>
+        <span className="ls-studio__spotlight-meta mono">{meta}</span>
+      </div>
+      <div className="ls-studio__spotlight-actions">{children}</div>
+    </div>
+  );
+}
+
+function MediaTile({
+  image,
+  title,
+  meta,
+  value,
+}: {
+  readonly image: string;
+  readonly title: string;
+  readonly meta: string;
+  readonly value: string;
+}) {
+  return (
+    <article className="ls-studio__media-tile">
+      <div className="ls-studio__media-thumb">
+        <img src={image} alt="" />
+        <span><PlayCircle size={16} strokeWidth={1.75} /></span>
+      </div>
+      <strong>{title}</strong>
+      <span className="mono">{meta}</span>
+      <em>{value}</em>
+    </article>
   );
 }
 
@@ -260,6 +288,33 @@ export function StudioPage() {
   const seriesEngagements = selectedUploads.reduce((sum, item) => sum + item.likes + item.comments, 0);
   const publishedSeriesUploads = selectedUploads.filter((item) => item.status === "published").length;
   const processingSeriesUploads = selectedUploads.filter((item) => item.status === "processing").length;
+  const featuredBroadcast = liveBroadcast ?? recentBroadcasts[0] ?? broadcasts[0] ?? null;
+  const featuredUpload = recentUploads[0] ?? selectedUploads[0] ?? null;
+  const heroImage =
+    view === "stream"
+      ? featuredBroadcast?.thumbnail ?? topContent[0]?.thumbnail ?? featuredUpload?.thumbnail ?? "/studio/streamer-ops.png"
+      : featuredUpload?.thumbnail ?? topContent[0]?.thumbnail ?? featuredBroadcast?.thumbnail ?? "/studio/series-director.png";
+  const heroTitle =
+    view === "stream"
+      ? featuredBroadcast?.title ?? "Ready the next live room"
+      : featuredUpload?.title ?? "Shape the next release";
+  const heroSubtitle =
+    view === "stream"
+      ? liveBroadcast
+        ? `${liveBroadcast.category} is live with ${formatViewers(liveBroadcast.averageViewers)} average viewers and ${formatNumber(liveBroadcast.chatMessages)} chat messages.`
+        : "Review the last broadcast, package clips, and open live ops before the next stream."
+      : featuredUpload
+        ? `${uploadLabel(featuredUpload)} is ${featuredUpload.status} with ${formatNumber(featuredUpload.views)} views and ${formatNumber(featuredUpload.watchHours)} watch hours.`
+        : "Bring source files, metadata, release status, and publish readiness into one director view.";
+  const heroMeta =
+    view === "stream"
+      ? liveBroadcast
+        ? "Live now"
+        : `${recentBroadcasts.length} recent streams`
+      : `${publishedSeriesUploads} published / ${processingSeriesUploads} processing`;
+  const uploadProgress = selectedJob
+    ? Math.min(100, Math.round((selectedJob.bytesReceived / Math.max(selectedJob.bytesExpected, 1)) * 100))
+    : 0;
 
   const selectJob = useCallback((job: UploadJob) => {
     setSelectedId(job.id);
@@ -533,32 +588,75 @@ export function StudioPage() {
             Refresh
           </Button>
         </div>
-        <div className="ls-studio__switch" role="tablist" aria-label="Creator Studio view">
-          <button
-            type="button"
-            className={view === "stream" ? "is-active" : ""}
-            onClick={() => setView("stream")}
-            role="tab"
-            aria-selected={view === "stream"}
-          >
-            <Radio size={15} strokeWidth={1.75} />
-            Streamer
-          </button>
-          <button
-            type="button"
-            className={view === "series" ? "is-active" : ""}
-            onClick={() => setView("series")}
-            role="tab"
-            aria-selected={view === "series"}
-          >
-            <Clapperboard size={15} strokeWidth={1.75} />
-            Series Director
-          </button>
-        </div>
       </header>
 
       {status ? <div className="ls-studio__notice"><Check size={14} />{status}</div> : null}
       {error ? <div className="ls-studio__error">{error}</div> : null}
+
+      <section className="ls-studio__hero-grid">
+        <SpotlightMedia
+          eyebrow={view === "stream" ? "Streamer command" : "Series director command"}
+          title={heroTitle}
+          subtitle={heroSubtitle}
+          image={heroImage}
+          meta={heroMeta}
+        >
+          <Button
+            variant="primary"
+            icon={view === "stream" ? <Radio /> : <Edit3 />}
+            onClick={() => navigate(view === "stream" ? "/studio/tool/live-ops" : "/studio/tool/series-editor")}
+          >
+            {view === "stream" ? "Open Live Ops" : "Open Series Hub"}
+          </Button>
+          <Button
+            variant="outline"
+            icon={view === "stream" ? <Edit3 /> : <FolderOpen />}
+            onClick={() => navigate(view === "stream" ? "/studio/tool/stream-editor" : "/studio/tool/file-manager")}
+          >
+            {view === "stream" ? "Package Stream" : "Open Files"}
+          </Button>
+        </SpotlightMedia>
+
+        <aside className="ls-studio__role-rail" aria-label="Creator mode">
+          <div className="ls-studio__switch" role="tablist" aria-label="Creator Studio view">
+            <button
+              type="button"
+              className={view === "stream" ? "is-active" : ""}
+              onClick={() => setView("stream")}
+              role="tab"
+              aria-selected={view === "stream"}
+            >
+              <Radio size={15} strokeWidth={1.75} />
+              Streamer
+            </button>
+            <button
+              type="button"
+              className={view === "series" ? "is-active" : ""}
+              onClick={() => setView("series")}
+              role="tab"
+              aria-selected={view === "series"}
+            >
+              <Clapperboard size={15} strokeWidth={1.75} />
+              Series Director
+            </button>
+          </div>
+          <div className="ls-studio__focus-list">
+            {view === "stream" ? (
+              <>
+                <div><Gauge size={15} /><span><strong>Room state</strong><em>{liveBroadcast ? "Live broadcast active" : "Offline and ready"}</em></span></div>
+                <div><MessageSquare size={15} /><span><strong>Audience pulse</strong><em>{formatNumber(streamChatCount)} chat messages tracked</em></span></div>
+                <div><CalendarClock size={15} /><span><strong>Recent runs</strong><em>{recentBroadcasts.length} broadcasts ready for packaging</em></span></div>
+              </>
+            ) : (
+              <>
+                <div><Clapperboard size={15} /><span><strong>Release slate</strong><em>{formatNumber(selectedUploads.length)} titles in the long-form library</em></span></div>
+                <div><Clock3 size={15} /><span><strong>Pipeline</strong><em>{processingSeriesUploads} processing, {publishedSeriesUploads} published</em></span></div>
+                <div><FileVideo size={15} /><span><strong>Upload jobs</strong><em>{jobs.length} source jobs available</em></span></div>
+              </>
+            )}
+          </div>
+        </aside>
+      </section>
 
       <section className="ls-studio__metrics" aria-label="Engagement stats">
         {metricCards.map((item) => (
@@ -615,14 +713,22 @@ export function StudioPage() {
           <div className="ls-studio__panel">
             <div className="ls-studio__panel-head">
               <div>
-                <h2>Recent streams</h2>
-                <p>{recentBroadcasts.length} recent broadcasts</p>
+                <h2>Recent stream replays</h2>
+                <p>{recentBroadcasts.length} broadcasts ready for review and clip packaging</p>
               </div>
               <Radio size={18} strokeWidth={1.75} />
             </div>
-            <div className="ls-studio__recent-list">
+            <div className="ls-studio__media-grid">
               {recentBroadcasts.length === 0 ? <div className="ls-studio__empty">No recent streams yet.</div> : null}
-              {recentBroadcasts.map((item) => <RecentBroadcastRow key={item.id} broadcast={item} />)}
+              {recentBroadcasts.slice(0, 4).map((item) => (
+                <MediaTile
+                  key={item.id}
+                  image={item.thumbnail}
+                  title={item.title}
+                  meta={`${item.status} / ${item.category}`}
+                  value={`${formatViewers(item.peakViewers)} peak`}
+                />
+              ))}
             </div>
           </div>
 
@@ -651,7 +757,18 @@ export function StudioPage() {
               <BarChart3 size={18} strokeWidth={1.75} />
             </div>
             <div className="ls-studio__top-list">
-              {topContent.slice(0, 5).map((item) => <TopContentRow key={item.id} item={item} />)}
+              <div className="ls-studio__media-grid ls-studio__media-grid--wide">
+                {topContent.slice(0, 4).map((item) => (
+                  <MediaTile
+                    key={item.id}
+                    image={item.thumbnail}
+                    title={item.title}
+                    meta={`${item.kind} / ${formatNumber(item.views)} views`}
+                    value={`${item.trend >= 0 ? "+" : ""}${pct(item.trend)} trend`}
+                  />
+                ))}
+              </div>
+              {topContent.slice(4, 7).map((item) => <TopContentRow key={item.id} item={item} />)}
               {topContent.length === 0 ? <div className="ls-studio__empty">No top content yet.</div> : null}
             </div>
           </div>
@@ -661,14 +778,22 @@ export function StudioPage() {
           <div className="ls-studio__panel ls-studio__panel--wide">
             <div className="ls-studio__panel-head">
               <div>
-                <h2>Recent episodes and films</h2>
-                <p>{recentUploads.length} newest long-form uploads</p>
+                <h2>Director slate</h2>
+                <p>{recentUploads.length} newest episodes and films with release state, attention, and packaging.</p>
               </div>
               <Clapperboard size={18} strokeWidth={1.75} />
             </div>
-            <div className="ls-studio__recent-list">
+            <div className="ls-studio__media-grid ls-studio__media-grid--wide">
               {recentUploads.length === 0 ? <div className="ls-studio__empty">No series or film uploads yet.</div> : null}
-              {recentUploads.map((item) => <RecentUploadRow key={item.id} upload={item} />)}
+              {recentUploads.slice(0, 6).map((item) => (
+                <MediaTile
+                  key={item.id}
+                  image={item.thumbnail}
+                  title={item.title}
+                  meta={`${item.status} / ${uploadLabel(item)}`}
+                  value={`${formatNumber(item.views)} views`}
+                />
+              ))}
             </div>
           </div>
 
@@ -686,6 +811,14 @@ export function StudioPage() {
               <div><span className="mono">Latest</span>{compactDate(recentUploads[0]?.publishedAt ?? recentUploads[0]?.uploadedAt)}</div>
               <div><span className="mono">Engagement</span>{formatNumber(seriesEngagements)}</div>
             </div>
+            {featuredUpload ? (
+              <div className="ls-studio__release-card">
+                <img src={featuredUpload.thumbnail} alt="" />
+                <span className="ls-studio__pill mono">{featuredUpload.status}</span>
+                <strong>{featuredUpload.title}</strong>
+                <em>{formatRuntime(featuredUpload.durationSec)} / {featuredUpload.resolution}</em>
+              </div>
+            ) : null}
           </div>
 
           <div className="ls-studio__panel">
@@ -804,11 +937,12 @@ export function StudioPage() {
                     <Input value={selectedMimeType} onChange={(event) => setSelectedMimeType(event.target.value)} />
                   </label>
                 </div>
-                <div className="ls-studio__facts">
-                  <div><span className="mono">Storage</span>{selectedJob.storageKey}</div>
-                  <div><span className="mono">Received</span>{formatBytes(selectedJob.bytesReceived)}</div>
-                  <div><span className="mono">Updated</span>{formatRelativeTime(selectedJob.updatedAt)}</div>
-                </div>
+              <div className="ls-studio__facts">
+                <div><span className="mono">Storage</span>{selectedJob.storageKey}</div>
+                <div><span className="mono">Received</span>{formatBytes(selectedJob.bytesReceived)}</div>
+                <div><span className="mono">Progress</span>{uploadProgress}%</div>
+                <div><span className="mono">Updated</span>{formatRelativeTime(selectedJob.updatedAt)}</div>
+              </div>
                 <Button variant="primary" icon={<Save />} onClick={() => void saveSelectedJob()} disabled={saving}>
                   {saving ? "Saving..." : "Save metadata"}
                 </Button>
