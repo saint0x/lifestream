@@ -89,7 +89,7 @@ function statusTone(status: string): "neutral" | "new" | "premium" | "live" {
 }
 
 function brandSafetyLabel(value: InventoryItem["brandSafety"]): string {
-  if (value === "sensitive_review") return "Vanta review";
+  if (value === "sensitive_review") return "VANTA Agency review";
   if (value === "restricted") return "Restricted";
   return "Standard";
 }
@@ -173,7 +173,7 @@ function initialOrders(): ReadonlyArray<Order> {
   const lines = seededLines();
   const quote = quoteFor(lines);
   return [{
-    id: "VANTA-20260824-001",
+    id: "AGENCY-20260824-001",
     createdAt: "2026-08-24T12:00:00.000Z",
     advertiser: portal.account.company.name,
     lines,
@@ -597,7 +597,7 @@ function CartView({
           </label>
           <label className="ea-order-form__wide">
             <span className="ea-label mono">Next</span>
-            <textarea readOnly value="VANTA reserves inventory, routes review-required packages to ops, creates creator offers, and opens approval rooms when work is submitted." />
+            <textarea readOnly value="VANTA Agency reserves inventory, routes review-required packages to ops, creates creator offers, and opens approval rooms when work is submitted." />
           </label>
         </div>
         <Button variant="primary" icon={<CreditCard />} full disabled={lines.length === 0 || !canBuy} onClick={() => placeOrder(paymentMethod)}>
@@ -1029,7 +1029,7 @@ export function App() {
   const placeOrder = (paymentMethod: string) => {
     const quote = quoteFor(lines);
     const order: Order = {
-      id: `VANTA-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${String(orders.length + 1).padStart(3, "0")}`,
+      id: `AGENCY-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${String(orders.length + 1).padStart(3, "0")}`,
       createdAt: new Date().toISOString(),
       advertiser: account.company.name,
       lines,
@@ -1051,9 +1051,9 @@ export function App() {
       <aside className="ea-shell">
         <div className="ea-brand">
           <span className="mono">VANTA</span>
-          <strong>External Ad Hub</strong>
+          <strong>Agency</strong>
         </div>
-        <nav className="ea-nav" aria-label="External Ad Hub">
+        <nav className="ea-nav" aria-label="VANTA Agency">
           {views.map((item) => (
             <button key={item.id} type="button" className={view === item.id ? "is-active" : ""} onClick={() => navigateView(item.id)}>
               {item.label}
@@ -1069,9 +1069,9 @@ export function App() {
       <main className="ea-main">
         <header className="ea-head">
           <div>
-            <span className="ea-kicker mono">Advertiser buying desk</span>
+            <span className="ea-kicker mono">VANTA Agency desk</span>
             <h1>{title}</h1>
-            <p>Buy creator media packages, checkout, and manage the campaign work that follows.</p>
+            <p>Shop creator media packages, checkout, and manage the campaign work that follows.</p>
           </div>
           <Button variant={lines.length > 0 ? "primary" : "outline"} icon={<ShoppingCart />} onClick={() => navigateView(lines.length > 0 ? "cart" : "creators")}>
             {lines.length > 0 ? `${cartUnits} units / ${money(cartQuote.totalCents)}` : "Browse creators"}

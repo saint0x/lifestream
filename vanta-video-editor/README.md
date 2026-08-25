@@ -62,5 +62,5 @@ python3 tests/editor-aegis-e2e.py
 - Auth is represented by Vanta role headers in this standalone service: `X-Vanta-User-Id` and `X-Vanta-Role`.
 - Generated media lives under `VANTA_EDITOR_MEDIA_ROOT`; editor SQLite lives at `VANTA_EDITOR_DATABASE`.
 - `VANTA_MEDIA_PIPELINE_DATABASE` enables root-compatible Vanta media pipeline writes into `upload_jobs`, `media_assets`, `media_asset_variants`, and advertiser marketplace submissions. If omitted, editor publish still returns the intended pipeline identifiers but does not mutate an external pipeline database.
-- `VANTA_AD_HUB_OUTBOX` receives structured review-room JSON files for the External Ad Hub sync path.
+- `VANTA_AD_HUB_OUTBOX` receives structured review-room JSON files for the VANTA Agency sync path.
 - Advertiser proof links resolve to `https://streamvanta.tv/ad-hub/proofs/{token}` and are stored with review request records plus Ad Hub outbox records.

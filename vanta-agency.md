@@ -1,27 +1,27 @@
-# External Ad Hub Engineering Design
+# VANTA Agency Engineering Design
 
 ## Purpose
 
-This document defines the engineering design for Vanta's external advertiser portal.
+This document defines the engineering design for Vanta's external agency portal.
 
 The existing Ad Hub is creator-facing. It lets creators review sponsorship offers, accept or decline them, see package templates, and submit campaign proof for advertiser review.
 
-The external Ad Hub is the other side of that marketplace.
+VANTA Agency is the other side of that marketplace.
 
-It should let advertisers discover Vanta's creator inventory, understand pricing and Qualified Attention evidence, configure campaigns, submit briefs, manage approvals, review work, comment on submissions, view delivery, and renew or expand buys with as much self-service as possible.
+It should let agency buyers discover Vanta's creator inventory, understand pricing and Qualified Attention evidence, configure campaigns, submit briefs, manage approvals, review work, comment on submissions, view delivery, and renew or expand buys with as much self-service as possible.
 
 This is not only a financial portal.
 
-It is also the advertiser work-review portal.
+It is also the agency work-review portal.
 
-Advertisers need custom logins, campaign workspaces, review links, threaded comments, asset/version history, approval states, and an audit trail for what was approved, rejected, or revised.
+Agency buyers need custom logins, campaign workspaces, review links, threaded comments, asset/version history, approval states, and an audit trail for what was approved, rejected, or revised.
 
 The business model sits in the middle:
 
 ```text
 Creators bring exclusive programming and audience
 -> Vanta packages and verifies the inventory
--> Advertisers buy access through the external Ad Hub
+-> Agency buyers buy access through VANTA Agency
 -> Creators get paid
 -> Vanta captures the marketplace spread / platform fee
 ```
@@ -87,7 +87,7 @@ Current ad marketplace migrations:
 Current tables:
 
 ```text
-ad_marketplace_advertisers
+ad_marketplace_agency buyers
 ad_marketplace_inventory_packages
 ad_marketplace_campaigns
 ad_marketplace_offers
@@ -154,7 +154,7 @@ Advertisers still buy normal outcomes such as reach, category ownership, sponsor
 
 ## Product Goal
 
-The external Ad Hub should make Vanta self-service for advertisers without making it low-ticket.
+VANTA Agency should make Vanta self-service for agency buyers without making it low-ticket.
 
 High-ticket buyers should be able to inspect inventory, pricing, creator fit, audience quality, package terms, and reporting examples before speaking to a rep.
 
@@ -318,7 +318,7 @@ Examples:
 
 ### 5. Campaign Brief
 
-Advertisers need a structured brief form.
+Agency buyers need a structured brief form.
 
 Fields:
 
@@ -415,7 +415,7 @@ Important rule:
 
 ### 7. Approvals Inbox
 
-Advertisers need a direct counterpart to creator submissions.
+Agency buyers need a direct counterpart to creator submissions.
 
 When a creator submits proof or a rough cut, the advertiser sees:
 
@@ -450,7 +450,7 @@ Offer-level `advertiser_review_status` should be updated from this advertiser wo
 
 Each campaign should have a dedicated review workspace.
 
-This is where advertisers inspect work before approval.
+This is where agency buyers inspect work before approval.
 
 The review room should include:
 
@@ -559,7 +559,7 @@ Renewals should be based on:
 
 ### New Advertiser Auth And Account Model
 
-Current `ad_marketplace_advertisers` is an entity table, not a full auth/account model.
+Current `ad_marketplace_agency buyers` is an entity table, not a full auth/account model.
 
 Needed tables:
 
@@ -847,7 +847,7 @@ Reusable concepts:
 
 Do not force advertiser UI into the creator dashboard layout.
 
-Advertisers need discovery, comparison, pricing, and proof.
+Agency buyers need discovery, comparison, pricing, and proof.
 
 Advertisers also need structured work review.
 
@@ -1049,7 +1049,7 @@ hidden
 
 ## Pricing Model
 
-External Ad Hub v1 pricing should be quote-based, not a fully automated exchange.
+VANTA Agency v1 pricing should be quote-based, not a fully automated exchange.
 
 Pricing should show enough to support self-service discovery while preserving sales control for high-value or scarce inventory.
 
@@ -1080,7 +1080,7 @@ Quote factors:
 
 ## Dashboard Content Driven By Sales Research
 
-The portal should directly answer what recent market research says advertisers care about.
+The portal should directly answer what recent market research says agency buyers care about.
 
 ### Measurement And Standards
 
@@ -1333,10 +1333,10 @@ advertiser_campaign_reporting
 - What auth model should advertiser accounts use relative to existing user auth?
 - Should advertiser self-serve checkout be allowed immediately or only after sales approval?
 - Which package prices are public versus quote-gated?
-- Which creator attention metrics are public to advertisers before a deal?
+- Which creator attention metrics are public to agency buyers before a deal?
 - How should Vanta define its first brand safety and suitability taxonomy?
 - When should third-party verification become a required integration?
-- Should creator payout be visible to advertisers or only total package price?
+- Should creator payout be visible to agency buyers or only total package price?
 - How much pricing logic should be deterministic versus sales-configured?
 - Should timestamped comments require Vanta-hosted video playback, or can v1 support external review URLs only?
 - Which comments should creators see directly versus through Vanta mediation?
@@ -1344,7 +1344,7 @@ advertiser_campaign_reporting
 
 ## Success Definition
 
-The external Ad Hub succeeds when an advertiser can:
+VANTA Agency succeeds when an advertiser can:
 
 1. Understand Vanta without a sales call.
 2. Browse real creator and series inventory.

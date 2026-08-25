@@ -4,14 +4,14 @@
 
 Creator Ad Hub is the creator-side advertising workspace inside the main Vanta frontend.
 
-This is not the standalone external buyer app. This surface lives in the base frontend and is used by Vanta creators.
+This is not the standalone VANTA Agency app. This surface lives in the base frontend and is used by Vanta creators.
 
-It is the creator's personal command center for sponsorship offers, campaign requirements, payout visibility, review submissions, and proof. If the external Ad Hub is where media buyers purchase Vanta inventory, Creator Ad Hub is where creators receive, evaluate, execute, and submit that inventory back into the system.
+It is the creator's personal command center for sponsorship offers, campaign requirements, payout visibility, review submissions, and proof. If VANTA Agency is where media buyers purchase Vanta inventory, Creator Ad Hub is where creators receive, evaluate, execute, and submit that inventory back into the system.
 
 This is one half of the advertising coin.
 
 ```text
-External Ad Hub = buyer demand
+VANTA Agency = buyer demand
 Creator Ad Hub = creator execution
 Vanta = marketplace infrastructure in the middle
 ```
@@ -22,7 +22,7 @@ Creator Ad Hub helps creators understand the business opportunity attached to th
 
 Creators should be able to answer:
 
-- Which advertisers want to buy my audience?
+- Which agency buyers want to buy my audience?
 - What campaign is being offered?
 - What do I have to make or submit?
 - What is the gross offer?
@@ -76,7 +76,7 @@ That is why the creator-side hub matters. It prevents sales from dissolving into
 
 Creator Ad Hub should always feel creator-benefit focused.
 
-The creator is not being asked to blindly serve advertisers. The creator is being given a clearer way to convert the attention around their programming into money.
+The creator is not being asked to blindly serve agency buyers. The creator is being given a clearer way to convert the attention around their programming into money.
 
 The mental model:
 

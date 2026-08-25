@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "vanta-external-ad-hub",
+      "name": "vanta-agency",
       "dependencies": {
         "@vitejs/plugin-react": "^6.0.1",
         "clsx": "^2.1.1",

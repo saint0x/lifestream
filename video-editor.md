@@ -21,7 +21,7 @@ The business model sits directly underneath the product:
 ```text
 Creators make high-quality programming
 -> creators and Vanta place, produce, and approve ad inventory
--> Vanta packages that qualified attention for advertisers
+-> Vanta packages that qualified attention for agency buyers
 -> finished media goes live with defensible inventory and measurement
 -> creators get paid
 -> Vanta captures the marketplace spread / platform fee
@@ -95,7 +95,7 @@ Raw files, rendered versions, proxy media, waveform data, thumbnails, captions, 
 Current ad marketplace entities:
 
 ```text
-ad_marketplace_advertisers
+ad_marketplace_agency buyers
 ad_marketplace_inventory_packages
 ad_marketplace_campaigns
 ad_marketplace_offers
@@ -227,11 +227,11 @@ Can access creator projects tied to Vanta campaigns, inspect deliverables, add o
 
 ### Vanta Sales / Ad Ops
 
-Can connect campaign requirements to editor projects, verify that sold inventory has been produced, create proof assets, and route final submissions to advertisers.
+Can connect campaign requirements to editor projects, verify that sold inventory has been produced, create proof assets, and route final submissions to agency buyers.
 
 ### Advertiser Reviewer
 
-Eventually accesses only the submitted review room or proof link, not the full editor. They can comment, request revisions, and approve work through the external Ad Hub workflow.
+Eventually accesses only the submitted review room or proof link, not the full editor. They can comment, request revisions, and approve work through the VANTA Agency workflow.
 
 ## Core Editor Surfaces
 
@@ -513,7 +513,7 @@ vanta_internal
 advertiser_visible
 ```
 
-Advertiser comments should enter through the external Ad Hub review room, then appear in the editor as structured revision work.
+Advertiser comments should enter through the VANTA Agency review room, then appear in the editor as structured revision work.
 
 ### 9. Versioning
 
@@ -801,7 +801,7 @@ editor_review_requests
 - resolved_at nullable
 ```
 
-Advertiser review requests should create or connect to the external Ad Hub review room.
+Advertiser review requests should create or connect to the VANTA Agency review room.
 
 ### Render Jobs And Exports
 
@@ -888,7 +888,7 @@ Authorization rules:
 - creators may only access projects they own or have explicit membership in;
 - Vanta internal users may access projects required for operations, campaign delivery, review, or support;
 - advertiser users may not access the full editor;
-- advertiser review access should happen through external Ad Hub review rooms and proof links;
+- advertiser review access should happen through VANTA Agency review rooms and proof links;
 - publish mutations require creator ownership or explicit Vanta operator permission;
 - ad slot locking requires Vanta ad-ops permission when tied to sold inventory.
 
@@ -1108,11 +1108,11 @@ expired
 cancelled
 ```
 
-## Integration With External Ad Hub
+## Integration With VANTA Agency
 
-The editor and external Ad Hub should meet at the review and deliverable layer.
+The editor and VANTA Agency should meet at the review and deliverable layer.
 
-External Ad Hub is where advertisers:
+VANTA Agency is where agency buyers:
 
 - buy inventory;
 - submit structured briefs;
@@ -1139,7 +1139,7 @@ Campaign brief
 -> editor campaign requirements
 -> ad slots and deliverables
 -> review export
--> external Ad Hub review room
+-> VANTA Agency review room
 -> advertiser comments / approvals
 -> editor revision work
 -> final export
@@ -1257,7 +1257,7 @@ Deliver:
 - creator internal review;
 - Vanta review;
 - advertiser review export;
-- external Ad Hub review-room integration;
+- VANTA Agency review-room integration;
 - revision states;
 - approval audit trail.
 
@@ -1314,7 +1314,7 @@ Fozzy should be preferred for deterministic scenario coverage when implementatio
 - Which formats should be supported first: MP4 upload, HLS source import, live archive import, or all three?
 - Should Vanta Editor own caption generation, or call the existing media pipeline once transcript/caption assets exist?
 - How should collaborative editing conflicts be resolved in v1: optimistic last-write-wins, locked sections, or real-time collaboration?
-- Which advertiser review states should be owned by the editor versus external Ad Hub?
+- Which advertiser review states should be owned by the editor versus VANTA Agency?
 - What ad placement types are required for the first paid campaigns?
 - What is the minimum export quality required for Vanta publishing?
 

@@ -1,8 +1,8 @@
-# External Ad Hub First-Principles Notes
+# VANTA Agency First-Principles Notes
 
 ## Reality
 
-Advertisers arrive with budget, business goals, approvals, risk constraints, and reporting expectations. They do not arrive understanding VANTA's creator-side workflow or internal measurement vocabulary.
+Agency buyers arrive with budget, business goals, approvals, risk constraints, and reporting expectations. They do not arrive understanding VANTA's creator-side workflow or internal measurement vocabulary.
 
 ## Interpretation
 
@@ -12,15 +12,15 @@ The portal should not behave like a marketing page or a generic dashboard. It sh
 
 - High-ticket buying usually depends on reps, but most information gating is organizational habit, not a physical requirement.
 - Free-text briefs feel flexible, but they create pricing, routing, legal, production, and reporting ambiguity.
-- Qualified Attention is valuable proof, but advertisers still buy ad packages and campaign outcomes.
+- Qualified Attention is valuable proof, but agencies still buy ad packages and campaign outcomes.
 
 ## What The Lamp Reveals
 
-The creator Ad Hub proves VANTA already has marketplace state and media surfaces. The advertiser hub should expose the counterpart state in the order external buyers buy: popular creators, popular niches, platform proof, creator media, package choice, checkout, then operations.
+The creator Ad Hub proves VANTA already has marketplace state and media surfaces. VANTA Agency should expose the counterpart state in the order media buyers buy: popular creators, popular niches, platform proof, creator media, package choice, checkout, then operations.
 
 ## Better Abstraction
 
-This is not merely an advertiser dashboard. It is a visual media shopping and ordering system with post-purchase work review and reporting.
+This is not merely an advertiser dashboard. It is an agency-grade visual media shopping and ordering system with post-purchase work review and reporting.
 
 ## What Is Proven
 
@@ -44,4 +44,4 @@ This is not merely an advertiser dashboard. It is a visual media shopping and or
 
 ## Honest Thesis
 
-The external Ad Hub wins if advertisers can calmly inspect the actual media, understand which creators and niches are worth buying, and purchase thousands of dollars of creator inventory without needing a sales rep to explain the platform, while VANTA still captures the structured state needed to price, route, approve, measure, and renew the campaign.
+VANTA Agency wins if buyers can calmly inspect the actual media, understand which creators and niches are worth buying, and purchase thousands of dollars of creator inventory without needing a sales rep to explain the platform, while VANTA still captures the structured state needed to price, route, approve, measure, and renew the campaign.

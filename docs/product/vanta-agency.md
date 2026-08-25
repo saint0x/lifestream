@@ -1,23 +1,23 @@
-# External Ad Hub
+# VANTA Agency
 
 ## Purpose
 
-External Ad Hub is the standalone dashboard for external media buyers.
+VANTA Agency is the standalone dashboard for external media buyers.
 
-This is not the creator Ad Hub in the main frontend. This is a separate app for advertisers, agencies, and media-buying teams.
+This is not the creator Ad Hub in the main frontend. This is a separate app for agencies, advertiser representatives, and media-buying teams.
 
-It exists so advertisers, agencies, and media buyers can quickly discover, compare, configure, and purchase advertising inventory across Vanta's creator media properties.
+It exists so media buyers can quickly discover, compare, configure, and purchase advertising inventory across Vanta's creator media properties.
 
 The product goal is to remove friction.
 
-A buyer should not need five sales calls just to understand what exists, who the audience is, what it costs, what proof exists, and how to buy. The external Ad Hub should make Vanta inventory feel easy to inspect and easy to purchase without making the inventory feel cheap.
+A buyer should not need five sales calls just to understand what exists, who the audience is, what it costs, what proof exists, and how to buy. VANTA Agency should make Vanta inventory feel easy to inspect and easy to purchase without making the inventory feel cheap.
 
 ## Product Role
 
-External Ad Hub is the demand-side half of Vanta's advertising marketplace.
+VANTA Agency is the demand-side half of Vanta's advertising marketplace.
 
 ```text
-Media buyers enter External Ad Hub
+Media buyers enter VANTA Agency
 -> browse creators, niches, packages, pricing, and proof
 -> configure campaign details
 -> place or request the buy
@@ -31,16 +31,16 @@ The buyer-facing app supports Vanta's business because self-service buying expan
 
 Current implementation lives in:
 
-- `external-ad-hub/`
-- `external-ad-hub/src/app/App.tsx`
-- `external-ad-hub/src/data/portal.ts`
-- `external-ad-hub/src/domain/types.ts`
-- `external-ad-hub/src/components/ui`
+- `vanta-agency/`
+- `vanta-agency/src/app/App.tsx`
+- `vanta-agency/src/data/portal.ts`
+- `vanta-agency/src/domain/types.ts`
+- `vanta-agency/src/components/ui`
 
 The directory also includes its own README and product notes:
 
-- `external-ad-hub/README.md`
-- `external-ad-hub/docs/first-principles.md`
+- `vanta-agency/README.md`
+- `vanta-agency/docs/first-principles.md`
 
 The current product surface includes:
 
@@ -72,14 +72,14 @@ Without this product, sales depends too heavily on manual explanation:
 - what has been approved;
 - what was delivered.
 
-External Ad Hub makes that information legible to buyers. That reduces friction, increases confidence, and should increase buying volume.
+VANTA Agency makes that information legible to buyers. That reduces friction, increases confidence, and should increase buying volume.
 
 ## The Marketplace Coin
 
-External Ad Hub and Creator Ad Hub are two sides of one system.
+VANTA Agency and Creator Ad Hub are two sides of one system.
 
 ```text
-External Ad Hub = buyers purchase the inventory
+VANTA Agency = buyers purchase the inventory
 Creator Ad Hub = creators execute the inventory
 Vanta = infrastructure, measurement, review, reporting, and marketplace fee
 ```
@@ -98,7 +98,7 @@ Vanta captures value because it operates the infrastructure in the middle:
 
 ## What Good Looks Like
 
-External Ad Hub should help a buyer answer:
+VANTA Agency should help a buyer answer:
 
 - Who can I buy?
 - What audience do they bring?

@@ -1,8 +1,8 @@
-# VANTA External Ad Hub
+# VANTA Agency
 
-Separate advertiser-facing portal for VANTA's media marketplace.
+Separate agency-facing portal for VANTA's media marketplace.
 
-The creator Ad Hub lets creators receive offers, accept or decline campaigns, and submit work for review. This app is the other side of that marketplace: external advertisers browse visual creator media, inspect niches and platform stats, add multiple buys to a combined checkout order, pay with a hard-coded payment surface, and then manage approvals and reporting after purchase.
+The creator Ad Hub lets creators receive offers, accept or decline campaigns, and submit work for review. VANTA Agency is the other side of that marketplace: agency buyers browse visual creator media, inspect niches and platform stats, add multiple buys to a combined checkout order, pay with a hard-coded payment surface, and then manage approvals and reporting after purchase.
 
 ## Structure
 
@@ -16,7 +16,7 @@ The creator Ad Hub lets creators receive offers, accept or decline campaigns, an
 ## Run
 
 ```bash
-cd external-ad-hub
+cd vanta-agency
 bun install
 bun run dev
 ```
@@ -34,7 +34,6 @@ When advertiser backend endpoints are available, replace `src/data/portal.ts` an
 For browser verification without clicking through the mock cart, use:
 
 ```text
-/?seed=cart#cart
 /?seed=cart#cart
 /?seed=order#orders
 ```
