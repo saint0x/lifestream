@@ -20,7 +20,7 @@
         "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/v1/people/mara-vale')); print(f\"{data['slug']}|{data['displayName']}|{len(data['credits'])}|{data['credits'][0]['title']}\")"
       ],
       "expect_exit": 0,
-      "expect_stdout": "mara-vale|Mara Vale|1|Northlight\n"
+      "expect_stdout": "mara-vale|Mara Vale|2|Ghost Standard\n"
     },
     {
       "type": "proc_when",

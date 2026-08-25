@@ -4,11 +4,14 @@ import {
   Check,
   Copy,
   ExternalLink,
+  Film,
   Link as LinkIcon,
   Pencil,
   Plus,
   Save,
   Trash2,
+  Tv,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import type { IconType } from "react-icons";
@@ -100,6 +103,49 @@ function profileInitials(name: string): string {
     .join("") || "V";
 }
 
+function creditHref(credit: PersonProfile["credits"][number]): string {
+  return credit.contentKind === "series"
+    ? `/series/${credit.contentSlug}`
+    : `/film/${credit.contentSlug}`;
+}
+
+function creditKindLabel(kind: PersonProfile["credits"][number]["contentKind"]): string {
+  return kind === "series" ? "Series" : "Film";
+}
+
+function creditDescriptor(credit: PersonProfile["credits"][number]): string {
+  return [
+    creditKindLabel(credit.contentKind),
+    String(credit.year),
+    credit.role,
+    credit.character,
+  ].filter(Boolean).join(" / ");
+}
+
+function CreditImage({
+  credit,
+  className,
+}: {
+  readonly credit: PersonProfile["credits"][number];
+  readonly className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [credit.poster]);
+
+  if (!credit.poster || failed) {
+    return (
+      <div className={className ? `${className} ls-profile__poster-fallback` : "ls-profile__poster-fallback"} aria-hidden="true">
+        <span>{credit.title}</span>
+      </div>
+    );
+  }
+
+  return <img className={className} src={credit.poster} alt="" loading="lazy" onError={() => setFailed(true)} />;
+}
+
 function payloadFromForm(form: PersonForm): UpdatePersonProfileRequest {
   return {
     slug: form.slug,
@@ -141,6 +187,7 @@ export function ProfilePage() {
   const [status, setStatus] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [expandedWorkGroup, setExpandedWorkGroup] = useState<"series" | "film" | "all" | null>(null);
 
   useEffect(() => {
     if (!isOwnProfile && !publicSlug) {
@@ -187,6 +234,14 @@ export function ProfilePage() {
       groups.set(key, [...(groups.get(key) ?? []), credit]);
     }
     return Array.from(groups.entries());
+  }, [profile]);
+
+  const mediaGroups = useMemo(() => {
+    const credits = profile?.credits ?? [];
+    return [
+      { key: "series" as const, label: "Series", credits: credits.filter((credit) => credit.contentKind === "series") },
+      { key: "film" as const, label: "Films", credits: credits.filter((credit) => credit.contentKind === "film") },
+    ].filter((group) => group.credits.length > 0);
   }, [profile]);
 
   const updateField = (field: keyof PersonForm, value: string) => {
@@ -290,6 +345,20 @@ export function ProfilePage() {
   const heroStyle = profile.heroImage || profile.avatar
     ? { backgroundImage: `url(${profile.heroImage || profile.avatar})` }
     : undefined;
+  const featuredCredit = profile.credits[0] ?? null;
+  const seriesCount = profile.credits.filter((credit) => credit.contentKind === "series").length;
+  const filmCount = profile.credits.filter((credit) => credit.contentKind === "film").length;
+  const roleCount = new Set(profile.credits.map((credit) => credit.role)).size;
+  const expandedCredits = expandedWorkGroup === "all"
+    ? profile.credits
+    : expandedWorkGroup
+      ? profile.credits.filter((credit) => credit.contentKind === expandedWorkGroup)
+      : [];
+  const expandedTitle = expandedWorkGroup === "series"
+    ? "All series work"
+    : expandedWorkGroup === "film"
+      ? "All film work"
+      : "All work";
 
   return (
     <div className="ls-profile">
@@ -348,6 +417,8 @@ export function ProfilePage() {
             <div className="ls-profile__meta mono">
               {profile.location ? <span>{profile.location}</span> : null}
               <span>{profile.credits.length} credits</span>
+              {seriesCount > 0 ? <span>{seriesCount} series</span> : null}
+              {filmCount > 0 ? <span>{filmCount} films</span> : null}
               {profile.knownFor.map((item) => (
                 <span key={item}>{item}</span>
               ))}
@@ -398,20 +469,6 @@ export function ProfilePage() {
           {error ?? status ?? copyStatus}
         </div>
       ) : null}
-
-      <section className="ls-profile__link" aria-label="Public VANTA profile link">
-        <div className="ls-profile__link-copy">
-          <div className="ls-list__label mono">VANTA link</div>
-          <div className="ls-profile__link-url">{profileUrl}</div>
-        </div>
-        <Button
-          variant={copyStatus ? "primary" : "outline"}
-          icon={copyStatus ? <Check /> : <Copy />}
-          onClick={() => void copyProfileUrl()}
-        >
-          {copyStatus ? "Copied" : "Copy"}
-        </Button>
-      </section>
 
       {editing ? (
         <section className="ls-profile__editor" aria-label="Edit public profile">
@@ -475,38 +532,126 @@ export function ProfilePage() {
           </label>
         </section>
       ) : (
-        <section className="ls-profile__about">
-          <div>
-            <div className="ls-list__label mono">About</div>
-            <p>{profile.about || `${profile.displayName} has not added a bio yet.`}</p>
-          </div>
-          <div className="ls-profile__side">
-            <div className="ls-list__label mono">Profile</div>
-            <div className="ls-profile__side-row">
-              <span>Link</span>
-              <span>{profileUrlPath}</span>
-            </div>
-            <div className="ls-list__label mono">Connected</div>
-            {links.length === 0 ? (
-              <div className="ls-profile__side-row">
-                <span>Public links</span>
-                <span>None yet</span>
+        <>
+          <section className="ls-profile__proof-grid" aria-label="Profile summary">
+            <div className="ls-profile__link-card" aria-label="Public VANTA profile link">
+              <div>
+                <div className="ls-list__label mono">VANTA link</div>
+                <div className="ls-profile__link-url">{profileUrl}</div>
               </div>
-            ) : null}
-            {links.map(({ label, href, Icon }) => (
-              <a className="ls-profile__side-row" key={`${label}-${href}`} href={href} target="_blank" rel="noreferrer">
-                <span><Icon size={13} />{label}</span>
-                <ExternalLink size={13} />
-              </a>
+              <Button
+                variant={copyStatus ? "primary" : "outline"}
+                icon={copyStatus ? <Check /> : <Copy />}
+                onClick={() => void copyProfileUrl()}
+              >
+                {copyStatus ? "Copied" : "Copy"}
+              </Button>
+            </div>
+
+            <div className="ls-profile__quick-stats" aria-label="Portfolio stats">
+              <div><strong>{profile.credits.length}</strong><span className="mono">Credits</span></div>
+              <div><strong>{seriesCount}</strong><span className="mono">Series</span></div>
+              <div><strong>{filmCount}</strong><span className="mono">Films</span></div>
+              <div><strong>{roleCount}</strong><span className="mono">Roles</span></div>
+            </div>
+
+            <div className="ls-profile__external-links">
+              <div className="ls-list__label mono">Connected</div>
+              <div className="ls-profile__link-pills">
+                {links.length === 0 ? <span className="ls-profile__empty-pill">No public links yet</span> : null}
+                {links.map(({ label, href, Icon }) => (
+                  <a className="ls-profile__link-pill" key={`${label}-${href}`} href={href} target="_blank" rel="noreferrer">
+                    <Icon size={14} />
+                    <span>{label}</span>
+                    <ExternalLink size={12} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="ls-profile__showcase" aria-label="Creator media">
+            <div className="ls-profile__section-head">
+              <div className="ls-list__label mono">Creator media</div>
+              <h2>Work at a glance</h2>
+            </div>
+            {featuredCredit ? (
+              <RouterLink className="ls-profile__featured-work" to={creditHref(featuredCredit)}>
+                <CreditImage credit={featuredCredit} className="ls-profile__featured-image" />
+                <div className="ls-profile__featured-scrim" />
+                <div className="ls-profile__featured-copy">
+                  <span className="mono">{creditDescriptor(featuredCredit)}</span>
+                  <strong>{featuredCredit.title}</strong>
+                  <em>{featuredCredit.character ? `As ${featuredCredit.character}` : "View project"}</em>
+                </div>
+              </RouterLink>
+            ) : (
+              <div className="ls-profile__state">No published VANTA work yet.</div>
+            )}
+            {mediaGroups.map((group) => (
+              <div className="ls-profile__media-rail" key={group.key}>
+                <div className="ls-profile__rail-head">
+                  <span className="mono">{group.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedWorkGroup(group.key)}
+                  >
+                    {group.credits.length > 6 ? `See all ${group.credits.length}` : `Open ${group.credits.length}`}
+                  </button>
+                </div>
+                <div className="ls-profile__media-strip">
+                  {group.credits.slice(0, 6).map((credit) => (
+                    <RouterLink className="ls-profile__media-card" key={`${credit.contentKind}-${credit.contentId}-${credit.role}`} to={creditHref(credit)}>
+                      <CreditImage credit={credit} />
+                      <span className="ls-profile__media-kind">
+                        {credit.contentKind === "series" ? <Tv size={14} /> : <Film size={14} />}
+                        {creditKindLabel(credit.contentKind)}
+                      </span>
+                      <strong>{credit.title}</strong>
+                      <em>{credit.year} / {credit.role}</em>
+                    </RouterLink>
+                  ))}
+                </div>
+              </div>
             ))}
-          </div>
-        </section>
+            {profile.credits.length > 10 ? (
+              <Button variant="outline" onClick={() => setExpandedWorkGroup("all")}>
+                See full portfolio
+              </Button>
+            ) : null}
+          </section>
+
+          <section className="ls-profile__about">
+            <div>
+              <div className="ls-list__label mono">About</div>
+              <p>{profile.about || `${profile.displayName} has not added a bio yet.`}</p>
+            </div>
+            <div className="ls-profile__side">
+              <div className="ls-list__label mono">Known for</div>
+              {profile.knownFor.length === 0 ? (
+                <div className="ls-profile__side-row">
+                  <span>Focus</span>
+                  <span>Not listed yet</span>
+                </div>
+              ) : profile.knownFor.map((item) => (
+                <div className="ls-profile__side-row" key={item}>
+                  <span>Focus</span>
+                  <span>{item}</span>
+                </div>
+              ))}
+              <div className="ls-profile__side-row">
+                <span>Profile</span>
+                <span>{profileUrlPath}</span>
+              </div>
+            </div>
+          </section>
+        </>
       )}
 
       <section className="ls-profile__filmography">
         <div className="ls-profile__section-head">
-          <div className="ls-list__label mono">Filmography</div>
-          <h2>Credits</h2>
+          <div className="ls-list__label mono">Credits</div>
+          <h2>Full credit list</h2>
         </div>
         {groupedCredits.length === 0 ? (
           <div className="ls-profile__state">No credits yet.</div>
@@ -519,9 +664,9 @@ export function ProfilePage() {
                   <RouterLink
                     className="ls-profile__credit"
                     key={`${credit.contentKind}-${credit.contentId}-${credit.role}`}
-                    to={credit.contentKind === "series" ? `/series/${credit.contentSlug}` : `/film/${credit.contentSlug}`}
+                    to={creditHref(credit)}
                   >
-                    <img src={credit.poster} alt="" />
+                    <CreditImage credit={credit} />
                     <div>
                       <div className="ls-profile__credit-title">{credit.title}</div>
                       <div className="ls-profile__credit-meta mono">
@@ -536,6 +681,44 @@ export function ProfilePage() {
           ))
         )}
       </section>
+
+      {expandedWorkGroup ? (
+        <div className="ls-profile__modal-backdrop" role="presentation" onMouseDown={() => setExpandedWorkGroup(null)}>
+          <section
+            className="ls-profile__work-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-work-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="ls-profile__work-modal-head">
+              <div>
+                <div className="ls-list__label mono">Portfolio</div>
+                <h2 id="profile-work-title">{expandedTitle}</h2>
+                <p>{expandedCredits.length} project{expandedCredits.length === 1 ? "" : "s"} by {profile.displayName}</p>
+              </div>
+              <button type="button" aria-label="Close portfolio" onClick={() => setExpandedWorkGroup(null)}>
+                <X size={16} strokeWidth={1.8} />
+              </button>
+            </div>
+            <div className="ls-profile__work-grid">
+              {expandedCredits.map((credit) => (
+                <RouterLink
+                  className="ls-profile__work-card"
+                  key={`expanded-${credit.contentKind}-${credit.contentId}-${credit.role}`}
+                  to={creditHref(credit)}
+                  onClick={() => setExpandedWorkGroup(null)}
+                >
+                  <CreditImage credit={credit} />
+                  <span className="mono">{creditDescriptor(credit)}</span>
+                  <strong>{credit.title}</strong>
+                  {credit.character ? <em>{credit.character}</em> : null}
+                </RouterLink>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
