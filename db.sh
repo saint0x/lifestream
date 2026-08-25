@@ -29,7 +29,7 @@ SQLite commands:
 
 R2 commands:
   r2-buckets        List Cloudflare R2 buckets with wrangler
-  r2-get <key>      Fetch an object from the configured R2 bucket
+  r2-get <key> [file] Fetch an object from the configured R2 bucket
   r2-put <key> <file> Put an object into the configured R2 bucket
   r2-delete <key>   Delete an object from the configured R2 bucket
   r2-ls [prefix]    List objects via AWS CLI when R2 S3 credentials are exported
@@ -135,7 +135,9 @@ r2_bucket() {
 }
 
 r2_endpoint() {
-  if [[ -n "${R2_ENDPOINT_URL:-}" ]]; then
+  if [[ -n "${VANTA_OBJECT_STORAGE_ENDPOINT_URL:-}" ]]; then
+    echo "$VANTA_OBJECT_STORAGE_ENDPOINT_URL"
+  elif [[ -n "${R2_ENDPOINT_URL:-}" ]]; then
     echo "$R2_ENDPOINT_URL"
   elif [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
     echo "https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com"
@@ -181,7 +183,7 @@ case "${1:-}" in
     run_query "SELECT kind, count(*) AS documents FROM search_documents GROUP BY kind ORDER BY kind"
     ;;
   vars)
-    railway_api_run sh -c 'for name in VANTA_DATABASE_KIND VANTA_DATABASE_URL VANTA_STORAGE_KIND VANTA_OBJECT_STORAGE_BUCKET VANTA_OBJECT_STORAGE_CDN_BASE_URL VANTA_CDN_COOKIE_DOMAIN; do if printenv "$name" >/dev/null; then printf "%s=present\n" "$name"; else printf "%s=missing\n" "$name"; fi; done'
+    railway_api_run sh -c 'for name in VANTA_DATABASE_KIND VANTA_DATABASE_URL VANTA_STORAGE_KIND VANTA_OBJECT_STORAGE_BUCKET VANTA_OBJECT_STORAGE_CDN_BASE_URL VANTA_CDN_COOKIE_DOMAIN VANTA_OBJECT_STORAGE_ENDPOINT_URL VANTA_OBJECT_STORAGE_ACCESS_KEY_ID VANTA_OBJECT_STORAGE_SECRET_ACCESS_KEY VANTA_OBJECT_STORAGE_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY CLOUDFLARE_ACCOUNT_ID R2_ENDPOINT_URL; do if printenv "$name" >/dev/null; then printf "%s=present\n" "$name"; else printf "%s=missing\n" "$name"; fi; done'
     ;;
   local)
     require_cmd sqlite3
@@ -202,21 +204,25 @@ case "${1:-}" in
     bucket="$(r2_bucket)"
     [[ -n "$bucket" ]] || { echo "VANTA_OBJECT_STORAGE_BUCKET is not configured" >&2; exit 1; }
     [[ -n "${2:-}" ]] || { echo "missing R2 key" >&2; exit 1; }
-    wrangler r2 object get "$bucket/${2}"
+    if [[ -n "${3:-}" ]]; then
+      wrangler r2 object get "$bucket/${2}" --file "$3" --remote
+    else
+      wrangler r2 object get "$bucket/${2}" --remote
+    fi
     ;;
   r2-put)
     require_cmd wrangler
     bucket="$(r2_bucket)"
     [[ -n "$bucket" ]] || { echo "VANTA_OBJECT_STORAGE_BUCKET is not configured" >&2; exit 1; }
     [[ -n "${2:-}" && -n "${3:-}" ]] || { echo "usage: ./db.sh r2-put <key> <file>" >&2; exit 1; }
-    wrangler r2 object put "$bucket/${2}" --file "$3"
+    wrangler r2 object put "$bucket/${2}" --file "$3" --remote
     ;;
   r2-delete)
     require_cmd wrangler
     bucket="$(r2_bucket)"
     [[ -n "$bucket" ]] || { echo "VANTA_OBJECT_STORAGE_BUCKET is not configured" >&2; exit 1; }
     [[ -n "${2:-}" ]] || { echo "missing R2 key" >&2; exit 1; }
-    wrangler r2 object delete "$bucket/${2}"
+    wrangler r2 object delete "$bucket/${2}" --remote
     ;;
   r2-ls)
     require_cmd aws

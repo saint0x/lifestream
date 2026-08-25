@@ -11,10 +11,7 @@ pub(super) fn routes() -> Router<SharedState> {
             get(get_account).patch(update_company),
         )
         .route("/api/v1/advertiser/me/invites", post(create_invite))
-        .route(
-            "/api/v1/advertiser/me/seats/:user_id",
-            patch(update_seat),
-        )
+        .route("/api/v1/advertiser/me/seats/:user_id", patch(update_seat))
 }
 
 async fn get_account(

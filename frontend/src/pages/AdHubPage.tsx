@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PageMetadata } from "@/components/seo/PageMetadata";
 import { PageTrail } from "@/components/navigation/PageTrail";
+import { cdnAsset } from "@/lib/assets";
 import { repository } from "@/lib/repository";
 import type { AdMarketplaceOffer, AdMarketplaceSummary, CreatorAdHubResponse } from "@/types";
 import "./AdHubPage.css";
@@ -78,20 +79,20 @@ function visualForOffer(offer: AdMarketplaceOffer | null): AdvertiserVisual {
   const source = `${offer?.advertiser.name ?? ""} ${offer?.advertiser.industry ?? ""} ${offer?.title ?? ""} ${offer?.campaign.objective ?? ""}`.toLowerCase();
   if (source.includes("outdoor") || source.includes("trail") || source.includes("gear")) {
     return {
-      image: "/ad-hub/outdoor-gear.png",
+      image: cdnAsset("app-static/ad-hub/outdoor-gear.png"),
       eyebrow: "Outdoor gear partner",
       fit: "Best fit for practical product proof, field use, and high-trust host integration.",
     };
   }
   if (source.includes("auto") || source.includes("power") || source.includes("overland")) {
     return {
-      image: "/ad-hub/portable-power.png",
+      image: cdnAsset("app-static/ad-hub/portable-power.png"),
       eyebrow: "Consumer hardware partner",
       fit: "Best fit for demonstration-heavy stories where audience confidence matters.",
     };
   }
   return {
-    image: "/ad-hub/developer-tools.png",
+    image: cdnAsset("app-static/ad-hub/developer-tools.png"),
     eyebrow: "Developer tooling partner",
     fit: "Best fit for technical audiences, workflow credibility, and thoughtful mid-roll reads.",
   };

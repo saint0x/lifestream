@@ -35,12 +35,21 @@ VANTA_DATABASE_KIND=postgres
 VANTA_DATABASE_URL=postgres://...
 VANTA_STORAGE_KIND=object
 VANTA_OBJECT_STORAGE_BUCKET=vanta-media
+VANTA_OBJECT_STORAGE_ENDPOINT_URL=https://<cloudflare-account-id>.r2.cloudflarestorage.com
+VANTA_OBJECT_STORAGE_ACCESS_KEY_ID=<r2-access-key-id>
+VANTA_OBJECT_STORAGE_SECRET_ACCESS_KEY=<r2-secret-access-key>
+VANTA_OBJECT_STORAGE_REGION=auto
 VANTA_OBJECT_STORAGE_CDN_BASE_URL=https://pub-4cffb671265940d19168dde582d31087.r2.dev
 VANTA_CDN_COOKIE_DOMAIN=.streamvanta.tv
 VANTA_ALLOWED_ORIGINS=https://streamvanta.tv,https://www.streamvanta.tv
 VANTA_TOKEN_HASH_SECRET=at-least-32-characters
 VANTA_ADMIN_API_ENABLED=false
 ```
+
+When `VANTA_STORAGE_KIND=object`, uploaded source files and generated playback
+artifacts are written to Cloudflare R2 before the database advertises their CDN
+paths as ready. Processing retries restore missing scratch files from R2, so
+Railway ephemeral disk is not the durable media source.
 
 ## Auth
 

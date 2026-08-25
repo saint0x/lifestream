@@ -179,7 +179,9 @@ fn normalize_kind(value: &str) -> AppResult<String> {
 fn normalize_audience(value: &str) -> AppResult<String> {
     match value.trim().to_ascii_lowercase().as_str() {
         "home" | "creators" | "buyers" => Ok(value.trim().to_ascii_lowercase()),
-        _ => Err(AppError::BadRequest("unsupported signup audience".to_string())),
+        _ => Err(AppError::BadRequest(
+            "unsupported signup audience".to_string(),
+        )),
     }
 }
 

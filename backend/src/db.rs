@@ -2958,7 +2958,12 @@ pub fn advertiser_permissions_for_role(role: &str) -> Option<Vec<String>> {
         "reviewer" => ["approve_work"].as_slice(),
         _ => return None,
     };
-    Some(permissions.iter().map(|permission| permission.to_string()).collect())
+    Some(
+        permissions
+            .iter()
+            .map(|permission| permission.to_string())
+            .collect(),
+    )
 }
 
 pub fn advertiser_permission_presets() -> Vec<AdvertiserPermissionPreset> {
@@ -3000,7 +3005,9 @@ impl Database {
         input: &UpdateAdvertiserCompanyRequest,
         now: &str,
     ) -> AppResult<AdvertiserAccountResponse> {
-        let account = self.fetch_advertiser_account_for_auth_user(auth_user_id).await?;
+        let account = self
+            .fetch_advertiser_account_for_auth_user(auth_user_id)
+            .await?;
         require_advertiser_permission(&account.current_seat, "manage_account")?;
         match &self.provider {
             DatabaseProvider::Sqlite(pool) => {
@@ -3013,7 +3020,12 @@ impl Database {
                 )
                 .bind(input.name.trim())
                 .bind(input.industry.trim())
-                .bind(input.website_url.as_deref().filter(|value| !value.trim().is_empty()))
+                .bind(
+                    input
+                        .website_url
+                        .as_deref()
+                        .filter(|value| !value.trim().is_empty()),
+                )
                 .bind(now)
                 .bind(&account.company.id)
                 .execute(pool)
@@ -3047,7 +3059,12 @@ impl Database {
                 )
                 .bind(input.name.trim())
                 .bind(input.industry.trim())
-                .bind(input.website_url.as_deref().filter(|value| !value.trim().is_empty()))
+                .bind(
+                    input
+                        .website_url
+                        .as_deref()
+                        .filter(|value| !value.trim().is_empty()),
+                )
                 .bind(now)
                 .bind(&account.company.id)
                 .execute(pool)
@@ -3072,7 +3089,8 @@ impl Database {
                 .await?;
             }
         }
-        self.fetch_advertiser_account_for_auth_user(auth_user_id).await
+        self.fetch_advertiser_account_for_auth_user(auth_user_id)
+            .await
     }
 
     pub async fn create_advertiser_invite_for_auth_user(
@@ -3088,7 +3106,9 @@ impl Database {
         let permissions = advertiser_permissions_for_role(role)
             .ok_or_else(|| AppError::BadRequest(format!("unsupported advertiser role `{role}`")))?;
         let permissions_json = serde_json::to_string(&permissions)?;
-        let account = self.fetch_advertiser_account_for_auth_user(auth_user_id).await?;
+        let account = self
+            .fetch_advertiser_account_for_auth_user(auth_user_id)
+            .await?;
         require_advertiser_permission(&account.current_seat, "manage_team")?;
         match &self.provider {
             DatabaseProvider::Sqlite(pool) => {
@@ -3134,7 +3154,8 @@ impl Database {
                 .await?;
             }
         }
-        self.fetch_advertiser_account_for_auth_user(auth_user_id).await
+        self.fetch_advertiser_account_for_auth_user(auth_user_id)
+            .await
     }
 
     pub async fn update_advertiser_seat_for_auth_user(
@@ -3148,7 +3169,9 @@ impl Database {
         let permissions = advertiser_permissions_for_role(role)
             .ok_or_else(|| AppError::BadRequest(format!("unsupported advertiser role `{role}`")))?;
         let permissions_json = serde_json::to_string(&permissions)?;
-        let account = self.fetch_advertiser_account_for_auth_user(auth_user_id).await?;
+        let account = self
+            .fetch_advertiser_account_for_auth_user(auth_user_id)
+            .await?;
         require_advertiser_permission(&account.current_seat, "manage_team")?;
         let status = status.unwrap_or("active");
         match &self.provider {
@@ -3193,7 +3216,8 @@ impl Database {
                 }
             }
         }
-        self.fetch_advertiser_account_for_auth_user(auth_user_id).await
+        self.fetch_advertiser_account_for_auth_user(auth_user_id)
+            .await
     }
 }
 
@@ -3388,7 +3412,9 @@ async fn fetch_postgres_advertiser_invites(
     .bind(advertiser_id)
     .fetch_all(pool)
     .await?;
-    rows.iter().map(postgres_advertiser_invite_from_row).collect()
+    rows.iter()
+        .map(postgres_advertiser_invite_from_row)
+        .collect()
 }
 
 fn permissions_from_json(value: String) -> AppResult<Vec<String>> {

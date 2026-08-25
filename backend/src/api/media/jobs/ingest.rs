@@ -2,6 +2,7 @@ use super::lifecycle::{
     ensure_creator_upload_ingest_enabled_for_jobs, fetch_postgres_upload_job_by_id,
 };
 use super::*;
+use crate::api::media::access::media_content_type;
 
 pub(crate) async fn get_upload_ingest_session(
     State(state): State<SharedState>,
@@ -163,6 +164,14 @@ pub(crate) async fn complete_upload_ingest(
 
     let path = media_path_for_relative(&state, &session.relative_path);
     let digest = sha256_file(&path).await?;
+    state
+        .storage
+        .publish_file(
+            &session.relative_path,
+            &path,
+            media_content_type(&session.relative_path),
+        )
+        .await?;
     let now = Utc::now().to_rfc3339();
     complete_creator_upload_ingest(&state.db, creator_id, &id, &digest, &now).await?;
     let completed_job = get_creator_upload_job(&state.db, creator_id, &id).await?;

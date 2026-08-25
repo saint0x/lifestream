@@ -11,6 +11,7 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
+import { cdnAsset } from "@/lib/assets";
 
 export type Audience = "home" | "creators" | "buyers";
 export type FunnelAudience = Exclude<Audience, "home">;
@@ -103,7 +104,7 @@ export const pages: Record<FunnelAudience, PageContent> = {
     formTitle: "Apply to join Vanta",
     formSubtitle: "Send your audience, show idea, and launch plan.",
     formSuccess: "Application received. We will review it.",
-    image: "/platform-shots/details/creator-profile-detail-v2.png",
+    image: cdnAsset("landing/platform-shots/details/creator-profile-detail-v2.png"),
     metrics: [],
     proof: [
       {
@@ -179,7 +180,7 @@ export const pages: Record<FunnelAudience, PageContent> = {
     formTitle: "Create a buyer account",
     formSubtitle: "Share your category, budget, and goal.",
     formSuccess: "Signup received. We will follow up.",
-    image: "/platform-shots/details/agency-overview-detail.png",
+    image: cdnAsset("landing/platform-shots/details/agency-overview-detail.png"),
     metrics: [
       { label: "Inventory", value: "Episodes", detail: "Shows, seasons, live specials" },
       { label: "Session", value: "30-40 min", detail: "Deeper than feed posts" },
@@ -250,37 +251,37 @@ export const pages: Record<FunnelAudience, PageContent> = {
     fields: buyerFields,
     tiles: [
       {
-        image: "/platform-shots/details/agency-creators-detail.png",
+        image: cdnAsset("landing/platform-shots/details/agency-creators-detail.png"),
         label: "Episode inventory",
         title: "Sponsor shows viewers finish.",
         icon: Play,
       },
       {
-        image: "/platform-shots/details/agency-overview-detail.png",
+        image: cdnAsset("landing/platform-shots/details/agency-overview-detail.png"),
         label: "Show context",
         title: "Place brands inside the show.",
         icon: Clapperboard,
       },
       {
-        image: "/platform-shots/details/agency-stats-detail.png",
+        image: cdnAsset("landing/platform-shots/details/agency-stats-detail.png"),
         label: "Qualified Attention",
         title: "Separate signal from noise.",
         icon: ShieldCheck,
       },
       {
-        image: "/platform-shots/details/series-detail-detail.png",
+        image: cdnAsset("landing/platform-shots/details/series-detail-detail.png"),
         label: "Long sessions",
         title: "Buy minutes, not glances.",
         icon: BarChart3,
       },
       {
-        image: "/platform-shots/details/creator-profile-detail-v2.png",
+        image: cdnAsset("landing/platform-shots/details/creator-profile-detail-v2.png"),
         label: "Creator trust",
         title: "Buy creator trust in context.",
         icon: Users,
       },
       {
-        image: "/platform-shots/details/agency-overview-detail.png",
+        image: cdnAsset("landing/platform-shots/details/agency-overview-detail.png"),
         label: "Defined buy",
         title: "Know the buy before spend.",
         icon: FileCheck2,

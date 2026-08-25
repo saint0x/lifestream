@@ -10,6 +10,10 @@ pub struct Config {
     pub media_root: PathBuf,
     pub media_scratch_root: PathBuf,
     pub object_storage_bucket: Option<String>,
+    pub object_storage_endpoint_url: Option<String>,
+    pub object_storage_access_key_id: Option<String>,
+    pub object_storage_secret_access_key: Option<String>,
+    pub object_storage_region: String,
     pub object_storage_cdn_base_url: Option<String>,
     pub cdn_cookie_domain: Option<String>,
     pub admin_api_enabled: bool,
@@ -30,6 +34,25 @@ impl fmt::Debug for Config {
             .field("media_root", &self.media_root)
             .field("media_scratch_root", &self.media_scratch_root)
             .field("object_storage_bucket", &self.object_storage_bucket)
+            .field(
+                "object_storage_endpoint_url",
+                &self.object_storage_endpoint_url,
+            )
+            .field(
+                "object_storage_access_key_id",
+                &self
+                    .object_storage_access_key_id
+                    .as_ref()
+                    .map(|_| "<redacted>"),
+            )
+            .field(
+                "object_storage_secret_access_key",
+                &self
+                    .object_storage_secret_access_key
+                    .as_ref()
+                    .map(|_| "<redacted>"),
+            )
+            .field("object_storage_region", &self.object_storage_region)
             .field(
                 "object_storage_cdn_base_url",
                 &self.object_storage_cdn_base_url,
@@ -75,6 +98,16 @@ impl Config {
                 .unwrap_or_else(|_| backend_root.join("media-scratch")),
             media_root,
             object_storage_bucket: env::var("VANTA_OBJECT_STORAGE_BUCKET").ok(),
+            object_storage_endpoint_url: object_storage_endpoint_url_from_env(),
+            object_storage_access_key_id: env::var("VANTA_OBJECT_STORAGE_ACCESS_KEY_ID")
+                .or_else(|_| env::var("AWS_ACCESS_KEY_ID"))
+                .ok(),
+            object_storage_secret_access_key: env::var("VANTA_OBJECT_STORAGE_SECRET_ACCESS_KEY")
+                .or_else(|_| env::var("AWS_SECRET_ACCESS_KEY"))
+                .ok(),
+            object_storage_region: env::var("VANTA_OBJECT_STORAGE_REGION")
+                .or_else(|_| env::var("AWS_REGION"))
+                .unwrap_or_else(|_| "auto".to_string()),
             object_storage_cdn_base_url: env::var("VANTA_OBJECT_STORAGE_CDN_BASE_URL").ok(),
             cdn_cookie_domain: env::var("VANTA_CDN_COOKIE_DOMAIN").ok(),
             admin_api_enabled: parse_bool_env("VANTA_ADMIN_API_ENABLED")
@@ -150,6 +183,39 @@ impl Config {
                 ));
             }
             if self
+                .object_storage_endpoint_url
+                .as_deref()
+                .unwrap_or("")
+                .trim()
+                .is_empty()
+            {
+                return Err(ConfigError::new(
+                    "object storage requires VANTA_OBJECT_STORAGE_ENDPOINT_URL or CLOUDFLARE_ACCOUNT_ID",
+                ));
+            }
+            if self
+                .object_storage_access_key_id
+                .as_deref()
+                .unwrap_or("")
+                .trim()
+                .is_empty()
+            {
+                return Err(ConfigError::new(
+                    "object storage requires VANTA_OBJECT_STORAGE_ACCESS_KEY_ID or AWS_ACCESS_KEY_ID",
+                ));
+            }
+            if self
+                .object_storage_secret_access_key
+                .as_deref()
+                .unwrap_or("")
+                .trim()
+                .is_empty()
+            {
+                return Err(ConfigError::new(
+                    "object storage requires VANTA_OBJECT_STORAGE_SECRET_ACCESS_KEY or AWS_SECRET_ACCESS_KEY",
+                ));
+            }
+            if self
                 .cdn_cookie_domain
                 .as_deref()
                 .unwrap_or("")
@@ -163,6 +229,17 @@ impl Config {
         }
         Ok(())
     }
+}
+
+fn object_storage_endpoint_url_from_env() -> Option<String> {
+    env::var("VANTA_OBJECT_STORAGE_ENDPOINT_URL")
+        .or_else(|_| env::var("R2_ENDPOINT_URL"))
+        .ok()
+        .or_else(|| {
+            env::var("CLOUDFLARE_ACCOUNT_ID")
+                .ok()
+                .map(|account_id| format!("https://{account_id}.r2.cloudflarestorage.com"))
+        })
 }
 
 fn runtime_bind_addr() -> Result<String, ConfigError> {
@@ -435,6 +512,10 @@ mod tests {
             media_root: PathBuf::from("/tmp/vanta-media"),
             media_scratch_root: PathBuf::from("/tmp/vanta-scratch"),
             object_storage_bucket: None,
+            object_storage_endpoint_url: None,
+            object_storage_access_key_id: None,
+            object_storage_secret_access_key: None,
+            object_storage_region: "auto".to_string(),
             object_storage_cdn_base_url: None,
             cdn_cookie_domain: None,
             admin_api_enabled: true,
@@ -469,6 +550,10 @@ mod tests {
 
         config.storage_kind = StorageKind::Object;
         config.object_storage_bucket = Some("vanta-assets".to_string());
+        config.object_storage_endpoint_url =
+            Some("https://example.r2.cloudflarestorage.com".to_string());
+        config.object_storage_access_key_id = Some("access".to_string());
+        config.object_storage_secret_access_key = Some("secret".to_string());
         config.object_storage_cdn_base_url = Some("https://cdn.example.com".to_string());
         config.cdn_cookie_domain = Some(".example.com".to_string());
         assert_eq!(
@@ -515,6 +600,34 @@ mod tests {
         );
 
         config.object_storage_cdn_base_url = Some("https://cdn.example.com".to_string());
+        assert_eq!(
+            config
+                .validate()
+                .expect_err("missing endpoint rejected")
+                .to_string(),
+            "object storage requires VANTA_OBJECT_STORAGE_ENDPOINT_URL or CLOUDFLARE_ACCOUNT_ID"
+        );
+
+        config.object_storage_endpoint_url =
+            Some("https://example.r2.cloudflarestorage.com".to_string());
+        assert_eq!(
+            config
+                .validate()
+                .expect_err("missing access key rejected")
+                .to_string(),
+            "object storage requires VANTA_OBJECT_STORAGE_ACCESS_KEY_ID or AWS_ACCESS_KEY_ID"
+        );
+
+        config.object_storage_access_key_id = Some("access".to_string());
+        assert_eq!(
+            config
+                .validate()
+                .expect_err("missing secret key rejected")
+                .to_string(),
+            "object storage requires VANTA_OBJECT_STORAGE_SECRET_ACCESS_KEY or AWS_SECRET_ACCESS_KEY"
+        );
+
+        config.object_storage_secret_access_key = Some("secret".to_string());
         assert_eq!(
             config
                 .validate()

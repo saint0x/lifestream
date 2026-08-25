@@ -37,6 +37,10 @@ pub(crate) async fn begin_media_processing_attempt(
     )
     .await?;
     let source_path = media_path_for_relative(state, &session.relative_path);
+    state
+        .storage
+        .restore_file_if_missing(&session.relative_path, &source_path)
+        .await?;
 
     sqlx::query(
         "UPDATE media_assets SET status = 'processing', updated_at = ? WHERE upload_job_id = ? AND creator_id = ?",
@@ -86,6 +90,10 @@ async fn begin_postgres_media_processing_attempt(
         ensure_media_asset_shell_for_database(&state.db, creator_id, &job, &session.relative_path)
             .await?;
     let source_path = media_path_for_relative(state, &session.relative_path);
+    state
+        .storage
+        .restore_file_if_missing(&session.relative_path, &source_path)
+        .await?;
 
     sqlx::query(
         "UPDATE media_assets SET status = 'processing', updated_at = $1 WHERE upload_job_id = $2 AND creator_id = $3",

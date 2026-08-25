@@ -25,6 +25,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { cdnAsset } from "@/lib/assets";
 import { repository } from "@/lib/repository";
 import { Button } from "@/components/ui/Button";
 import { PageTrail } from "@/components/navigation/PageTrail";
@@ -292,8 +293,8 @@ export function StudioPage() {
   const featuredUpload = recentUploads[0] ?? selectedUploads[0] ?? null;
   const heroImage =
     view === "stream"
-      ? featuredBroadcast?.thumbnail ?? topContent[0]?.thumbnail ?? featuredUpload?.thumbnail ?? "/studio/streamer-ops.png"
-      : featuredUpload?.thumbnail ?? topContent[0]?.thumbnail ?? featuredBroadcast?.thumbnail ?? "/studio/series-director.png";
+      ? featuredBroadcast?.thumbnail ?? topContent[0]?.thumbnail ?? featuredUpload?.thumbnail ?? cdnAsset("app-static/studio/streamer-ops.png")
+      : featuredUpload?.thumbnail ?? topContent[0]?.thumbnail ?? featuredBroadcast?.thumbnail ?? cdnAsset("app-static/studio/series-director.png");
   const heroTitle =
     view === "stream"
       ? featuredBroadcast?.title ?? "Ready the next live room"
