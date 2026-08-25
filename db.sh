@@ -16,6 +16,8 @@ Usage: ./db.sh <command> [args...]
 Postgres commands:
   psql              Open production Railway Postgres through Railway's database shell
   tunnel            Open a local SSH tunnel to production Postgres
+  proxy             Show Railway TCP proxy status for production Postgres
+  ensure-proxy      Create a Railway TCP proxy for production Postgres when missing
   query <sql>       Run SQL against production Postgres
   tables            List production Postgres tables
   search-docs       Show production search document counts by kind
@@ -53,10 +55,57 @@ railway_api_run() {
   railway run --service "$API_SERVICE" --environment "$ENVIRONMENT" -- "$@"
 }
 
+postgres_proxy_url() {
+  require_cmd railway
+  require_cmd jq
+  require_cmd python3
+
+  local vars_json proxies_json endpoint
+  vars_json="$(railway variables --service "$POSTGRES_SERVICE" --environment "$ENVIRONMENT" --json)"
+  proxies_json="$(railway tcp-proxy list --service "$POSTGRES_SERVICE" --environment "$ENVIRONMENT" --json)"
+  endpoint="$(jq -r '.proxies[]? | select(.syncStatus == "ACTIVE") | .endpoint' <<<"$proxies_json" | head -1)"
+  [[ -n "$endpoint" ]] || return 1
+
+  POSTGRES_VARS_JSON="$vars_json" POSTGRES_PROXY_ENDPOINT="$endpoint" python3 - <<'PY'
+import json
+import os
+import urllib.parse
+
+vars_json = json.loads(os.environ["POSTGRES_VARS_JSON"])
+endpoint = os.environ["POSTGRES_PROXY_ENDPOINT"]
+host, port = endpoint.rsplit(":", 1)
+
+raw_url = vars_json.get("DATABASE_URL") or ""
+parsed = urllib.parse.urlparse(raw_url)
+user = parsed.username or vars_json.get("PGUSER") or vars_json.get("POSTGRES_USER") or "postgres"
+password = parsed.password or vars_json.get("PGPASSWORD") or vars_json.get("POSTGRES_PASSWORD") or ""
+database = (parsed.path or "").lstrip("/") or vars_json.get("PGDATABASE") or vars_json.get("POSTGRES_DB") or "railway"
+
+print(
+    "postgresql://"
+    + urllib.parse.quote(user, safe="")
+    + ":"
+    + urllib.parse.quote(password, safe="")
+    + "@"
+    + host
+    + ":"
+    + port
+    + "/"
+    + urllib.parse.quote(database, safe="")
+)
+PY
+}
+
 run_query() {
   local sql="$1"
   require_cmd railway
   require_cmd psql
+  local proxy_url=""
+  if proxy_url="$(postgres_proxy_url)"; then
+    psql "$proxy_url" -v ON_ERROR_STOP=1 -c "$sql"
+    return
+  fi
+
   local log_file="$RUN_DIR/db-tunnel.log"
   mkdir -p "$RUN_DIR"
   local tunnel_args=(connect "$POSTGRES_SERVICE" --environment "$ENVIRONMENT" --tunnel-only)
@@ -106,6 +155,18 @@ case "${1:-}" in
       railway connect "$POSTGRES_SERVICE" --environment "$ENVIRONMENT" --tunnel-only --port "$TUNNEL_PORT"
     else
       railway connect "$POSTGRES_SERVICE" --environment "$ENVIRONMENT" --tunnel-only
+    fi
+    ;;
+  proxy)
+    require_cmd railway
+    railway tcp-proxy list --service "$POSTGRES_SERVICE" --environment "$ENVIRONMENT" --json
+    ;;
+  ensure-proxy)
+    require_cmd railway
+    if railway tcp-proxy list --service "$POSTGRES_SERVICE" --environment "$ENVIRONMENT" --json | jq -e '.proxies[]? | select(.syncStatus == "ACTIVE")' >/dev/null; then
+      railway tcp-proxy list --service "$POSTGRES_SERVICE" --environment "$ENVIRONMENT" --json
+    else
+      railway tcp-proxy create --port 5432 --service "$POSTGRES_SERVICE" --environment "$ENVIRONMENT" --json
     fi
     ;;
   query)

@@ -100,23 +100,9 @@ export function HomeLanding() {
             Watch now
           </a>
         </div>
-        <div className="vl-stream-hero__thumbs" aria-label="Featured title selector">
+        <div className="vl-stream-hero__progress" aria-hidden="true">
           {featured.slice(0, 6).map((item, index) => (
-            <button
-              className={index === active % featured.length ? "is-active" : undefined}
-              key={item.id}
-              onClick={() => setActive(index)}
-              type="button"
-            >
-              <img
-                src={fallbackImage(item)}
-                alt=""
-                onError={(event) => {
-                  event.currentTarget.style.visibility = "hidden";
-                }}
-              />
-              <span>{item.title}</span>
-            </button>
+            <span className={index === active % featured.length ? "is-active" : undefined} key={item.id} />
           ))}
         </div>
       </section>
