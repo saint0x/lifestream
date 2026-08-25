@@ -167,8 +167,12 @@ export const pages: Record<FunnelAudience, PageContent> = {
         answer: "Yes. The creators who win make strong work and promote it hard. Vanta gives that effort a place to compound.",
       },
       {
+        question: "Do I have to give up my other platforms?",
+        answer: "No. Keep posting everywhere, amplify what already works, and point that traffic back to your Vanta profile.",
+      },
+      {
         question: "What if Vanta does not have network effects yet?",
-        answer: "Advertisers do not need a crowded platform; one creator with 10,000 consistent viewers is already valuable inventory.",
+        answer: "Advertisers do not need a crowded platform; one creator with a hypothetical 10,000 consistent viewers is already valuable inventory.",
       },
     ],
     fields: creatorFields,
