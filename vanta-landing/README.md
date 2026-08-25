@@ -24,7 +24,9 @@ npm install
 npm run dev
 ```
 
-Set `VITE_VANTA_API_BASE_URL` when the landing origin should submit to a separate API origin.
+Signup submissions go directly to the production Vanta API. `VITE_VANTA_API_BASE_URL`
+may be set for controlled production API migrations, but the app has no local or
+mock signup backend.
 
 ## Build
 
@@ -34,11 +36,10 @@ npm run build
 
 ## Backend Contract
 
-Signup forms submit to:
+Signup forms submit directly to the production backend:
 
 ```text
-POST /api/v1/landing/signups
+POST https://api-production-4becb.up.railway.app/api/v1/landing/signups
 ```
 
-The production backend stores submissions in `landing_signups` via the SQLite migration
-`0057_landing_signups.sql` and Postgres migration `0062_landing_signups.sql`.
+The production backend stores submissions in `landing_signups`.

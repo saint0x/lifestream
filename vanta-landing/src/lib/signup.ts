@@ -18,7 +18,9 @@ export type SignupResult = {
   readonly status: string;
 };
 
-const apiBase = import.meta.env.VITE_VANTA_API_BASE_URL?.replace(/\/$/, "") ?? "";
+const PRODUCTION_API_BASE_URL = "https://api-production-4becb.up.railway.app";
+
+const apiBase = (import.meta.env.VITE_VANTA_API_BASE_URL ?? PRODUCTION_API_BASE_URL).replace(/\/$/, "");
 
 export async function submitSignup(input: SignupInput): Promise<SignupResult> {
   const response = await fetch(`${apiBase}/api/v1/landing/signups`, {
