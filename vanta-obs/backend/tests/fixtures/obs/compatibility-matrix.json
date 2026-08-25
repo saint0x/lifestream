@@ -1,0 +1,49 @@
+{
+  "obs_versions": ["30.x", "31.x", "32.x"],
+  "platforms": {
+    "macos": {
+      "camera": "av_capture_input",
+      "microphone": "coreaudio_input_capture",
+      "display_capture": "display_capture",
+      "window_capture": "window_capture"
+    },
+    "windows": {
+      "camera": "dshow_input",
+      "microphone": "wasapi_input_capture",
+      "display_capture": "monitor_capture",
+      "window_capture": "window_capture"
+    },
+    "linux": {
+      "camera": "v4l2_input",
+      "microphone": "pulse_input_capture",
+      "display_capture": "pipewire-desktop-capture-source",
+      "window_capture": "xcomposite_input"
+    }
+  },
+  "portable_sources": {
+    "browser_capture": "browser_source",
+    "media_file": "ffmpeg_source",
+    "image": "image_source",
+    "text": "text_ft2_source",
+    "color_matte": "color_source",
+    "scene_group": "group"
+  },
+  "vanta_browser_fallbacks": [
+    "chat_overlay",
+    "alert_overlay",
+    "sponsor_card",
+    "lower_third",
+    "countdown_timer",
+    "guest_feed",
+    "remote_contribution"
+  ],
+  "bundle_required": [
+    "media_file",
+    "image",
+    "vanta_video_asset",
+    "vanta_clip"
+  ],
+  "operator_only": [
+    "safe_area_guide"
+  ]
+}

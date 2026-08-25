@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "vanta-obs-vendored-obs-policy-production-smoke",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "obs-editor-vendored-obs-policy-production-smoke-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test blocks_vendored_obs_until_all_approval_evidence_exists && cargo test vendored_obs_policy_blocks_source_copy_without_approval_evidence --test api"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test blocks_vendored_obs_until_all_approval_evidence_exists && cargo test vendored_obs_policy_blocks_source_copy_without_approval_evidence --test api"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "type": "trace_event",
+      "name": "obs-editor-vendored-obs-policy-production-smoke-finished"
+    }
+  ]
+}

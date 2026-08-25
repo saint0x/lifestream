@@ -1,0 +1,16 @@
+{
+  "package_id": "vanta-native-audio-windows",
+  "helper_kind": "audio",
+  "platform": "windows",
+  "display_name": "Vanta Native Audio Helper for Windows",
+  "binary_path": "$VANTA_OBS_ROOT/native/audio/windows/bin/vanta-native-audio.exe",
+  "install_path": "$VANTA_OBS_ROOT/native/audio/windows/package/VantaNativeAudio.msix",
+  "transports": ["stdio", "localhost"],
+  "signing": {
+    "required": true,
+    "identity_env": "VANTA_WINDOWS_SIGNING_CERT",
+    "notarization_required": false,
+    "entitlement_profile": "audio-windows.capabilities"
+  },
+  "permissions": ["microphone", "system-audio", "isolated-audio-output"]
+}

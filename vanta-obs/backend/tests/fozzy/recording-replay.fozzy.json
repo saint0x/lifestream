@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "vanta-obs-recording-replay",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "recording-replay-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test recording_modes_create_real_media_assets_without_streaming --test api && cargo test recording_stop_persists_long_session_runtime_ledger --test api && cargo test studio_api_flow_exercises_current_routes --test api"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "trace_event",
+      "name": "recording-replay-finished"
+    }
+  ]
+}

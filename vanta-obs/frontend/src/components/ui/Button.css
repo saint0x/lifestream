@@ -1,0 +1,95 @@
+.ls-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  transition: background 180ms var(--ease-out),
+              border-color 180ms var(--ease-out),
+              color 180ms var(--ease-out),
+              transform 120ms var(--ease-out);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ls-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.ls-btn--sm { height: 28px; padding: 0 10px; font-size: 12px; }
+.ls-btn--md { height: 36px; padding: 0 14px; font-size: 13px; }
+.ls-btn--lg { height: 44px; padding: 0 20px; font-size: 14px; }
+
+.ls-btn--full { width: 100%; }
+
+.ls-btn__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ls-btn--sm .ls-btn__icon svg { width: 14px; height: 14px; }
+.ls-btn--md .ls-btn__icon svg { width: 16px; height: 16px; }
+.ls-btn--lg .ls-btn__icon svg { width: 18px; height: 18px; }
+
+.ls-btn__label {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* primary — white on black, the canonical CTA */
+.ls-btn--primary {
+  background: var(--c-text);
+  color: var(--c-bg);
+  border-color: var(--c-text);
+}
+.ls-btn--primary:hover:not(:disabled) {
+  background: #e6e6e6;
+  border-color: #e6e6e6;
+}
+
+/* secondary — surface with border */
+.ls-btn--secondary {
+  background: var(--c-surface);
+  color: var(--c-text);
+  border-color: var(--c-border);
+}
+.ls-btn--secondary:hover:not(:disabled) {
+  background: var(--c-surface-hi);
+  border-color: var(--c-border-hi);
+}
+
+/* outline — transparent with border */
+.ls-btn--outline {
+  background: transparent;
+  color: var(--c-text);
+  border-color: var(--c-border-hi);
+}
+.ls-btn--outline:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--c-border-strong);
+}
+
+/* ghost — no border until hover */
+.ls-btn--ghost {
+  background: transparent;
+  color: var(--c-text-dim);
+  border-color: transparent;
+}
+.ls-btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--c-text);
+}
+
+/* danger — live red */
+.ls-btn--danger {
+  background: var(--c-live);
+  color: white;
+  border-color: var(--c-live);
+}
+.ls-btn--danger:hover:not(:disabled) {
+  background: #ff1744;
+  border-color: #ff1744;
+}

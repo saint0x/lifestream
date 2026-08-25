@@ -1,0 +1,134 @@
+{
+  "name": "Prime Live OBS Collection",
+  "current_scene_collection": "Prime Live OBS Collection",
+  "transition": "fade_to_color",
+  "transition_duration": 450,
+  "video": {
+    "base_width": 1920,
+    "base_height": 1080,
+    "fps_num": 30,
+    "fps_den": 1
+  },
+  "scene_order": [
+    { "name": "Host Camera" },
+    { "name": "Sponsor Read" }
+  ],
+  "sources": [
+    {
+      "name": "Host Camera",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Sony FX3",
+            "visible": true,
+            "locked": false,
+            "pos": { "x": 0.0, "y": 0.0 },
+            "bounds": { "x": 1920.0, "y": 1080.0 },
+            "crop": { "top": 0, "right": 0, "bottom": 0, "left": 0 }
+          },
+          {
+            "name": "Audience Chat",
+            "visible": true,
+            "locked": true,
+            "pos": { "x": 1280.0, "y": 720.0 },
+            "bounds": { "x": 560.0, "y": 220.0 },
+            "blend_method": "srgb_off"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Sponsor Read",
+      "id": "scene",
+      "settings": {
+        "items": [
+          {
+            "name": "Sony FX3",
+            "visible": true,
+            "pos": { "x": 0.0, "y": 0.0 },
+            "bounds": { "x": 1920.0, "y": 1080.0 }
+          },
+          {
+            "name": "Sponsor Browser",
+            "visible": true,
+            "pos": { "x": 1040.0, "y": 120.0 },
+            "bounds": { "x": 680.0, "y": 382.0 }
+          },
+          {
+            "name": "Novelty Shader",
+            "visible": true,
+            "pos": { "x": 0.0, "y": 0.0 },
+            "bounds": { "x": 1920.0, "y": 1080.0 }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Sony FX3",
+      "id": "av_capture_input",
+      "settings": {
+        "device": "camera:fx3",
+        "resolution": "1920x1080"
+      }
+    },
+    {
+      "name": "Host Mic",
+      "id": "coreaudio_input_capture",
+      "settings": {
+        "device": "audio:host"
+      },
+      "filters": [
+        {
+          "name": "Host Limiter",
+          "id": "limiter_filter",
+          "settings": { "threshold": -1.0 }
+        },
+        {
+          "name": "Robot Voice",
+          "id": "vst_filter",
+          "settings": { "plugin": "novelty_robot" }
+        }
+      ]
+    },
+    {
+      "name": "Audience Chat",
+      "id": "browser_source",
+      "settings": {
+        "url": "https://streamvanta.tv/chat/prime",
+        "width": 560,
+        "height": 220
+      }
+    },
+    {
+      "name": "Sponsor Browser",
+      "id": "browser_source",
+      "settings": {
+        "url": "https://streamvanta.tv/sponsor/nova",
+        "width": 680,
+        "height": 382
+      }
+    },
+    {
+      "name": "Nova Logo",
+      "id": "image_source",
+      "settings": {
+        "file": "/assets/nova.png"
+      }
+    },
+    {
+      "name": "Lower Third",
+      "id": "text_ft2_source",
+      "settings": {
+        "text": "Use code VANTA20"
+      }
+    },
+    {
+      "name": "Novelty Shader",
+      "id": "obs_shader_filter_source",
+      "settings": {
+        "shader": "kaleidoscope"
+      }
+    }
+  ]
+}

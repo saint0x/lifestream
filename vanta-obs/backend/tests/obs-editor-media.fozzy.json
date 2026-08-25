@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "vanta-obs-media-capture-source-audio-production-smoke",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "obs-editor-media-capture-source-audio-production-smoke-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test media_capture_and_encode_path_prepares_native_helpers && cargo test media_source_audio_ingest_validates_drift_and_sandbox && cd ../frontend && npm run build"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test media_capture_and_encode_path_prepares_native_helpers && cargo test media_source_audio_ingest_validates_drift_and_sandbox && cd ../frontend && npm run build"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "type": "trace_event",
+      "name": "obs-editor-media-capture-source-audio-production-smoke-finished"
+    }
+  ]
+}

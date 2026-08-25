@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "vanta-obs-companion-plugin-production-smoke",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "obs-editor-companion-plugin-production-smoke-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cd ../frontend && npm test -- --run tests/obsPluginPackage.test.ts && npm run build"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cd ../frontend && npm test -- --run tests/obsPluginPackage.test.ts && npm run build"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "type": "trace_event",
+      "name": "obs-editor-companion-plugin-production-smoke-finished"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "package_id": "vanta-native-capture-macos",
+  "helper_kind": "capture",
+  "platform": "macos",
+  "display_name": "Vanta Native Capture Helper for macOS",
+  "binary_path": "$VANTA_OBS_ROOT/native/capture/macos/bin/vanta-native-capture",
+  "install_path": "$VANTA_OBS_ROOT/native/capture/macos/package/VantaNativeCapture.pkg",
+  "transports": ["stdio", "localhost"],
+  "signing": {
+    "required": true,
+    "identity_env": "VANTA_MACOS_DEVELOPER_ID",
+    "notarization_required": true,
+    "entitlement_profile": "capture-macos.entitlements"
+  },
+  "permissions": ["camera", "microphone", "screen-recording"]
+}

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "name": "vanta-obs-stream-start-end",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "stream-start-end-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "studio_api_flow_exercises_current_routes",
+        "--test",
+        "api"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "trace_event",
+      "name": "stream-start-end-finished"
+    }
+  ]
+}

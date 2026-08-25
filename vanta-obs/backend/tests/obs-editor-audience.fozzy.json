@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "vanta-obs-audience-telemetry-production-smoke",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "obs-editor-audience-telemetry-production-smoke-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test audience_telemetry_tracks_live_metrics_discovery_and_revenue && cd ../frontend && npm run build"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test audience_telemetry_tracks_live_metrics_discovery_and_revenue && cd ../frontend && npm run build"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "type": "trace_event",
+      "name": "obs-editor-audience-telemetry-production-smoke-finished"
+    }
+  ]
+}

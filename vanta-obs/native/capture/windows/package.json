@@ -1,0 +1,16 @@
+{
+  "package_id": "vanta-native-capture-windows",
+  "helper_kind": "capture",
+  "platform": "windows",
+  "display_name": "Vanta Native Capture Helper for Windows",
+  "binary_path": "$VANTA_OBS_ROOT/native/capture/windows/bin/vanta-native-capture.exe",
+  "install_path": "$VANTA_OBS_ROOT/native/capture/windows/package/VantaNativeCapture.msix",
+  "transports": ["stdio", "localhost"],
+  "signing": {
+    "required": true,
+    "identity_env": "VANTA_WINDOWS_SIGNING_CERT",
+    "notarization_required": false,
+    "entitlement_profile": "capture-windows.capabilities"
+  },
+  "permissions": ["camera", "microphone", "screen-capture", "window-capture"]
+}

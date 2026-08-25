@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "vanta-obs-rolling-replay-buffer-production-smoke",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "obs-editor-rolling-replay-buffer-production-smoke-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test studio_api_flow_exercises_current_routes && cd ../frontend && npm run build"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test studio_api_flow_exercises_current_routes && cd ../frontend && npm run build"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "type": "trace_event",
+      "name": "obs-editor-rolling-replay-buffer-production-smoke-finished"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "package_id": "vanta-native-encode-windows",
+  "helper_kind": "encode",
+  "platform": "windows",
+  "display_name": "Vanta Native Encode Helper for Windows",
+  "binary_path": "$VANTA_OBS_ROOT/native/encode/windows/bin/vanta-native-encode.exe",
+  "install_path": "$VANTA_OBS_ROOT/native/encode/windows/package/VantaNativeEncode.msix",
+  "transports": ["stdio", "localhost"],
+  "signing": {
+    "required": true,
+    "identity_env": "VANTA_WINDOWS_SIGNING_CERT",
+    "notarization_required": false,
+    "entitlement_profile": "encode-windows.capabilities"
+  },
+  "permissions": ["video-encode", "filesystem-media-output"]
+}

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "vanta-obs-native-package-fanout-production-smoke",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "obs-editor-native-package-fanout-production-smoke-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo build --bin vanta-native-helper --bin vanta-native-package && cargo run --bin vanta-native-package -- build-all && cargo run --bin vanta-native-package -- release-readiness | jq -e '.status == \"blocked\" and any(.blockers[]; .gate == \"installer_signature_unverified\")' && cargo run --bin vanta-native-package -- verify-distribution | jq -e 'any(.[]; .status == \"blocked\" and .helper_production_signature_verified == false and .installer_production_signature_verified == false)' && ! cargo run --bin vanta-native-package -- release-readiness --strict >/tmp/vanta-release-readiness-strict.json && jq -e '.status == \"blocked\"' /tmp/vanta-release-readiness-strict.json && ! cargo run --bin vanta-native-package -- verify-distribution --strict >/tmp/vanta-verify-distribution-strict.json && jq -e 'any(.[]; .status == \"blocked\")' /tmp/vanta-verify-distribution-strict.json && cargo test validates_platform_specific_native_helper_manifests && cargo test distribution_verifier_blocks_non_production_signed_artifacts && cargo test native_package_cli_reports_release_readiness_blockers"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo build --bin vanta-native-helper --bin vanta-native-package && cargo run --bin vanta-native-package -- build-all && cargo run --bin vanta-native-package -- release-readiness | jq -e '.status == \"blocked\" and any(.blockers[]; .gate == \"installer_signature_unverified\")' && cargo run --bin vanta-native-package -- verify-distribution | jq -e 'any(.[]; .status == \"blocked\" and .helper_production_signature_verified == false and .installer_production_signature_verified == false)' && ! cargo run --bin vanta-native-package -- release-readiness --strict >/tmp/vanta-release-readiness-strict.json && jq -e '.status == \"blocked\"' /tmp/vanta-release-readiness-strict.json && ! cargo run --bin vanta-native-package -- verify-distribution --strict >/tmp/vanta-verify-distribution-strict.json && jq -e 'any(.[]; .status == \"blocked\")' /tmp/vanta-verify-distribution-strict.json && cargo test validates_platform_specific_native_helper_manifests && cargo test distribution_verifier_blocks_non_production_signed_artifacts && cargo test native_package_cli_reports_release_readiness_blockers"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "type": "trace_event",
+      "name": "obs-editor-native-package-fanout-production-smoke-finished"
+    }
+  ]
+}

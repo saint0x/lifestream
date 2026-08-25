@@ -1,0 +1,16 @@
+{
+  "package_id": "vanta-native-replay-windows",
+  "helper_kind": "replay",
+  "platform": "windows",
+  "display_name": "Vanta Native Replay Helper for Windows",
+  "binary_path": "$VANTA_OBS_ROOT/native/replay/windows/bin/vanta-native-replay.exe",
+  "install_path": "$VANTA_OBS_ROOT/native/replay/windows/package/VantaNativeReplay.msix",
+  "transports": ["stdio", "localhost"],
+  "signing": {
+    "required": true,
+    "identity_env": "VANTA_WINDOWS_SIGNING_CERT",
+    "notarization_required": false,
+    "entitlement_profile": "replay-windows.capabilities"
+  },
+  "permissions": ["filesystem-replay-buffer", "filesystem-media-output"]
+}

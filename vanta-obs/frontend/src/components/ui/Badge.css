@@ -1,0 +1,64 @@
+.ls-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 7px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-border-hi);
+  background: rgba(0, 0, 0, 0.66);
+  backdrop-filter: blur(8px);
+  color: var(--c-text-dim);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ls-badge__icon {
+  display: inline-flex;
+}
+.ls-badge__icon svg {
+  width: 10px;
+  height: 10px;
+}
+
+.ls-badge--live {
+  background: var(--c-live);
+  border-color: var(--c-live);
+  color: white;
+}
+.ls-badge--live::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
+  margin-right: 2px;
+  animation: blink 1.4s var(--ease-in-out) infinite;
+}
+
+.ls-badge--new {
+  color: var(--c-text);
+  border-color: var(--c-text);
+  background: transparent;
+}
+
+.ls-badge--original {
+  color: var(--c-bg);
+  background: var(--c-text);
+  border-color: var(--c-text);
+  letter-spacing: 0.14em;
+}
+
+.ls-badge--hd {
+  color: var(--c-text-dim);
+}
+
+.ls-badge--premium {
+  color: var(--c-warning);
+  border-color: rgba(255, 204, 61, 0.4);
+  background: rgba(255, 204, 61, 0.06);
+}

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "name": "vanta-obs-sponsor-proof-handoff",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "sponsor-proof-handoff-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "sponsor_inventory_tracks_campaign_creatives_proof_review_and_handoff",
+        "--test",
+        "api"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "trace_event",
+      "name": "sponsor-proof-handoff-finished"
+    }
+  ]
+}

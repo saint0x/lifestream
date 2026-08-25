@@ -1,0 +1,16 @@
+{
+  "package_id": "vanta-native-audio-macos",
+  "helper_kind": "audio",
+  "platform": "macos",
+  "display_name": "Vanta Native Audio Helper for macOS",
+  "binary_path": "$VANTA_OBS_ROOT/native/audio/macos/bin/vanta-native-audio",
+  "install_path": "$VANTA_OBS_ROOT/native/audio/macos/package/VantaNativeAudio.pkg",
+  "transports": ["stdio", "localhost"],
+  "signing": {
+    "required": true,
+    "identity_env": "VANTA_MACOS_DEVELOPER_ID",
+    "notarization_required": true,
+    "entitlement_profile": "audio-macos.entitlements"
+  },
+  "permissions": ["microphone", "screen-recording", "system-audio", "application-audio", "isolated-audio-output"]
+}

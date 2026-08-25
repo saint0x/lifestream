@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "name": "vanta-obs-bridge-sync",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "obs-bridge-sync-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "obs_bridge_sync_and_commands_are_mockable_and_value_filtered",
+        "--test",
+        "api"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "trace_event",
+      "name": "obs-bridge-sync-finished"
+    }
+  ]
+}

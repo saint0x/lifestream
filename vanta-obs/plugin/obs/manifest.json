@@ -1,0 +1,37 @@
+{
+  "id": "streamvanta.vanta-obs-companion",
+  "name": "Vanta OBS Companion",
+  "version": "0.1.0",
+  "type": "obs-browser-dock",
+  "entry": "dock/index.html",
+  "script": "vanta_obs_bridge.lua",
+  "api": {
+    "default_base_url": "http://127.0.0.1:4127",
+    "auth": "bearer_token",
+    "required_headers": [
+      "Authorization",
+      "X-Vanta-User-Id",
+      "X-Vanta-Role"
+    ]
+  },
+  "capabilities": [
+    "authenticate_to_vanta",
+    "sponsor_cue_dock",
+    "stream_health_dock",
+    "trigger_proof_markers",
+    "send_replay_markers",
+    "sync_live_state",
+    "sync_archive_status"
+  ],
+  "non_goals": [
+    "full_vanta_live_studio_ui",
+    "generic_obs_plugin_host",
+    "scene_editor_clone",
+    "encoder_knob_surface"
+  ],
+  "value_filter": {
+    "minimum_scope": true,
+    "primary_product": "vanta-live-studio",
+    "obs_role": "companion_for_creators_who_keep_obs"
+  }
+}

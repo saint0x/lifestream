@@ -1,0 +1,16 @@
+{
+  "package_id": "vanta-native-replay-macos",
+  "helper_kind": "replay",
+  "platform": "macos",
+  "display_name": "Vanta Native Replay Helper for macOS",
+  "binary_path": "$VANTA_OBS_ROOT/native/replay/macos/bin/vanta-native-replay",
+  "install_path": "$VANTA_OBS_ROOT/native/replay/macos/package/VantaNativeReplay.pkg",
+  "transports": ["stdio", "localhost"],
+  "signing": {
+    "required": true,
+    "identity_env": "VANTA_MACOS_DEVELOPER_ID",
+    "notarization_required": true,
+    "entitlement_profile": "replay-macos.entitlements"
+  },
+  "permissions": ["filesystem-replay-buffer", "filesystem-media-output"]
+}

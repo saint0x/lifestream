@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "name": "vanta-obs-studio-browser-operation",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "studio-browser-operation-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cd ../frontend && npm test -- --run && npm run build && cd .. && bash scripts/aegis-studio-flow.sh"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "trace_event",
+      "name": "studio-browser-operation-finished"
+    }
+  ]
+}

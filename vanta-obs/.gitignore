@@ -1,0 +1,14 @@
+backend/target/
+backend/vanta-obs*.db
+backend/vanta-obs*.db-*
+backend/vanta-obs*.db.*
+backend/vanta-obs*.db-shm
+backend/vanta-obs*.db-wal
+backend/storage/
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/
+native/*/*/bin/
+native/*/*/package/
+native/*/*/stage/
+.fozzy/runs/

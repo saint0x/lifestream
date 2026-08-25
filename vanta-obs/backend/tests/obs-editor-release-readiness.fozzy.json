@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "name": "vanta-obs-release-readiness-production-smoke",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "obs-editor-release-readiness-production-smoke-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test production_readiness_blocks_unsigned_distribution && cargo test native_helper_protocol_persists_sessions_events_and_shutdown --test api"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "sh",
+      "args": [
+        "-lc",
+        "cargo test production_readiness_blocks_unsigned_distribution && cargo test native_helper_protocol_persists_sessions_events_and_shutdown --test api"
+      ],
+      "expect_exit": 0
+    },
+    {
+      "type": "trace_event",
+      "name": "obs-editor-release-readiness-production-smoke-finished"
+    }
+  ]
+}

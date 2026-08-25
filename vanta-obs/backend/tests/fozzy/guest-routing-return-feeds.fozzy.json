@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "name": "vanta-obs-guest-routing-return-feeds",
+  "steps": [
+    {
+      "type": "trace_event",
+      "name": "guest-routing-return-feeds-start"
+    },
+    {
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "guest_multi_participant_shared_game_routing_has_dedicated_coverage",
+        "--test",
+        "api"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "times": 1
+    },
+    {
+      "type": "trace_event",
+      "name": "guest-routing-return-feeds-finished"
+    }
+  ]
+}
