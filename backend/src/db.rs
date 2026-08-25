@@ -2633,7 +2633,7 @@ impl Database {
     pub async fn get_creator_profile_for_api(&self, creator_id: &str) -> AppResult<CreatorProfile> {
         match &self.provider {
             DatabaseProvider::Sqlite(pool) => {
-                let row = sqlx::query(creator_profile_select("id = ?").as_str())
+                let row = sqlx::query(creator_profile_select("id = ?", false).as_str())
                     .bind(creator_id)
                     .fetch_optional(pool)
                     .await?
@@ -2641,7 +2641,7 @@ impl Database {
                 creator_profile_from_sqlite_row(&row)
             }
             DatabaseProvider::Postgres(pool) => {
-                let row = sqlx::query(creator_profile_select("id = $1").as_str())
+                let row = sqlx::query(creator_profile_select("id = $1", true).as_str())
                     .bind(creator_id)
                     .fetch_optional(pool)
                     .await?
@@ -3284,13 +3284,19 @@ fn creator_api_key_from_postgres_row(row: &PgRow) -> AppResult<CreatorApiKey> {
     })
 }
 
-fn creator_profile_select(where_clause: &str) -> String {
+fn creator_profile_select(where_clause: &str, postgres: bool) -> String {
+    let metrics_select = if postgres {
+        "followers::BIGINT AS followers,
+               subscribers::BIGINT AS subscribers, monthly_viewers::BIGINT AS monthly_viewers,
+               total_watch_hours::BIGINT AS total_watch_hours"
+    } else {
+        "followers, subscribers, monthly_viewers, total_watch_hours"
+    };
     format!(
         r#"
         SELECT id, user_id, handle, display_name, avatar, banner, tagline, bio,
                partner_status, joined_at, stream_key, rtmp_url, default_category,
-               default_tags_json, followers, subscribers, monthly_viewers,
-               total_watch_hours, live_status, current_broadcast_id
+               default_tags_json, {metrics_select}, live_status, current_broadcast_id
         FROM creator_profiles
         WHERE {where_clause}
         "#
