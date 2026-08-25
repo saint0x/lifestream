@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Play, Radio } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import {
   appHref,
   fetchHomeCatalog,
@@ -15,6 +15,10 @@ function itemImage(item: FeaturedItem): string {
   return item.kind === "live" ? item.thumbnail : item.images.backdrop || item.images.thumbnail;
 }
 
+function fallbackImage(item: FeaturedItem): string {
+  return item.kind === "live" ? item.thumbnail : item.images.thumbnail || item.images.poster;
+}
+
 function itemMeta(item: FeaturedItem): string {
   if (item.kind === "live") return `${item.category} live now`;
   return [item.rating, String(item.year), item.genres[0]].filter(Boolean).join(" / ");
@@ -23,39 +27,6 @@ function itemMeta(item: FeaturedItem): string {
 function itemCopy(item: FeaturedItem): string {
   if (item.kind === "live") return `${item.streamer.displayName} is streaming now.`;
   return item.tagline || item.synopsis;
-}
-
-function ContentRail({
-  kicker,
-  title,
-  items,
-}: {
-  readonly kicker: string;
-  readonly title: string;
-  readonly items: readonly FeaturedItem[];
-}) {
-  if (items.length === 0) return null;
-
-  return (
-    <section className="vl-home-rail" aria-label={title}>
-      <header>
-        <span className="vl-label">{kicker}</span>
-        <h2>{title}</h2>
-      </header>
-      <div className="vl-home-rail__scroller">
-        {items.map((item, index) => (
-          <a className="vl-title-card" href={appHref(item)} key={item.id}>
-            <img src={itemImage(item)} alt="" />
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <div>
-              <strong>{item.title}</strong>
-              <em>{itemMeta(item)}</em>
-            </div>
-          </a>
-        ))}
-      </div>
-    </section>
-  );
 }
 
 export function HomeLanding() {
@@ -102,7 +73,16 @@ export function HomeLanding() {
 
       <section className={current ? "vl-stream-hero" : "vl-stream-hero is-empty"} aria-label="Featured Vanta programming">
         {featured.map((item, index) => (
-          <img className={index === active % featured.length ? "is-active" : undefined} key={item.id} src={itemImage(item)} alt="" />
+          <img
+            className={index === active % featured.length ? "is-active" : undefined}
+            key={item.id}
+            src={itemImage(item)}
+            alt=""
+            onError={(event) => {
+              const nextSrc = fallbackImage(item);
+              if (event.currentTarget.src !== nextSrc) event.currentTarget.src = nextSrc;
+            }}
+          />
         ))}
         <div className="vl-stream-hero__shade" />
         <div className="vl-stream-hero__copy">
@@ -128,32 +108,34 @@ export function HomeLanding() {
               onClick={() => setActive(index)}
               type="button"
             >
-              <img src={itemImage(item)} alt="" />
+              <img
+                src={fallbackImage(item)}
+                alt=""
+                onError={(event) => {
+                  event.currentTarget.style.visibility = "hidden";
+                }}
+              />
               <span>{item.title}</span>
             </button>
           ))}
         </div>
       </section>
 
-      <section className="vl-home-promise">
-        <span>Exclusive creator shows.</span>
-        <span>Live premieres.</span>
-        <span>Free to watch.</span>
-      </section>
+      <div className="vl-home-depth">
+        <section className="vl-home-promise">
+          <span>Exclusive creator shows.</span>
+          <span>Live premieres.</span>
+          <span>Free to watch.</span>
+        </section>
 
-      <ContentRail kicker="Top 10 today" title="Everyone is watching" items={featured} />
-      <ContentRail kicker="Originals" title="Vanta originals" items={catalog?.trendingSeries ?? []} />
-      <ContentRail kicker="Films" title="Worth the runtime" items={catalog?.trendingFilms ?? []} />
-      <ContentRail kicker="Live" title="Streaming right now" items={catalog?.featuredLive ?? []} />
-
-      <section className="vl-home-final">
-        <Radio size={22} />
-        <h2>Stream the best exclusive creator content for free.</h2>
-        <a className="vl-button vl-button--primary" href={VANTA_APP_BASE_URL}>
-          <ArrowRight size={16} />
-          Watch now
-        </a>
-      </section>
+        <section className="vl-home-final">
+          <h2>Stream the best exclusive creator content for free.</h2>
+          <a className="vl-button vl-button--primary" href={VANTA_APP_BASE_URL}>
+            <ArrowRight size={16} />
+            Watch now
+          </a>
+        </section>
+      </div>
     </main>
   );
 }
