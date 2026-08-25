@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "name": "vanta-video-editor-backend",
+  "steps": [
+    {
+      "name": "backend-format-check",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": ["fmt", "--check"],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "backend-domain-and-media-tests",
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": ["test"],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "frontend-build-contract",
+      "type": "proc_when",
+      "cmd": "bash",
+      "args": ["-lc", "cd ../frontend && bun run lint && bun run build"],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "editor-integration-smoke-contract",
+      "type": "proc_when",
+      "cmd": "bash",
+      "args": ["tests/editor-integration-smoke.sh"],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "name": "backend-domain-and-media-tests-pass",
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": ["test"],
+      "expect_exit": 0
+    },
+    {
+      "name": "frontend-lint-build-pass",
+      "type": "proc_spawn",
+      "cmd": "bash",
+      "args": ["-lc", "cd ../frontend && bun run lint && bun run build"],
+      "expect_exit": 0
+    },
+    {
+      "name": "editor-integration-smoke-pass",
+      "type": "proc_spawn",
+      "cmd": "bash",
+      "args": ["tests/editor-integration-smoke.sh"],
+      "expect_exit": 0
+    }
+  ]
+}

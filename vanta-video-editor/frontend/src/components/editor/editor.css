@@ -1,0 +1,366 @@
+.ve-app {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+
+.ve-boot {
+  min-height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  padding: 32px;
+}
+
+.ve-boot h1 {
+  font-size: 42px;
+}
+
+.ve-boot p {
+  color: var(--c-text-dim);
+}
+
+.ve-rail {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 10px;
+  border-right: 1px solid var(--c-border);
+  background: rgba(10, 10, 10, 0.92);
+}
+
+.ve-rail button {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  color: var(--c-text-faint);
+}
+
+.ve-rail button:hover,
+.ve-rail button.is-active {
+  color: var(--c-text);
+  border-color: var(--c-border-hi);
+  background: var(--c-surface);
+}
+
+.ve-shell {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) 280px;
+  height: 100vh;
+}
+
+.ve-topbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 18px;
+  align-items: center;
+  min-height: 74px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--c-border);
+  background: rgba(0, 0, 0, 0.74);
+}
+
+.ve-project h1 {
+  margin-top: 4px;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.ve-topbar__meta,
+.ve-actions,
+.ve-stage__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ve-workspace {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 320px minmax(480px, 1fr) 320px;
+  gap: 1px;
+  background: var(--c-border);
+  overflow: hidden;
+}
+
+.ve-panel,
+.ve-inspector,
+.ve-stage {
+  min-width: 0;
+  min-height: 0;
+  background: var(--c-bg-elevated);
+}
+
+.ve-panel,
+.ve-inspector {
+  padding: 16px;
+}
+
+.ve-panel__head {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+
+.ve-panel__head h2,
+.ve-inspector h2 {
+  font-size: 16px;
+  text-transform: capitalize;
+}
+
+.ve-stage {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  padding: 18px;
+}
+
+.ve-stage .ls-player {
+  border-radius: var(--r-md);
+}
+
+.ve-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ve-row,
+.ve-requirement,
+.ve-transcript {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  text-align: left;
+}
+
+.ve-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.ve-row__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ve-row strong,
+.ve-requirement h3 {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.ve-row span,
+.ve-requirement p,
+.ve-transcript p {
+  color: var(--c-text-dim);
+  font-size: 12px;
+}
+
+.ve-transcript:hover,
+.ve-transcript.is-active {
+  border-color: var(--c-border-strong);
+  background: var(--c-surface-hi);
+}
+
+.ve-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ve-inspector dl {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px 12px;
+  font-size: 12px;
+}
+
+.ve-inspector dt {
+  color: var(--c-text-faint);
+}
+
+.ve-inspector dd {
+  min-width: 0;
+  color: var(--c-text);
+  overflow-wrap: anywhere;
+}
+
+.ve-inspector__rules {
+  display: grid;
+  gap: 8px;
+}
+
+.ve-inspector__rules h3 {
+  font-size: 12px;
+  color: var(--c-text-dim);
+}
+
+.ve-inspector__rules span {
+  padding: 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  color: var(--c-text-dim);
+  font-size: 12px;
+}
+
+.ve-timeline {
+  min-height: 0;
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--c-border);
+  background: #050505;
+}
+
+.ve-timeline__ruler {
+  position: relative;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding-left: 152px;
+  color: var(--c-text-faint);
+  border-bottom: 1px solid var(--c-border);
+  cursor: pointer;
+}
+
+.ve-playhead {
+  position: absolute;
+  top: 0;
+  bottom: -220px;
+  width: 1px;
+  background: var(--c-text);
+  z-index: 5;
+}
+
+.ve-playhead::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -5px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid var(--c-text);
+}
+
+.ve-track {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 46px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.ve-track__label {
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.ve-track__label span {
+  color: var(--c-text-faint);
+}
+
+.ve-track__lane {
+  position: relative;
+  height: 30px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.ve-clip,
+.ve-slot {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  min-width: 42px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+
+.ve-clip {
+  color: var(--c-text);
+  background: rgba(78, 161, 255, 0.24);
+  border: 1px solid rgba(78, 161, 255, 0.36);
+  cursor: grab;
+  touch-action: none;
+}
+
+.ve-clip:active {
+  cursor: grabbing;
+}
+
+.ve-slot {
+  color: #111;
+  background: var(--c-warning);
+  border: 1px solid rgba(255, 204, 61, 0.66);
+}
+
+@media (max-width: 1120px) {
+  .ve-shell {
+    height: auto;
+    min-height: 100vh;
+    grid-template-rows: auto auto auto;
+  }
+
+  .ve-topbar,
+  .ve-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .ve-panel,
+  .ve-inspector {
+    max-height: 420px;
+  }
+}
+
+@media (max-width: 700px) {
+  .ve-app {
+    grid-template-columns: 1fr;
+  }
+
+  .ve-rail {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .ve-topbar__meta,
+  .ve-actions,
+  .ve-stage__tools {
+    flex-wrap: wrap;
+  }
+
+  .ve-timeline {
+    overflow-x: auto;
+  }
+
+  .ve-track,
+  .ve-timeline__ruler {
+    min-width: 760px;
+  }
+}
