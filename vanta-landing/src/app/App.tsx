@@ -1,14 +1,20 @@
-import { ArrowRight, ChevronDown, Play, Radio } from "lucide-react";
+import { ChevronDown, Play } from "lucide-react";
 import { SignupForm } from "@/components/SignupForm";
-import { featuredTiles, pages, routeToAudience } from "@/content/pages";
+import { HomeLanding } from "@/app/HomeLanding";
+import { pages, routeToAudience } from "@/content/pages";
 import "@/app/App.css";
 
 export function App() {
   const audience = routeToAudience(window.location.pathname);
-  const page = pages[audience];
-  const tiles = page.tiles ?? featuredTiles;
 
-  document.title = audience === "home" ? "Vanta | HBO plus Twitch" : `${page.formTitle} | Vanta`;
+  if (audience === "home") {
+    return <HomeLanding />;
+  }
+
+  const page = pages[audience];
+  const tiles = page.tiles ?? [];
+
+  document.title = `${page.formTitle} | Vanta`;
 
   return (
     <main className="vl-page">
@@ -42,20 +48,6 @@ export function App() {
           <span className="vl-label">{page.eyebrow}</span>
           <h1>{page.title}</h1>
           <p>{page.subtitle}</p>
-          {audience === "home" ? (
-            <div className="vl-actions">
-              <a className="vl-button vl-button--primary" href="#signup">
-                <ArrowRight size={16} />
-                {page.primaryCta}
-              </a>
-              {page.secondaryCta ? (
-                <a className="vl-button" href="/creators">
-                  <Radio size={16} />
-                  {page.secondaryCta}
-                </a>
-              ) : null}
-            </div>
-          ) : null}
         </div>
 
         <a className="vl-cue" href="#proof" aria-label="Skip to proof">

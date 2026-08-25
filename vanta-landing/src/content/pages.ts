@@ -3,21 +3,17 @@ import {
   BadgeDollarSign,
   BarChart3,
   Clapperboard,
-  Compass,
   FileCheck2,
-  Flame,
   Layers3,
-  LockKeyhole,
   Megaphone,
   Play,
-  Radio,
   ShieldCheck,
-  Sparkles,
   Users,
   WalletCards,
 } from "lucide-react";
 
 export type Audience = "home" | "creators" | "buyers";
+export type FunnelAudience = Exclude<Audience, "home">;
 
 export type Metric = {
   readonly label: string;
@@ -58,7 +54,7 @@ export type SignupField = {
 };
 
 export type PageContent = {
-  readonly audience: Audience;
+  readonly audience: FunnelAudience;
   readonly eyebrow: string;
   readonly title: string;
   readonly subtitle: string;
@@ -96,89 +92,7 @@ const buyerFields = [
   { name: "message", label: "Goal", placeholder: "Audience or category you want", multiline: true },
 ] satisfies readonly SignupField[];
 
-const generalFields = [
-  { name: "name", label: "Name", placeholder: "Your name", required: true },
-  { name: "email", label: "Email", placeholder: "you@example.com", required: true },
-  { name: "message", label: "Interest", placeholder: "What brings you here?", multiline: true },
-] satisfies readonly SignupField[];
-
-export const pages: Record<Audience, PageContent> = {
-  home: {
-    audience: "home",
-    eyebrow: "HBO plus Twitch for creator shows",
-    title: "The best creators deserve more than a feed.",
-    subtitle:
-      "Premium creator shows, live premieres, and films in one free streaming home. Fans watch, creators earn, and brands buy proven attention.",
-    primaryCta: "Get early access",
-    formTitle: "Get early access",
-    formSubtitle: "Join the early list for creators, viewers, and buyers.",
-    formSuccess: "You are on the Vanta early-access list.",
-    image: "/platform-shots/details/viewer-home-detail.png",
-    metrics: [
-      { label: "Watch", value: "Shows + live", detail: "Episodes and live events together" },
-      { label: "Access", value: "Free", detail: "No paywall for viewers" },
-      { label: "Value", value: "Measured", detail: "Watch time, returns, engagement" },
-      { label: "Shift", value: "Show", detail: "Creators become programming" },
-    ],
-    proof: [
-      {
-        icon: Clapperboard,
-        title: "Full episodes feel premium",
-        body: "Creators launch shows, seasons, films, and specials without shrinking the work into a post.",
-      },
-      {
-        icon: Radio,
-        title: "Live stays part of the story",
-        body: "Live premieres, episodes, seasons, and profiles stay in one place.",
-      },
-      {
-        icon: BarChart3,
-        title: "Attention becomes worth more",
-        body: "Vanta shows watch depth, return viewing, and engagement beyond raw views.",
-      },
-    ],
-    stepsTitle: "Creator shows become premium ad inventory.",
-    stepsIntro:
-      "The loop is simple: publish, watch, measure, sell.",
-    steps: [
-      {
-        label: "01",
-        title: "Creators bring the show",
-        body: "Exclusive episodes, films, specials, seasons, and live events live in one premium streaming destination.",
-      },
-      {
-        label: "02",
-        title: "Fans come to watch",
-        body: "Clips and social posts create demand. Vanta is where viewers go for the full thing.",
-      },
-      {
-        label: "03",
-        title: "The audience becomes legible",
-        body: "Watch depth, return visits, engagement, and audience quality become clearer than raw reach.",
-      },
-      {
-        label: "04",
-        title: "Brands buy with confidence",
-        body: "Vanta packages premium attention into inventory buyers can understand, purchase, and renew.",
-      },
-    ],
-    strips: ["Exclusive shows", "Live premieres", "Creator audiences", "Measured attention"],
-    faq: [
-      {
-        question: "What is Vanta in one sentence?",
-        answer: "Vanta is HBO plus Twitch for creator-owned shows. It is free to watch and built to monetize real attention.",
-      },
-      {
-        question: "Why would anyone leave social feeds to watch?",
-        answer: "Because the complete show is here. Social creates demand; Vanta captures the viewing.",
-      },
-      {
-        question: "Why does this matter for creators and brands?",
-        answer: "Creators get a premium home. Brands get cleaner inventory with better proof.",
-      },
-    ],
-    fields: generalFields,
-  },
+export const pages: Record<FunnelAudience, PageContent> = {
   creators: {
     audience: "creators",
     eyebrow: "For creators who can move an audience",
@@ -386,42 +300,3 @@ export const audienceSignupKind = (audience: Audience): "creator" | "buyer" | "g
   if (audience === "buyers") return "buyer";
   return "general";
 };
-
-export const featuredTiles = [
-  {
-    image: "/platform-shots/details/viewer-home-detail.png",
-    label: "Outdoor documentary",
-    title: "Full episodes worth finishing.",
-    icon: Play,
-  },
-  {
-    image: "/platform-shots/details/series-detail-detail.png",
-    label: "Workshop season",
-    title: "Recurring episodes build habit.",
-    icon: Flame,
-  },
-  {
-    image: "/platform-shots/details/agency-stats-detail.png",
-    label: "Adventure proof",
-    title: "Long sessions create context.",
-    icon: Compass,
-  },
-  {
-    image: "/platform-shots/details/viewer-home-detail.png",
-    label: "Audience migration",
-    title: "Social points to the premiere.",
-    icon: Users,
-  },
-  {
-    image: "/platform-shots/details/creator-profile-detail.png",
-    label: "Creator profile",
-    title: "One profile for the best work.",
-    icon: Sparkles,
-  },
-  {
-    image: "/platform-shots/details/agency-creators-detail.png",
-    label: "Brand safety",
-    title: "Clear placement before launch.",
-    icon: LockKeyhole,
-  },
-] as const;
