@@ -11,11 +11,11 @@
 }
 
 .ls-ad-hub__kicker {
-  font-size: 11px;
+  margin-bottom: 12px;
   color: var(--c-text-faint);
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  margin-bottom: 12px;
 }
 
 .ls-ad-hub__title-row {
@@ -26,16 +26,18 @@
 }
 
 .ls-ad-hub__title {
+  margin-bottom: 10px;
   font-size: clamp(40px, 5vw, 56px);
   font-weight: 500;
   line-height: 1;
-  margin-bottom: 10px;
+  letter-spacing: 0;
 }
 
 .ls-ad-hub__sub {
-  font-size: 13px;
+  max-width: 640px;
   color: var(--c-text-dim);
-  max-width: 560px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .ls-ad-hub__notice,
@@ -45,14 +47,109 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border-radius: var(--r-sm);
   border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
   background: var(--c-bg-elevated);
   font-size: 13px;
 }
 
 .ls-ad-hub__error {
   color: var(--c-live);
+}
+
+.ls-ad-hub__hero {
+  position: relative;
+  min-height: 430px;
+  display: grid;
+  align-items: end;
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+}
+
+.ls-ad-hub__hero > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ls-ad-hub__hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.94), rgba(0, 0, 0, 0.52) 50%, rgba(0, 0, 0, 0.12)),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.7));
+}
+
+.ls-ad-hub__hero-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 13px;
+  max-width: 680px;
+  padding: 32px;
+}
+
+.ls-ad-hub__eyebrow,
+.ls-ad-hub__metric span,
+.ls-ad-hub__field > span {
+  color: var(--c-text-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.ls-ad-hub__hero-copy h2 {
+  max-width: 720px;
+  font-size: clamp(34px, 5vw, 64px);
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.ls-ad-hub__hero-copy p {
+  max-width: 620px;
+  color: var(--c-text-dim);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ls-ad-hub__hero-actions,
+.ls-ad-hub__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.ls-ad-hub__hero-proof {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1;
+  width: min(260px, calc(100% - 48px));
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--c-border-hi);
+  border-radius: var(--r-md);
+  background: rgba(0, 0, 0, 0.66);
+  backdrop-filter: blur(14px);
+}
+
+.ls-ad-hub__hero-proof strong {
+  font-size: 26px;
+  font-weight: 500;
+}
+
+.ls-ad-hub__hero-proof em {
+  color: var(--c-text-dim);
+  font-size: 12px;
+  font-style: normal;
 }
 
 .ls-ad-hub__metrics {
@@ -65,23 +162,15 @@
 .ls-ad-hub__panel {
   min-width: 0;
   border: 1px solid var(--c-border);
-  background: var(--c-bg-elevated);
   border-radius: var(--r-md);
+  background: var(--c-bg-elevated);
 }
 
 .ls-ad-hub__metric {
+  min-height: 78px;
   display: grid;
-  gap: 3px;
-  min-height: 58px;
-  padding: 8px 10px;
-}
-
-.ls-ad-hub__metric span,
-.ls-ad-hub__field > span {
-  font-size: 10px;
-  color: var(--c-text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  gap: 4px;
+  padding: 11px 12px;
 }
 
 .ls-ad-hub__metric strong {
@@ -89,7 +178,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 500;
 }
 
@@ -101,7 +190,7 @@
 
 .ls-ad-hub__layout {
   display: grid;
-  grid-template-columns: minmax(300px, 0.9fr) minmax(360px, 1.1fr);
+  grid-template-columns: minmax(320px, 0.9fr) minmax(420px, 1.1fr);
   gap: 24px;
   align-items: start;
 }
@@ -110,9 +199,8 @@
   padding: 18px;
 }
 
-.ls-ad-hub__panel--submit,
-.ls-ad-hub__panel--packages {
-  grid-column: span 1;
+.ls-ad-hub__panel--detail {
+  min-height: 100%;
 }
 
 .ls-ad-hub__panel-head {
@@ -126,28 +214,31 @@
 }
 
 .ls-ad-hub__panel-head h2 {
+  margin-bottom: 5px;
   font-size: 18px;
   font-weight: 500;
-  margin-bottom: 5px;
 }
 
-.ls-ad-hub__panel-head p {
-  font-size: 12px;
+.ls-ad-hub__panel-head p,
+.ls-ad-hub__detail p,
+.ls-ad-hub__brief p {
   color: var(--c-text-dim);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .ls-ad-hub__offers,
 .ls-ad-hub__form,
 .ls-ad-hub__detail,
 .ls-ad-hub__packages,
-.ls-ad-hub__submissions {
-  display: flex;
-  flex-direction: column;
+.ls-ad-hub__submissions,
+.ls-ad-hub__requirements {
+  display: grid;
   gap: 12px;
 }
 
 .ls-ad-hub__offers {
-  max-height: 560px;
+  max-height: 780px;
   overflow: auto;
 }
 
@@ -156,28 +247,47 @@
 .ls-ad-hub__package {
   width: 100%;
   min-width: 0;
-  padding: 12px;
-  border-radius: var(--r-sm);
+  overflow: hidden;
   border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
   color: var(--c-text);
   background: var(--c-surface);
 }
 
 .ls-ad-hub__offer {
   display: grid;
-  gap: 8px;
+  padding: 0 0 12px;
   text-align: left;
-  transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out);
+  transition:
+    border-color 160ms var(--ease-out),
+    background 160ms var(--ease-out),
+    transform 120ms var(--ease-out);
 }
 
 .ls-ad-hub__offer:hover,
 .ls-ad-hub__offer.is-active {
   border-color: var(--c-border-hi);
   background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.ls-ad-hub__offer > img,
+.ls-ad-hub__brand-card > img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: var(--c-surface-hi);
+}
+
+.ls-ad-hub__offer-copy {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 12px 12px 0;
 }
 
 .ls-ad-hub__offer-top,
-.ls-ad-hub__detail-title,
+.ls-ad-hub__offer-bottom,
 .ls-ad-hub__package-main {
   display: flex;
   align-items: flex-start;
@@ -186,19 +296,20 @@
 }
 
 .ls-ad-hub__offer-title,
-.ls-ad-hub__detail h3,
+.ls-ad-hub__brand-card h3,
 .ls-ad-hub__package strong {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
 }
 
 .ls-ad-hub__offer-meta,
 .ls-ad-hub__submission .mono,
-.ls-ad-hub__package .mono {
+.ls-ad-hub__package .mono,
+.ls-ad-hub__brand-card .mono {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -209,34 +320,59 @@
   letter-spacing: 0.08em;
 }
 
-.ls-ad-hub__offer-price {
-  color: var(--c-text-dim);
-  font-size: 13px;
+.ls-ad-hub__offer-bottom strong {
+  font-size: 16px;
+  font-weight: 500;
 }
 
-.ls-ad-hub__detail p {
-  color: var(--c-text-dim);
-  font-size: 13px;
-  line-height: 1.5;
+.ls-ad-hub__offer-bottom em {
+  color: var(--c-text-faint);
+  font-size: 12px;
+  font-style: normal;
+  text-align: right;
+}
+
+.ls-ad-hub__brand-card {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+}
+
+.ls-ad-hub__brand-card > div {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+}
+
+.ls-ad-hub__brand-card h3 {
+  font-size: 18px;
 }
 
 .ls-ad-hub__facts {
   display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-sm);
-  background: var(--c-surface);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .ls-ad-hub__facts div {
-  display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
-  gap: 12px;
   min-width: 0;
-  overflow-wrap: anywhere;
-  font-size: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(92px, 0.45fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
   color: var(--c-text-dim);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.ls-ad-hub__facts svg {
+  color: var(--c-text-faint);
 }
 
 .ls-ad-hub__facts span {
@@ -246,33 +382,32 @@
   letter-spacing: 0.1em;
 }
 
+.ls-ad-hub__brief,
 .ls-ad-hub__requirements {
-  display: grid;
-  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
 }
 
+.ls-ad-hub__brief h4,
 .ls-ad-hub__requirements h4 {
+  margin-bottom: 8px;
   font-size: 12px;
   font-weight: 500;
 }
 
 .ls-ad-hub__requirements div {
   display: flex;
+  align-items: flex-start;
   gap: 8px;
   color: var(--c-text-dim);
   font-size: 12px;
   line-height: 1.4;
 }
 
-.ls-ad-hub__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 .ls-ad-hub__field {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 7px;
 }
 
@@ -298,14 +433,16 @@
 .ls-ad-hub__submission {
   display: grid;
   gap: 6px;
-  font-size: 12px;
+  padding: 12px;
   color: var(--c-text-dim);
+  font-size: 12px;
   overflow-wrap: anywhere;
 }
 
 .ls-ad-hub__package {
   display: grid;
   gap: 0;
+  padding: 12px;
   text-align: left;
   cursor: pointer;
   transition:
@@ -365,7 +502,7 @@
 }
 
 .ls-ad-hub__package.is-expanded .ls-ad-hub__package-detail {
-  max-height: 320px;
+  max-height: 360px;
   margin-top: 13px;
   padding-top: 13px;
   border-top-color: var(--c-border);
@@ -408,16 +545,22 @@
   border-radius: var(--r-sm);
   color: var(--c-text-faint);
   font-size: 13px;
+  text-align: center;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1180px) {
   .ls-ad-hub__metrics,
-  .ls-ad-hub__layout {
+  .ls-ad-hub__layout,
+  .ls-ad-hub__facts {
     grid-template-columns: 1fr;
+  }
+
+  .ls-ad-hub__hero {
+    min-height: 390px;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 700px) {
   .ls-ad-hub {
     padding: 28px 16px 56px;
   }
@@ -425,13 +568,33 @@
   .ls-ad-hub__title-row,
   .ls-ad-hub__panel-head,
   .ls-ad-hub__offer-top,
-  .ls-ad-hub__detail-title,
+  .ls-ad-hub__offer-bottom,
   .ls-ad-hub__package-main {
     flex-direction: column;
+  }
+
+  .ls-ad-hub__hero {
+    min-height: 520px;
+  }
+
+  .ls-ad-hub__hero-copy {
+    padding: 22px;
+  }
+
+  .ls-ad-hub__hero-proof {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: auto;
+    margin: 0 22px 22px;
   }
 
   .ls-ad-hub__facts div,
   .ls-ad-hub__package-facts {
     grid-template-columns: 1fr;
+  }
+
+  .ls-ad-hub__offer-bottom em {
+    text-align: left;
   }
 }

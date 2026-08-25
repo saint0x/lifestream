@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "creator-ad-marketplace-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "creator_can_accept_ad_offer_and_submit_review",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "creator_can_accept_ad_offer_and_submit_review",
+        "--quiet"
+      ],
+      "expect_exit": 0
+    }
+  ]
+}

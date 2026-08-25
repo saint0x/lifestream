@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BadgeDollarSign,
+  CalendarClock,
   Check,
   ChevronDown,
   ClipboardCheck,
+  ExternalLink,
+  FileCheck2,
+  Globe2,
+  Layers3,
   RefreshCw,
   Send,
   ShieldCheck,
+  Sparkles,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
@@ -21,6 +27,12 @@ import "./AdHubPage.css";
 interface SubmissionForm {
   readonly submissionUrl: string;
   readonly notes: string;
+}
+
+interface AdvertiserVisual {
+  readonly image: string;
+  readonly eyebrow: string;
+  readonly fit: string;
 }
 
 function money(cents: number, currency: string): string {
@@ -62,6 +74,45 @@ function statusTone(status: string): "neutral" | "new" | "premium" | "live" {
   return "neutral";
 }
 
+function visualForOffer(offer: AdMarketplaceOffer | null): AdvertiserVisual {
+  const source = `${offer?.advertiser.name ?? ""} ${offer?.advertiser.industry ?? ""} ${offer?.title ?? ""} ${offer?.campaign.objective ?? ""}`.toLowerCase();
+  if (source.includes("outdoor") || source.includes("trail") || source.includes("gear")) {
+    return {
+      image: "/ad-hub/outdoor-gear.png",
+      eyebrow: "Outdoor gear partner",
+      fit: "Best fit for practical product proof, field use, and high-trust host integration.",
+    };
+  }
+  if (source.includes("auto") || source.includes("power") || source.includes("overland")) {
+    return {
+      image: "/ad-hub/portable-power.png",
+      eyebrow: "Consumer hardware partner",
+      fit: "Best fit for demonstration-heavy stories where audience confidence matters.",
+    };
+  }
+  return {
+    image: "/ad-hub/developer-tools.png",
+    eyebrow: "Developer tooling partner",
+    fit: "Best fit for technical audiences, workflow credibility, and thoughtful mid-roll reads.",
+  };
+}
+
+function payoutRate(offer: AdMarketplaceOffer): number {
+  if (offer.offerAmountCents <= 0) return 0;
+  return Math.round((offer.creatorPayoutCents / offer.offerAmountCents) * 100);
+}
+
+function campaignWindow(offer: AdMarketplaceOffer): string {
+  const start = compactDate(offer.campaign.startsAt);
+  const end = compactDate(offer.campaign.endsAt);
+  if (start === "No due date" && end === "No due date") return "Flexible flight";
+  return `${start} - ${end}`;
+}
+
+function primaryOffer(offers: ReadonlyArray<AdMarketplaceOffer>, selected: AdMarketplaceOffer | null): AdMarketplaceOffer | null {
+  return selected ?? offers.find((offer) => offer.status === "pending") ?? offers[0] ?? null;
+}
+
 const emptyForm: SubmissionForm = {
   submissionUrl: "",
   notes: "",
@@ -81,9 +132,10 @@ export function AdHubPage() {
 
   const offers = hub?.offers ?? emptyOffers;
   const selectedOffer = useMemo(
-    () => offers.find((offer) => offer.id === selectedId) ?? offers[0] ?? null,
+    () => primaryOffer(offers, offers.find((offer) => offer.id === selectedId) ?? null),
     [offers, selectedId],
   );
+  const visual = visualForOffer(selectedOffer);
 
   const loadHub = useCallback(async (signal?: AbortSignal) => {
     setError(null);
@@ -91,7 +143,7 @@ export function AdHubPage() {
     setHub(nextHub);
     setSelectedId((current) => {
       if (current && nextHub.offers.some((offer) => offer.id === current)) return current;
-      return nextHub.offers[0]?.id ?? null;
+      return nextHub.offers.find((offer) => offer.status === "pending")?.id ?? nextHub.offers[0]?.id ?? null;
     });
   }, []);
 
@@ -199,6 +251,7 @@ export function AdHubPage() {
           },
         }}
       />
+
       <header className="ls-ad-hub__head">
         <PageTrail
           className="ls-ad-hub__kicker mono"
@@ -211,7 +264,7 @@ export function AdHubPage() {
           <div>
             <h1 className="ls-ad-hub__title">Ad Hub</h1>
             <p className="ls-ad-hub__sub">
-              Review sponsorship offers, manage deliverables, and submit campaign proof.
+              Preview advertiser partners, choose the right offers, and move accepted work through review.
             </p>
           </div>
           <Button
@@ -231,31 +284,75 @@ export function AdHubPage() {
       {status ? <div className="ls-ad-hub__notice"><Check size={14} />{status}</div> : null}
       {error ? <div className="ls-ad-hub__error">{error}</div> : null}
 
+      <section className="ls-ad-hub__hero">
+        <img src={visual.image} alt="" />
+        <div className="ls-ad-hub__hero-copy">
+          <span className="ls-ad-hub__eyebrow mono">{visual.eyebrow}</span>
+          <h2>{selectedOffer?.advertiser.name ?? "Advertiser opportunities"}</h2>
+          <p>{selectedOffer?.brief ?? "New sponsor offers will appear here with the brand context creators need before saying yes."}</p>
+          <div className="ls-ad-hub__hero-actions">
+            {selectedOffer ? (
+              <>
+                <Button
+                  variant="primary"
+                  icon={<Check />}
+                  disabled={saving || selectedOffer.status !== "pending"}
+                  onClick={() => void acceptOffer(selectedOffer)}
+                >
+                  Accept offer
+                </Button>
+                <Button
+                  variant="outline"
+                  icon={<ExternalLink />}
+                  disabled={!selectedOffer.advertiser.websiteUrl}
+                  onClick={() => {
+                    if (selectedOffer.advertiser.websiteUrl) window.open(selectedOffer.advertiser.websiteUrl, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  Visit company
+                </Button>
+              </>
+            ) : null}
+          </div>
+        </div>
+        {selectedOffer ? (
+          <div className="ls-ad-hub__hero-proof">
+            <span className="mono">Creator payout</span>
+            <strong>{money(selectedOffer.creatorPayoutCents, selectedOffer.currency)}</strong>
+            <em>{payoutRate(selectedOffer)}% of gross offer</em>
+          </div>
+        ) : null}
+      </section>
+
       <section className="ls-ad-hub__metrics">
         <div className="ls-ad-hub__metric">
           <span className="mono">Pending</span>
           <strong>{summary?.pendingOffers ?? 0}</strong>
+          <em>Needs a yes or no</em>
         </div>
         <div className="ls-ad-hub__metric">
           <span className="mono">Active</span>
           <strong>{summary?.activeOffers ?? 0}</strong>
+          <em>Accepted work</em>
         </div>
         <div className="ls-ad-hub__metric">
           <span className="mono">In review</span>
           <strong>{summary?.inReviewOffers ?? 0}</strong>
+          <em>With advertisers</em>
         </div>
         <div className="ls-ad-hub__metric">
           <span className="mono">Creator payout</span>
           <strong>{money(summary?.totalCreatorPayoutCents ?? 0, summary?.currency ?? "USD")}</strong>
+          <em>Open non-declined value</em>
         </div>
       </section>
 
       <section className="ls-ad-hub__layout">
-        <div className="ls-ad-hub__panel">
+        <div className="ls-ad-hub__panel ls-ad-hub__panel--offers">
           <div className="ls-ad-hub__panel-head">
             <div>
-              <h2>Offers</h2>
-              <p>{loading ? "Loading..." : `${offers.length} marketplace offers`}</p>
+              <h2>Advertiser offers</h2>
+              <p>{loading ? "Loading..." : `${offers.length} companies pitching your audience`}</p>
             </div>
             <BadgeDollarSign size={18} strokeWidth={1.75} />
           </div>
@@ -264,60 +361,71 @@ export function AdHubPage() {
             {offers.length === 0 && !loading ? (
               <div className="ls-ad-hub__empty">No advertiser offers yet.</div>
             ) : null}
-            {offers.map((offer) => (
-              <button
-                key={offer.id}
-                type="button"
-                className={`ls-ad-hub__offer ${offer.id === selectedOffer?.id ? "is-active" : ""}`}
-                onClick={() => setSelectedId(offer.id)}
-              >
-                <span className="ls-ad-hub__offer-top">
-                  <span className="ls-ad-hub__offer-title">{offer.title}</span>
-                  <Badge tone={statusTone(offer.status)}>{offer.status.replace("_", " ")}</Badge>
-                </span>
-                <span className="ls-ad-hub__offer-meta mono">
-                  {offer.advertiser.name} / {offer.package.title} / {compactDate(offer.dueAt)}
-                </span>
-                <span className="ls-ad-hub__offer-price">
-                  {money(offer.creatorPayoutCents, offer.currency)}
-                </span>
-              </button>
-            ))}
+            {offers.map((offer) => {
+              const offerVisual = visualForOffer(offer);
+              return (
+                <button
+                  key={offer.id}
+                  type="button"
+                  className={`ls-ad-hub__offer ${offer.id === selectedOffer?.id ? "is-active" : ""}`}
+                  onClick={() => setSelectedId(offer.id)}
+                >
+                  <img src={offerVisual.image} alt="" />
+                  <span className="ls-ad-hub__offer-copy">
+                    <span className="ls-ad-hub__offer-top">
+                      <span className="ls-ad-hub__offer-title">{offer.advertiser.name}</span>
+                      <Badge tone={statusTone(offer.status)}>{offer.status.replace("_", " ")}</Badge>
+                    </span>
+                    <span className="ls-ad-hub__offer-meta mono">
+                      {offer.package.title} / {compactDate(offer.dueAt)}
+                    </span>
+                    <span className="ls-ad-hub__offer-bottom">
+                      <strong>{money(offer.creatorPayoutCents, offer.currency)}</strong>
+                      <em>{offer.advertiser.industry}</em>
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div className="ls-ad-hub__panel ls-ad-hub__panel--detail">
           <div className="ls-ad-hub__panel-head">
             <div>
-              <h2>Offer details</h2>
-              <p>{selectedOffer ? selectedOffer.campaign.name : "Select an offer."}</p>
+              <h2>Company fit</h2>
+              <p>{selectedOffer ? selectedOffer.campaign.name : "Select an advertiser."}</p>
             </div>
-            <ClipboardCheck size={18} strokeWidth={1.75} />
+            <Sparkles size={18} strokeWidth={1.75} />
           </div>
 
           {selectedOffer ? (
             <div className="ls-ad-hub__detail">
-              <div className="ls-ad-hub__detail-title">
-                <h3>{selectedOffer.title}</h3>
-                <Badge tone={statusTone(selectedOffer.status)}>
-                  {selectedOffer.status.replace("_", " ")}
-                </Badge>
+              <div className="ls-ad-hub__brand-card">
+                <img src={visual.image} alt="" />
+                <div>
+                  <span className="mono">{selectedOffer.advertiser.industry}</span>
+                  <h3>{selectedOffer.title}</h3>
+                  <p>{visual.fit}</p>
+                </div>
               </div>
-              <p>{selectedOffer.brief}</p>
 
               <div className="ls-ad-hub__facts">
-                <div><span className="mono">Advertiser</span>{selectedOffer.advertiser.name}</div>
-                <div><span className="mono">Industry</span>{selectedOffer.advertiser.industry}</div>
-                <div><span className="mono">Package</span>{selectedOffer.package.title}</div>
-                <div><span className="mono">Placement</span>{selectedOffer.package.placementKind.replace("_", " ")}</div>
-                <div><span className="mono">Gross offer</span>{money(selectedOffer.offerAmountCents, selectedOffer.currency)}</div>
-                <div><span className="mono">Creator payout</span>{money(selectedOffer.creatorPayoutCents, selectedOffer.currency)}</div>
-                <div><span className="mono">Due</span>{compactDate(selectedOffer.dueAt)}</div>
-                <div><span className="mono">Review</span>{selectedOffer.advertiserReviewStatus.replace("_", " ")}</div>
+                <div><Globe2 size={14} /><span className="mono">Advertiser</span>{selectedOffer.advertiser.name}</div>
+                <div><Layers3 size={14} /><span className="mono">Package</span>{selectedOffer.package.title}</div>
+                <div><BadgeDollarSign size={14} /><span className="mono">Gross offer</span>{money(selectedOffer.offerAmountCents, selectedOffer.currency)}</div>
+                <div><BadgeDollarSign size={14} /><span className="mono">Creator payout</span>{money(selectedOffer.creatorPayoutCents, selectedOffer.currency)}</div>
+                <div><CalendarClock size={14} /><span className="mono">Due</span>{compactDate(selectedOffer.dueAt)}</div>
+                <div><FileCheck2 size={14} /><span className="mono">Review</span>{selectedOffer.advertiserReviewStatus.replace("_", " ")}</div>
+              </div>
+
+              <div className="ls-ad-hub__brief">
+                <h4>What the company wants</h4>
+                <p>{selectedOffer.brief}</p>
               </div>
 
               <div className="ls-ad-hub__requirements">
-                <h4>Requirements</h4>
+                <h4>Creator deliverables</h4>
                 {selectedOffer.requirements.map((item) => (
                   <div key={item}><ShieldCheck size={14} />{item}</div>
                 ))}
@@ -351,7 +459,7 @@ export function AdHubPage() {
           <div className="ls-ad-hub__panel-head">
             <div>
               <h2>Submit for review</h2>
-              <p>{selectedOffer ? selectedOffer.advertiser.name : "No offer selected"}</p>
+              <p>{selectedOffer ? `${selectedOffer.advertiser.name} creative approval` : "No offer selected"}</p>
             </div>
             <Send size={18} strokeWidth={1.75} />
           </div>
@@ -406,10 +514,10 @@ export function AdHubPage() {
         <div className="ls-ad-hub__panel ls-ad-hub__panel--packages">
           <div className="ls-ad-hub__panel-head">
             <div>
-              <h2>Inventory packages</h2>
-              <p>{hub?.packages.length ?? 0} sellable package templates</p>
+              <h2>Your sellable packages</h2>
+              <p>{hub?.packages.length ?? 0} templates advertisers can buy</p>
             </div>
-            <BadgeDollarSign size={18} strokeWidth={1.75} />
+            <ClipboardCheck size={18} strokeWidth={1.75} />
           </div>
           <div className="ls-ad-hub__packages">
             {(hub?.packages ?? []).map((pkg) => (
@@ -431,19 +539,19 @@ export function AdHubPage() {
                   </span>
                 </span>
                 <span className="ls-ad-hub__package-detail" aria-hidden={expandedPackageId !== pkg.id}>
-                    <span>{pkg.description}</span>
-                    <span className="ls-ad-hub__package-facts">
-                      <span><span className="mono">Code</span>{pkg.code}</span>
-                      <span><span className="mono">Length</span>{pkg.spotLengthSeconds ? `${pkg.spotLengthSeconds}s` : "Flexible"}</span>
-                      <span><span className="mono">Status</span>{pkg.status}</span>
+                  <span>{pkg.description}</span>
+                  <span className="ls-ad-hub__package-facts">
+                    <span><span className="mono">Code</span>{pkg.code}</span>
+                    <span><span className="mono">Length</span>{pkg.spotLengthSeconds ? `${pkg.spotLengthSeconds}s` : "Flexible"}</span>
+                    <span><span className="mono">Flight</span>{selectedOffer ? campaignWindow(selectedOffer) : "Advertiser-defined"}</span>
+                  </span>
+                  {pkg.deliverables.length > 0 ? (
+                    <span className="ls-ad-hub__package-deliverables">
+                      {pkg.deliverables.map((item) => (
+                        <span key={item}><ShieldCheck size={13} />{item}</span>
+                      ))}
                     </span>
-                    {pkg.deliverables.length > 0 ? (
-                      <span className="ls-ad-hub__package-deliverables">
-                        {pkg.deliverables.map((item) => (
-                          <span key={item}><ShieldCheck size={13} />{item}</span>
-                        ))}
-                      </span>
-                    ) : null}
+                  ) : null}
                 </span>
               </button>
             ))}
