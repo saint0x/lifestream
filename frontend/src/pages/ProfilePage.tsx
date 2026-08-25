@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Link as RouterLink, Navigate, useParams } from "react-router-dom";
 import {
   Check,
@@ -47,6 +47,8 @@ type PersonForm = {
     url: string;
   }>;
 };
+
+type InlineProfileField = "displayName" | "headline" | "slug" | "location" | "knownFor" | "about";
 
 const standardLinkFields = [
   { key: "websiteUrl", label: "Website", platform: "website", Icon: LinkIcon },
@@ -126,6 +128,70 @@ function linkAriaLabel(label: string): string {
   return `Open ${label}`;
 }
 
+function cleanPathSegment(value: string): string {
+  return decodeURIComponent(value).replace(/^@+/, "").trim();
+}
+
+function readablePathSegment(value: string): string {
+  return decodeURIComponent(value)
+    .replace(/^@+/, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
+}
+
+function titleCaseWords(value: string): string {
+  return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function profileLinkDetail(platform: string, label: string, href: string): string {
+  try {
+    const url = new URL(href);
+    const host = url.hostname.replace(/^www\./, "");
+    const pathParts = url.pathname.split("/").map(cleanPathSegment).filter(Boolean);
+    const normalizedPlatform = platform.toLowerCase();
+
+    if (normalizedPlatform === "instagram" || host.includes("instagram.")) {
+      return pathParts[0] ? `@${pathParts[0]}` : label;
+    }
+    if (normalizedPlatform === "x" || normalizedPlatform === "twitter" || host === "x.com" || host.includes("twitter.")) {
+      return pathParts[0] ? `@${pathParts[0]}` : label;
+    }
+    if (normalizedPlatform === "linkedin" || host.includes("linkedin.")) {
+      const profileName = pathParts[0] === "in" || pathParts[0] === "company" ? pathParts[1] : pathParts[0];
+      return profileName ? titleCaseWords(readablePathSegment(profileName)) : label;
+    }
+    if (normalizedPlatform === "facebook" || host.includes("facebook.")) {
+      return pathParts[0] ? titleCaseWords(readablePathSegment(pathParts[0])) : label;
+    }
+    if (normalizedPlatform === "imdb" || host.includes("imdb.")) {
+      return pathParts.at(-1)?.toUpperCase() ?? label;
+    }
+    if (normalizedPlatform === "website" || normalizedPlatform === "custom") {
+      return host || label;
+    }
+    return pathParts[0] ? titleCaseWords(readablePathSegment(pathParts[0])) : host || label;
+  } catch {
+    return label;
+  }
+}
+
+function inlineEditLabel(field: InlineProfileField): string {
+  switch (field) {
+    case "displayName":
+      return "Display name";
+    case "headline":
+      return "Headline";
+    case "slug":
+      return "VANTA link";
+    case "location":
+      return "Location";
+    case "knownFor":
+      return "Known for";
+    case "about":
+      return "About";
+  }
+}
+
 function CreditImage({
   credit,
   className,
@@ -192,6 +258,7 @@ export function ProfilePage() {
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedWorkGroup, setExpandedWorkGroup] = useState<"series" | "film" | "all" | null>(null);
+  const [inlineField, setInlineField] = useState<InlineProfileField | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const avatarUploadRef = useRef<HTMLInputElement | null>(null);
 
@@ -209,6 +276,7 @@ export function ProfilePage() {
     setStatus(null);
     setCopyStatus(null);
     setEditing(false);
+    setInlineField(null);
 
     const request = isOwnProfile
       ? repository.fetchMyPersonProfile(controller.signal)
@@ -281,6 +349,23 @@ export function ProfilePage() {
 
   const beginEditing = () => {
     setEditing(true);
+    setInlineField(null);
+    setStatus(null);
+    setError(null);
+  };
+
+  const beginInlineEditing = (field: InlineProfileField) => {
+    if (!form || !profile || !isOwnProfile) return;
+    setForm(formFromProfile(profile));
+    setEditing(false);
+    setInlineField(field);
+    setStatus(null);
+    setError(null);
+  };
+
+  const cancelInlineEditing = () => {
+    if (profile) setForm(formFromProfile(profile));
+    setInlineField(null);
     setStatus(null);
     setError(null);
   };
@@ -314,12 +399,54 @@ export function ProfilePage() {
       setProfile(nextProfile);
       setForm(formFromProfile(nextProfile));
       setEditing(false);
+      setInlineField(null);
       setCopyStatus(null);
       setStatus("Profile updated.");
     } catch (err) {
       setStatus(null);
       setError(err instanceof Error ? err.message : "Unable to save profile.");
     }
+  };
+
+  const handleInlineKeyDown = (
+    event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+    options: { readonly allowShiftNewline?: boolean } = {},
+  ) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelInlineEditing();
+      return;
+    }
+    if (event.key === "Enter" && (!options.allowShiftNewline || !event.shiftKey)) {
+      event.preventDefault();
+      void saveProfile();
+    }
+  };
+
+  const renderInlineInput = (
+    field: Exclude<InlineProfileField, "about">,
+    options: {
+      readonly className?: string;
+      readonly placeholder?: string;
+      readonly prefix?: string;
+    } = {},
+  ) => {
+    if (!form) return null;
+    const label = inlineEditLabel(field);
+    return (
+      <label className={options.className ? `ls-profile__inline-edit ${options.className}` : "ls-profile__inline-edit"}>
+        <span className="sr-only">{label}</span>
+        {options.prefix ? <span className="ls-profile__inline-prefix">{options.prefix}</span> : null}
+        <input
+          autoFocus
+          value={form[field]}
+          placeholder={options.placeholder ?? label}
+          onChange={(event) => updateField(field, event.target.value)}
+          onKeyDown={handleInlineKeyDown}
+          onBlur={() => void saveProfile()}
+        />
+      </label>
+    );
   };
 
   const copyProfileUrl = async () => {
@@ -457,23 +584,42 @@ export function ProfilePage() {
               ]}
             />
             <div className="ls-profile__editable-line">
-              <h1 className="ls-profile__name">{profile.displayName}</h1>
+              {inlineField === "displayName" ? (
+                renderInlineInput("displayName", { className: "ls-profile__inline-edit--name", placeholder: "Display name" })
+              ) : (
+                <h1 className="ls-profile__name">{profile.displayName}</h1>
+              )}
               {isOwnProfile ? (
-                <button className="ls-profile__edit-mark" type="button" aria-label="Edit display name" onClick={beginEditing}>
+                <button className="ls-profile__edit-mark" type="button" aria-label="Edit display name" onClick={() => beginInlineEditing("displayName")}>
                   <Pencil size={15} />
                 </button>
               ) : null}
             </div>
             <div className="ls-profile__editable-line ls-profile__editable-line--subtle">
-              <div className="ls-profile__headline">{profile.headline || `@${profile.slug}`}</div>
+              {inlineField === "headline" ? (
+                renderInlineInput("headline", { className: "ls-profile__inline-edit--headline", placeholder: "Headline" })
+              ) : (
+                <div className="ls-profile__headline">{profile.headline || `@${profile.slug}`}</div>
+              )}
               {isOwnProfile ? (
-                <button className="ls-profile__edit-mark" type="button" aria-label="Edit headline" onClick={beginEditing}>
+                <button className="ls-profile__edit-mark" type="button" aria-label="Edit headline" onClick={() => beginInlineEditing("headline")}>
                   <Pencil size={14} />
                 </button>
               ) : null}
             </div>
             <div className="ls-profile__meta mono">
-              {profile.location ? <span>{profile.location}</span> : null}
+              {inlineField === "location" ? (
+                renderInlineInput("location", { className: "ls-profile__inline-edit--meta", placeholder: "Location" })
+              ) : profile.location ? (
+                <span
+                  className={isOwnProfile ? "ls-profile__editable-chip" : undefined}
+                  onDoubleClick={isOwnProfile ? () => beginInlineEditing("location") : undefined}
+                >
+                  {profile.location}
+                </span>
+              ) : isOwnProfile ? (
+                <button className="ls-profile__meta-add" type="button" onClick={() => beginInlineEditing("location")}>Add location</button>
+              ) : null}
               {profile.knownFor.map((item) => (
                 <span key={item}>{item}</span>
               ))}
@@ -497,6 +643,7 @@ export function ProfilePage() {
                   onClick={() => {
                     setForm(formFromProfile(profile));
                     setEditing(false);
+                    setInlineField(null);
                     setError(null);
                     setStatus(null);
                   }}
@@ -593,12 +740,20 @@ export function ProfilePage() {
                 <div className="ls-profile__editable-label">
                   <div className="ls-list__label mono">VANTA link</div>
                   {isOwnProfile ? (
-                    <button className="ls-profile__edit-mark" type="button" aria-label="Edit VANTA link" onClick={beginEditing}>
+                    <button className="ls-profile__edit-mark" type="button" aria-label="Edit VANTA link" onClick={() => beginInlineEditing("slug")}>
                       <Pencil size={13} />
                     </button>
                   ) : null}
                 </div>
-                <div className="ls-profile__link-url">{profileUrl}</div>
+                {inlineField === "slug" ? (
+                  renderInlineInput("slug", {
+                    className: "ls-profile__inline-edit--slug",
+                    placeholder: "profile-slug",
+                    prefix: `${window.location.origin}/@`,
+                  })
+                ) : (
+                  <div className="ls-profile__link-url">{profileUrl}</div>
+                )}
               </div>
               <Button
                 variant={copyStatus ? "primary" : "outline"}
@@ -614,12 +769,27 @@ export function ProfilePage() {
                 <div className="ls-profile__editable-label">
                   <div className="ls-list__label mono">About</div>
                   {isOwnProfile ? (
-                    <button className="ls-profile__edit-mark" type="button" aria-label="Edit bio" onClick={beginEditing}>
+                    <button className="ls-profile__edit-mark" type="button" aria-label="Edit bio" onClick={() => beginInlineEditing("about")}>
                       <Pencil size={13} />
                     </button>
                   ) : null}
                 </div>
-                <p>{profile.about || `${profile.displayName} has not added a bio yet.`}</p>
+                {inlineField === "about" && form ? (
+                  <label className="ls-profile__inline-edit ls-profile__inline-edit--about">
+                    <span className="sr-only">About</span>
+                    <textarea
+                      autoFocus
+                      value={form.about}
+                      placeholder="About"
+                      rows={4}
+                      onChange={(event) => updateField("about", event.target.value)}
+                      onKeyDown={(event) => handleInlineKeyDown(event, { allowShiftNewline: true })}
+                      onBlur={() => void saveProfile()}
+                    />
+                  </label>
+                ) : (
+                  <p>{profile.about || `${profile.displayName} has not added a bio yet.`}</p>
+                )}
               </div>
               <div className="ls-profile__profile-links">
                 <div className="ls-profile__editable-label">
@@ -632,7 +802,7 @@ export function ProfilePage() {
                 </div>
                 <div className="ls-profile__link-pills">
                   {links.length === 0 ? <span className="ls-profile__empty-link">No public links yet</span> : null}
-                  {links.map(({ label, href, Icon }) => (
+                  {links.map(({ label, platform, href, Icon }) => (
                     <a
                       className="ls-profile__link-pill"
                       key={`${label}-${href}`}
@@ -642,7 +812,7 @@ export function ProfilePage() {
                       aria-label={linkAriaLabel(label)}
                     >
                       <Icon size={14} />
-                      <span className="ls-profile__link-name">{label}</span>
+                      <span className="ls-profile__link-name">{profileLinkDetail(platform, label, href)}</span>
                       <ExternalLink size={12} />
                     </a>
                   ))}
@@ -652,18 +822,25 @@ export function ProfilePage() {
                 <div className="ls-profile__editable-label">
                   <div className="ls-list__label mono">Known for</div>
                   {isOwnProfile ? (
-                    <button className="ls-profile__edit-mark" type="button" aria-label="Edit known for" onClick={beginEditing}>
+                    <button className="ls-profile__edit-mark" type="button" aria-label="Edit known for" onClick={() => beginInlineEditing("knownFor")}>
                       <Pencil size={13} />
                     </button>
                   ) : null}
                 </div>
-                <div className="ls-profile__known-list">
-                  {profile.knownFor.length === 0 ? (
-                    <span>Not listed yet</span>
-                  ) : profile.knownFor.map((item) => (
-                    <span key={item}>{item}</span>
-                  ))}
-                </div>
+                {inlineField === "knownFor" ? (
+                  renderInlineInput("knownFor", {
+                    className: "ls-profile__inline-edit--known",
+                    placeholder: "Creator, director, producer",
+                  })
+                ) : (
+                  <div className="ls-profile__known-list">
+                    {profile.knownFor.length === 0 ? (
+                      <span>Not listed yet</span>
+                    ) : profile.knownFor.map((item) => (
+                      <span key={item}>{item}</span>
+                    ))}
+                  </div>
+                )}
                 <div className="ls-profile__stats-disclosure">
                   <button
                     type="button"
