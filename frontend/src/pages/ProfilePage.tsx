@@ -627,17 +627,11 @@ export function ProfilePage() {
           </div>
           <div className="ls-profile__actions">
           {isOwnProfile ? (
-            <>
-              <Button
-                variant={editing ? "primary" : "outline"}
-                onClick={() => {
-                  if (editing) void saveProfile();
-                  else beginEditing();
-                }}
-              >
-                {editing ? "Save" : "Edit"}
-              </Button>
-              {editing ? (
+            editing ? (
+              <>
+                <Button variant="primary" onClick={() => void saveProfile()}>
+                  Save links
+                </Button>
                 <Button
                   variant="ghost"
                   onClick={() => {
@@ -650,8 +644,8 @@ export function ProfilePage() {
                 >
                   Cancel
                 </Button>
-              ) : null}
-            </>
+              </>
+            ) : null
           ) : !viewingOwnPublicProfile ? (
             <AlertMeButton
               targetKind="profile"
@@ -672,16 +666,26 @@ export function ProfilePage() {
       ) : null}
 
       {editing ? (
-        <section className="ls-profile__editor" aria-label="Edit public profile">
-          <Input value={form.displayName} onChange={(event) => updateField("displayName", event.target.value)} placeholder="Display name" />
-          <Input value={form.slug} onChange={(event) => updateField("slug", event.target.value)} placeholder="VANTA link slug" />
-          <Input value={form.headline} onChange={(event) => updateField("headline", event.target.value)} placeholder="Headline" />
-          <Input value={form.location} onChange={(event) => updateField("location", event.target.value)} placeholder="Location" />
-          <Input value={form.avatar} onChange={(event) => updateField("avatar", event.target.value)} placeholder="Avatar URL" />
-          <Input value={form.heroImage} onChange={(event) => updateField("heroImage", event.target.value)} placeholder="Hero image URL" />
-          <Input value={form.knownFor} onChange={(event) => updateField("knownFor", event.target.value)} placeholder="Known for, comma separated" />
+        <section className="ls-profile__editor ls-profile__editor--links" aria-label="Edit public links">
           <div className="ls-profile__links-editor">
-            <div className="ls-list__label mono">Public links</div>
+            <div className="ls-profile__custom-head">
+              <span className="mono">Public links</span>
+              <div className="ls-profile__editor-actions">
+                <Button variant="primary" onClick={() => void saveProfile()}>Save links</Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setForm(formFromProfile(profile));
+                    setEditing(false);
+                    setInlineField(null);
+                    setError(null);
+                    setStatus(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
             <div className="ls-profile__standard-links">
               {standardLinkFields.map(({ key, label, Icon }) => (
                 <label className="ls-profile__link-field" key={key}>
@@ -723,14 +727,6 @@ export function ProfilePage() {
               ))}
             </div>
           </div>
-          <label className="ls-profile__textarea">
-            <textarea
-              value={form.about}
-              onChange={(event) => updateField("about", event.target.value)}
-              placeholder="About"
-              rows={7}
-            />
-          </label>
         </section>
       ) : (
         <>
