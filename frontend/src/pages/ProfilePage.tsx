@@ -122,6 +122,10 @@ function creditDescriptor(credit: PersonProfile["credits"][number]): string {
   ].filter(Boolean).join(" / ");
 }
 
+function linkAriaLabel(label: string): string {
+  return `Open ${label}`;
+}
+
 function CreditImage({
   credit,
   className,
@@ -629,9 +633,16 @@ export function ProfilePage() {
                 <div className="ls-profile__link-pills">
                   {links.length === 0 ? <span className="ls-profile__empty-link">No public links yet</span> : null}
                   {links.map(({ label, href, Icon }) => (
-                    <a className="ls-profile__link-pill" key={`${label}-${href}`} href={href} target="_blank" rel="noreferrer">
+                    <a
+                      className="ls-profile__link-pill"
+                      key={`${label}-${href}`}
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={linkAriaLabel(label)}
+                    >
                       <Icon size={14} />
-                      <span>{label}</span>
+                      <span className="ls-profile__link-name">{label}</span>
                       <ExternalLink size={12} />
                     </a>
                   ))}
@@ -730,36 +741,36 @@ export function ProfilePage() {
         </>
       )}
 
-      {editing ? (
-        <section className="ls-profile__filmography">
-          <div className="ls-profile__section-head">
-            <div className="ls-list__label mono">Credits</div>
-            <h2>Full credit list</h2>
-          </div>
-          {profile.credits.length === 0 ? (
-            <div className="ls-profile__state">No credits yet.</div>
-          ) : (
-            <div className="ls-profile__credits">
-              {profile.credits.map((credit) => (
-                <RouterLink
-                  className="ls-profile__credit"
-                  key={`${credit.contentKind}-${credit.contentId}-${credit.role}`}
-                  to={creditHref(credit)}
-                >
-                  <CreditImage credit={credit} />
-                  <div>
-                    <div className="ls-profile__credit-title">{credit.title}</div>
-                    <div className="ls-profile__credit-meta mono">
-                      {credit.year}
-                      {credit.character ? ` / ${credit.character}` : ""}
-                    </div>
+      <section className="ls-profile__filmography" aria-label="Credits">
+        <div className="ls-profile__section-head">
+          <div className="ls-list__label mono">Credits</div>
+          <h2>Full credit list</h2>
+          <p>Every VANTA project attached to {profile.displayName}'s public portfolio.</p>
+        </div>
+        {profile.credits.length === 0 ? (
+          <div className="ls-profile__state">No credits yet.</div>
+        ) : (
+          <div className="ls-profile__credits">
+            {profile.credits.map((credit) => (
+              <RouterLink
+                className="ls-profile__credit"
+                key={`${credit.contentKind}-${credit.contentId}-${credit.role}`}
+                to={creditHref(credit)}
+              >
+                <CreditImage credit={credit} />
+                <div>
+                  <div className="ls-profile__credit-title">{credit.title}</div>
+                  <div className="ls-profile__credit-role">{credit.role}</div>
+                  <div className="ls-profile__credit-meta mono">
+                    {creditKindLabel(credit.contentKind)} / {credit.year}
+                    {credit.character ? ` / ${credit.character}` : ""}
                   </div>
-                </RouterLink>
-              ))}
-            </div>
-          )}
-        </section>
-      ) : null}
+                </div>
+              </RouterLink>
+            ))}
+          </div>
+        )}
+      </section>
 
       {expandedWorkGroup ? (
         <div className="ls-profile__modal-backdrop" role="presentation" onMouseDown={() => setExpandedWorkGroup(null)}>

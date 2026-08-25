@@ -235,7 +235,7 @@
 
 .ls-profile__summary-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 260px) minmax(180px, 260px);
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.75fr) minmax(200px, 0.7fr);
   gap: 22px;
   padding: 18px;
 }
@@ -261,8 +261,7 @@
 }
 
 .ls-profile__link-pills {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 8px;
 }
 
@@ -277,12 +276,40 @@
 }
 
 .ls-profile__link-pill {
-  color: var(--c-text-dim);
+  min-width: 0;
+  justify-content: space-between;
+  padding: 10px 11px;
+  border: 1px solid var(--c-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    rgba(255, 255, 255, 0.02);
+  color: var(--c-text);
   font-size: 13px;
+  transition:
+    background 160ms var(--ease-out),
+    border-color 160ms var(--ease-out),
+    color 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+
+.ls-profile__link-pill svg {
+  flex: 0 0 auto;
+  color: var(--c-text-faint);
+}
+
+.ls-profile__link-name {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ls-profile__link-pill:hover {
   color: var(--c-text);
+  border-color: var(--c-border-hi);
+  background: rgba(255, 255, 255, 0.065);
+  transform: translateY(-1px);
 }
 
 .ls-profile__empty-link {
@@ -823,6 +850,14 @@ a.ls-profile__side-row:hover {
   margin-top: 8px;
 }
 
+.ls-profile__section-head p {
+  max-width: 620px;
+  margin-top: 10px;
+  color: var(--c-text-dim);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .ls-profile__credit-group {
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr);
@@ -846,10 +881,10 @@ a.ls-profile__side-row:hover {
 
 .ls-profile__credit {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
+  grid-template-columns: 64px minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
-  padding: 8px;
+  gap: 13px;
+  padding: 9px;
   border: 1px solid var(--c-border);
   background: var(--c-bg-elevated);
   color: var(--c-text);
@@ -864,7 +899,7 @@ a.ls-profile__side-row:hover {
 }
 
 .ls-profile__credit img {
-  width: 58px;
+  width: 64px;
   aspect-ratio: 2 / 3;
   object-fit: cover;
   background: var(--c-surface);
@@ -876,6 +911,15 @@ a.ls-profile__side-row:hover {
   white-space: nowrap;
   font-size: 14px;
   font-weight: 500;
+}
+
+.ls-profile__credit-role {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--c-text-dim);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ls-profile__credit-meta {
