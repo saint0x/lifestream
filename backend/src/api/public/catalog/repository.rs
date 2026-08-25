@@ -567,7 +567,24 @@ impl<'a> CatalogRepository<'a> {
 
 const POSTGRES_SERIES_SELECT: &str = r#"
     SELECT id, slug, title, tagline, synopsis, year::BIGINT AS year, rating,
-           genres_json, images_json, credits_json, score::BIGINT AS score,
+           genres_json, images_json,
+           COALESCE((
+               SELECT json_agg(json_build_object(
+                   'id', cc.id,
+                   'personId', p.id,
+                   'personSlug', p.slug,
+                   'name', p.display_name,
+                   'role', cc.role,
+                   'character', cc.character,
+                   'avatar', COALESCE(NULLIF(cp.avatar, ''), NULLIF(u.avatar, ''), NULLIF(p.avatar, ''), '')
+               ) ORDER BY cc.credit_order)::TEXT
+               FROM content_credits cc
+               JOIN person_profiles p ON p.id = cc.person_id
+               LEFT JOIN users u ON u.id = p.user_id
+               LEFT JOIN creator_profiles cp ON cp.user_id = p.user_id
+               WHERE cc.content_kind = 'series' AND cc.content_id = series.id
+           ), credits_json) AS credits_json,
+           score::BIGINT AS score,
            is_original::BIGINT AS is_original, trending::BIGINT AS trending,
            hero_color, status, total_episodes::BIGINT AS total_episodes
     FROM series
@@ -575,7 +592,24 @@ const POSTGRES_SERIES_SELECT: &str = r#"
 
 const POSTGRES_FILM_SELECT: &str = r#"
     SELECT id, slug, title, tagline, synopsis, year::BIGINT AS year, rating,
-           genres_json, images_json, credits_json, score::BIGINT AS score,
+           genres_json, images_json,
+           COALESCE((
+               SELECT json_agg(json_build_object(
+                   'id', cc.id,
+                   'personId', p.id,
+                   'personSlug', p.slug,
+                   'name', p.display_name,
+                   'role', cc.role,
+                   'character', cc.character,
+                   'avatar', COALESCE(NULLIF(cp.avatar, ''), NULLIF(u.avatar, ''), NULLIF(p.avatar, ''), '')
+               ) ORDER BY cc.credit_order)::TEXT
+               FROM content_credits cc
+               JOIN person_profiles p ON p.id = cc.person_id
+               LEFT JOIN users u ON u.id = p.user_id
+               LEFT JOIN creator_profiles cp ON cp.user_id = p.user_id
+               WHERE cc.content_kind = 'film' AND cc.content_id = films.id
+           ), credits_json) AS credits_json,
+           score::BIGINT AS score,
            is_original::BIGINT AS is_original, trending::BIGINT AS trending,
            hero_color, duration_sec::BIGINT AS duration_sec,
            CASE WHEN EXISTS (

@@ -316,9 +316,12 @@ async fn refresh_sqlite_content_credits(
 ) -> AppResult<Vec<Credit>> {
     let rows = sqlx::query(
         r#"
-        SELECT cc.id, p.id AS person_id, p.slug, p.display_name, cc.role, cc.character, p.avatar
+        SELECT cc.id, p.id AS person_id, p.slug, p.display_name, cc.role, cc.character,
+               COALESCE(NULLIF(cp.avatar, ''), NULLIF(u.avatar, ''), NULLIF(p.avatar, ''), '') AS avatar
         FROM content_credits cc
         JOIN person_profiles p ON p.id = cc.person_id
+        LEFT JOIN users u ON u.id = p.user_id
+        LEFT JOIN creator_profiles cp ON cp.user_id = p.user_id
         WHERE cc.content_kind = ? AND cc.content_id = ?
         ORDER BY cc.credit_order ASC
         "#,
@@ -342,9 +345,12 @@ async fn refresh_postgres_content_credits(
 ) -> AppResult<Vec<Credit>> {
     let rows = sqlx::query(
         r#"
-        SELECT cc.id, p.id AS person_id, p.slug, p.display_name, cc.role, cc.character, p.avatar
+        SELECT cc.id, p.id AS person_id, p.slug, p.display_name, cc.role, cc.character,
+               COALESCE(NULLIF(cp.avatar, ''), NULLIF(u.avatar, ''), NULLIF(p.avatar, ''), '') AS avatar
         FROM content_credits cc
         JOIN person_profiles p ON p.id = cc.person_id
+        LEFT JOIN users u ON u.id = p.user_id
+        LEFT JOIN creator_profiles cp ON cp.user_id = p.user_id
         WHERE cc.content_kind = $1 AND cc.content_id = $2
         ORDER BY cc.credit_order ASC
         "#,
