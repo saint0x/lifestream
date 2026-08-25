@@ -1,0 +1,4 @@
+.qa/
+dist/
+node_modules/
+.vercel

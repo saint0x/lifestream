@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "name": "landing-signups-pass",
+  "steps": [
+    {
+      "type": "proc_when",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "landing",
+        "--quiet"
+      ],
+      "exit_code": 0,
+      "times": 1
+    },
+    {
+      "type": "proc_spawn",
+      "cmd": "cargo",
+      "args": [
+        "test",
+        "landing",
+        "--quiet"
+      ],
+      "expect_exit": 0
+    }
+  ]
+}

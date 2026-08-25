@@ -5,6 +5,7 @@ mod analytics;
 mod auth;
 mod catalog;
 mod health;
+mod landing;
 mod live;
 pub(super) mod people;
 
@@ -53,6 +54,10 @@ pub(super) fn routes() -> Router<SharedState> {
         .route(
             "/api/v1/alerts/subscriptions",
             post(alerts::create_public_alert_subscription),
+        )
+        .route(
+            "/api/v1/landing/signups",
+            post(landing::create_landing_signup),
         )
         .route(
             "/api/auth/sign-in/anonymous",
