@@ -59,17 +59,31 @@
 
 .vl-mark {
   gap: 10px;
-  font-size: 14px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  min-width: 0;
 }
 
-.vl-mark span {
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--text);
+.vl-mark__symbol {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
   background: var(--text);
+}
+
+.vl-mark__symbol::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 1px;
+  background: var(--bg);
+}
+
+.vl-mark__text {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
 .vl-nav nav {

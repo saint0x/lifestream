@@ -14,8 +14,8 @@ export function App() {
     <main className="vl-page">
       <header className="vl-nav">
         <a className="vl-mark" href="/">
-          <span />
-          Vanta
+          <span className="vl-mark__symbol" aria-hidden="true" />
+          <span className="vl-mark__text">VANTA</span>
         </a>
       </header>
 
