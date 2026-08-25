@@ -103,7 +103,7 @@ export const pages: Record<FunnelAudience, PageContent> = {
     formTitle: "Apply to join Vanta",
     formSubtitle: "Send your audience, show idea, and launch plan.",
     formSuccess: "Application received. We will review it.",
-    image: "/platform-shots/details/creator-profile-detail.png",
+    image: "/platform-shots/details/creator-profile-detail-v2.png",
     metrics: [],
     proof: [
       {
@@ -274,7 +274,7 @@ export const pages: Record<FunnelAudience, PageContent> = {
         icon: BarChart3,
       },
       {
-        image: "/platform-shots/details/creator-profile-detail.png",
+        image: "/platform-shots/details/creator-profile-detail-v2.png",
         label: "Creator trust",
         title: "Buy creator trust in context.",
         icon: Users,
