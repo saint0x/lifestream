@@ -6,9 +6,9 @@ use crate::config::DatabaseKind;
 use crate::error::{AppError, AppResult};
 use crate::models::{
     AdvertiserAccountResponse, AdvertiserCompany, AdvertiserInvite, AdvertiserPermissionPreset,
-    AdvertiserSeat, AuthSession, ContinueWatchingEntry, PlaybackSession, ProgressInput,
-    UpdateAdvertiserCompanyRequest, UpdateProfileRequest, UpdateSettingsRequest, User,
-    ViewerEventInput,
+    AdvertiserSeat, AuthSession, ContinueWatchingEntry, CreatorApiKey, CreatorProfile,
+    PlaybackSession, ProgressInput, UpdateAdvertiserCompanyRequest, UpdateProfileRequest,
+    UpdateSettingsRequest, User, ViewerEventInput,
 };
 
 pub struct NewAuthSession<'a> {
@@ -19,6 +19,33 @@ pub struct NewAuthSession<'a> {
     pub scopes_json: &'a str,
     pub created_at: &'a str,
     pub expires_at: Option<&'a str>,
+}
+
+pub struct NewCreatorApiKey<'a> {
+    pub id: &'a str,
+    pub user_id: &'a str,
+    pub creator_id: &'a str,
+    pub name: &'a str,
+    pub key_prefix: &'a str,
+    pub access_token: &'a str,
+    pub key_hash: &'a str,
+    pub scopes: &'a [String],
+    pub created_at: &'a str,
+    pub expires_at: Option<&'a str>,
+}
+
+pub struct CreatorApiKeyIdentity {
+    pub key_id: String,
+    pub creator_id: String,
+    pub scopes: Vec<String>,
+}
+
+pub struct CreatorApiProfileUpdate {
+    pub display_name: String,
+    pub avatar: String,
+    pub banner: String,
+    pub tagline: String,
+    pub bio: String,
 }
 
 pub struct ProvisionedUser<'a> {
@@ -2403,6 +2430,338 @@ impl Database {
         })
     }
 
+    pub async fn insert_creator_api_key(&self, key: NewCreatorApiKey<'_>) -> AppResult<()> {
+        let scopes_json = serde_json::to_string(key.scopes)?;
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                sqlx::query(
+                    r#"
+                    INSERT INTO creator_api_keys (
+                        id, user_id, creator_id, name, key_prefix, access_token, key_hash, scopes_json,
+                        created_at, expires_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    "#,
+                )
+                .bind(key.id)
+                .bind(key.user_id)
+                .bind(key.creator_id)
+                .bind(key.name)
+                .bind(key.key_prefix)
+                .bind(key.access_token)
+                .bind(key.key_hash)
+                .bind(scopes_json)
+                .bind(key.created_at)
+                .bind(key.expires_at)
+                .execute(pool)
+                .await?;
+            }
+            DatabaseProvider::Postgres(pool) => {
+                sqlx::query(
+                    r#"
+                    INSERT INTO creator_api_keys (
+                        id, user_id, creator_id, name, key_prefix, access_token, key_hash, scopes_json,
+                        created_at, expires_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    "#,
+                )
+                .bind(key.id)
+                .bind(key.user_id)
+                .bind(key.creator_id)
+                .bind(key.name)
+                .bind(key.key_prefix)
+                .bind(key.access_token)
+                .bind(key.key_hash)
+                .bind(scopes_json)
+                .bind(key.created_at)
+                .bind(key.expires_at)
+                .execute(pool)
+                .await?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn list_creator_api_keys_for_user(
+        &self,
+        user_id: &str,
+    ) -> AppResult<Vec<CreatorApiKey>> {
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                let rows = sqlx::query(creator_api_key_select("user_id = ?").as_str())
+                    .bind(user_id)
+                    .fetch_all(pool)
+                    .await?;
+                rows.into_iter()
+                    .map(|row| creator_api_key_from_sqlite_row(&row))
+                    .collect()
+            }
+            DatabaseProvider::Postgres(pool) => {
+                let rows = sqlx::query(creator_api_key_select("user_id = $1").as_str())
+                    .bind(user_id)
+                    .fetch_all(pool)
+                    .await?;
+                rows.into_iter()
+                    .map(|row| creator_api_key_from_postgres_row(&row))
+                    .collect()
+            }
+        }
+    }
+
+    pub async fn get_creator_api_key_for_user(
+        &self,
+        id: &str,
+        user_id: &str,
+    ) -> AppResult<CreatorApiKey> {
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                let row = sqlx::query(creator_api_key_select("id = ? AND user_id = ?").as_str())
+                    .bind(id)
+                    .bind(user_id)
+                    .fetch_optional(pool)
+                    .await?
+                    .ok_or(AppError::NotFound)?;
+                creator_api_key_from_sqlite_row(&row)
+            }
+            DatabaseProvider::Postgres(pool) => {
+                let row = sqlx::query(creator_api_key_select("id = $1 AND user_id = $2").as_str())
+                    .bind(id)
+                    .bind(user_id)
+                    .fetch_optional(pool)
+                    .await?
+                    .ok_or(AppError::NotFound)?;
+                creator_api_key_from_postgres_row(&row)
+            }
+        }
+    }
+
+    pub async fn revoke_creator_api_key(
+        &self,
+        id: &str,
+        user_id: &str,
+        now: &str,
+    ) -> AppResult<u64> {
+        let rows = match &self.provider {
+            DatabaseProvider::Sqlite(pool) => sqlx::query(
+                "UPDATE creator_api_keys SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
+            )
+            .bind(now)
+            .bind(id)
+            .bind(user_id)
+            .execute(pool)
+            .await?
+            .rows_affected(),
+            DatabaseProvider::Postgres(pool) => sqlx::query(
+                "UPDATE creator_api_keys SET revoked_at = $1 WHERE id = $2 AND user_id = $3 AND revoked_at IS NULL",
+            )
+            .bind(now)
+            .bind(id)
+            .bind(user_id)
+            .execute(pool)
+            .await?
+            .rows_affected(),
+        };
+        Ok(rows)
+    }
+
+    pub async fn lookup_creator_api_key_identity(
+        &self,
+        key_hash: &str,
+        now: &str,
+    ) -> AppResult<CreatorApiKeyIdentity> {
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                let row = sqlx::query(
+                    r#"
+                    SELECT id, creator_id, scopes_json
+                    FROM creator_api_keys
+                    WHERE key_hash = ? AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)
+                    "#,
+                )
+                .bind(key_hash)
+                .bind(now)
+                .fetch_optional(pool)
+                .await?
+                .ok_or(AppError::Unauthorized)?;
+                Ok(CreatorApiKeyIdentity {
+                    key_id: row.get("id"),
+                    creator_id: row.get("creator_id"),
+                    scopes: serde_json::from_str(&row.get::<String, _>("scopes_json"))?,
+                })
+            }
+            DatabaseProvider::Postgres(pool) => {
+                let row = sqlx::query(
+                    r#"
+                    SELECT id, creator_id, scopes_json
+                    FROM creator_api_keys
+                    WHERE key_hash = $1 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at > $2)
+                    "#,
+                )
+                .bind(key_hash)
+                .bind(now)
+                .fetch_optional(pool)
+                .await?
+                .ok_or(AppError::Unauthorized)?;
+                Ok(CreatorApiKeyIdentity {
+                    key_id: row.get("id"),
+                    creator_id: row.get("creator_id"),
+                    scopes: serde_json::from_str(&row.get::<String, _>("scopes_json"))?,
+                })
+            }
+        }
+    }
+
+    pub async fn touch_creator_api_key(&self, id: &str, now: &str) -> AppResult<()> {
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                sqlx::query("UPDATE creator_api_keys SET last_used_at = ? WHERE id = ?")
+                    .bind(now)
+                    .bind(id)
+                    .execute(pool)
+                    .await?;
+            }
+            DatabaseProvider::Postgres(pool) => {
+                sqlx::query("UPDATE creator_api_keys SET last_used_at = $1 WHERE id = $2")
+                    .bind(now)
+                    .bind(id)
+                    .execute(pool)
+                    .await?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn get_creator_profile_for_api(&self, creator_id: &str) -> AppResult<CreatorProfile> {
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                let row = sqlx::query(creator_profile_select("id = ?").as_str())
+                    .bind(creator_id)
+                    .fetch_optional(pool)
+                    .await?
+                    .ok_or(AppError::NotFound)?;
+                creator_profile_from_sqlite_row(&row)
+            }
+            DatabaseProvider::Postgres(pool) => {
+                let row = sqlx::query(creator_profile_select("id = $1").as_str())
+                    .bind(creator_id)
+                    .fetch_optional(pool)
+                    .await?
+                    .ok_or(AppError::NotFound)?;
+                creator_profile_from_postgres_row(&row)
+            }
+        }
+    }
+
+    pub async fn update_creator_profile_for_api(
+        &self,
+        creator_id: &str,
+        profile: CreatorApiProfileUpdate,
+    ) -> AppResult<()> {
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                sqlx::query(
+                    "UPDATE creator_profiles SET display_name = ?, avatar = ?, banner = ?, tagline = ?, bio = ? WHERE id = ?",
+                )
+                .bind(profile.display_name)
+                .bind(profile.avatar)
+                .bind(profile.banner)
+                .bind(profile.tagline)
+                .bind(profile.bio)
+                .bind(creator_id)
+                .execute(pool)
+                .await?;
+            }
+            DatabaseProvider::Postgres(pool) => {
+                sqlx::query(
+                    r#"
+                    UPDATE creator_profiles
+                    SET display_name = $1, avatar = $2, banner = $3, tagline = $4, bio = $5
+                    WHERE id = $6
+                    "#,
+                )
+                .bind(profile.display_name)
+                .bind(profile.avatar)
+                .bind(profile.banner)
+                .bind(profile.tagline)
+                .bind(profile.bio)
+                .bind(creator_id)
+                .execute(pool)
+                .await?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn update_creator_stream_key(
+        &self,
+        creator_id: &str,
+        stream_key: &str,
+    ) -> AppResult<()> {
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                sqlx::query("UPDATE creator_profiles SET stream_key = ? WHERE id = ?")
+                    .bind(stream_key)
+                    .bind(creator_id)
+                    .execute(pool)
+                    .await?;
+            }
+            DatabaseProvider::Postgres(pool) => {
+                sqlx::query("UPDATE creator_profiles SET stream_key = $1 WHERE id = $2")
+                    .bind(stream_key)
+                    .bind(creator_id)
+                    .execute(pool)
+                    .await?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn update_creator_live_defaults_for_api(
+        &self,
+        creator_id: &str,
+        category: &str,
+        tags_json: &str,
+        title: Option<String>,
+        is_mature: Option<bool>,
+        current_broadcast_id: Option<&str>,
+    ) -> AppResult<()> {
+        match &self.provider {
+            DatabaseProvider::Sqlite(pool) => {
+                sqlx::query(
+                    "UPDATE creator_profiles SET default_category = ?, default_tags_json = ? WHERE id = ?",
+                )
+                .bind(category)
+                .bind(tags_json)
+                .bind(creator_id)
+                .execute(pool)
+                .await?;
+            }
+            DatabaseProvider::Postgres(pool) => {
+                sqlx::query(
+                    "UPDATE creator_profiles SET default_category = $1, default_tags_json = $2 WHERE id = $3",
+                )
+                .bind(category)
+                .bind(tags_json)
+                .bind(creator_id)
+                .execute(pool)
+                .await?;
+                if let Some(current_id) = current_broadcast_id {
+                    sqlx::query(
+                        "UPDATE broadcasts SET title = COALESCE($1, title), category = $2, tags_json = $3, is_mature = COALESCE($4, is_mature) WHERE id = $5 AND creator_id = $6",
+                    )
+                    .bind(title)
+                    .bind(category)
+                    .bind(tags_json)
+                    .bind(is_mature)
+                    .bind(current_id)
+                    .bind(creator_id)
+                    .execute(pool)
+                    .await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn sqlite_adapter(&self) -> &SqlitePool {
         match &self.provider {
             DatabaseProvider::Sqlite(pool) => pool,
@@ -2883,6 +3242,108 @@ fn postgres_auth_session_from_row(row: PgRow, current_session_id: &str) -> AppRe
         expires_at: row.get("expires_at"),
         revoked_at: row.get("revoked_at"),
         last_used_at: row.get("last_used_at"),
+    })
+}
+
+fn creator_api_key_select(where_clause: &str) -> String {
+    format!(
+        r#"
+        SELECT id, name, key_prefix, access_token, scopes_json, created_at, last_used_at, expires_at, revoked_at
+        FROM creator_api_keys
+        WHERE {where_clause}
+        ORDER BY created_at DESC
+        "#
+    )
+}
+
+fn creator_api_key_from_sqlite_row(row: &SqliteRow) -> AppResult<CreatorApiKey> {
+    Ok(CreatorApiKey {
+        id: row.get("id"),
+        name: row.get("name"),
+        key_prefix: row.get("key_prefix"),
+        access_token: row.get("access_token"),
+        scopes: serde_json::from_str(&row.get::<String, _>("scopes_json"))?,
+        created_at: row.get("created_at"),
+        last_used_at: row.get("last_used_at"),
+        expires_at: row.get("expires_at"),
+        revoked_at: row.get("revoked_at"),
+    })
+}
+
+fn creator_api_key_from_postgres_row(row: &PgRow) -> AppResult<CreatorApiKey> {
+    Ok(CreatorApiKey {
+        id: row.get("id"),
+        name: row.get("name"),
+        key_prefix: row.get("key_prefix"),
+        access_token: row.get("access_token"),
+        scopes: serde_json::from_str(&row.get::<String, _>("scopes_json"))?,
+        created_at: row.get("created_at"),
+        last_used_at: row.get("last_used_at"),
+        expires_at: row.get("expires_at"),
+        revoked_at: row.get("revoked_at"),
+    })
+}
+
+fn creator_profile_select(where_clause: &str) -> String {
+    format!(
+        r#"
+        SELECT id, user_id, handle, display_name, avatar, banner, tagline, bio,
+               partner_status, joined_at, stream_key, rtmp_url, default_category,
+               default_tags_json, followers, subscribers, monthly_viewers,
+               total_watch_hours, live_status, current_broadcast_id
+        FROM creator_profiles
+        WHERE {where_clause}
+        "#
+    )
+}
+
+fn creator_profile_from_sqlite_row(row: &SqliteRow) -> AppResult<CreatorProfile> {
+    Ok(CreatorProfile {
+        id: row.get("id"),
+        user_id: row.get("user_id"),
+        handle: row.get("handle"),
+        display_name: row.get("display_name"),
+        avatar: row.get("avatar"),
+        banner: row.get("banner"),
+        tagline: row.get("tagline"),
+        bio: row.get("bio"),
+        partner_status: row.get("partner_status"),
+        joined_at: row.get("joined_at"),
+        stream_key: row.get("stream_key"),
+        rtmp_url: row.get("rtmp_url"),
+        default_category: row.get("default_category"),
+        default_tags: serde_json::from_str(&row.get::<String, _>("default_tags_json"))?,
+        followers: row.get("followers"),
+        subscribers: row.get("subscribers"),
+        monthly_viewers: row.get("monthly_viewers"),
+        total_watch_hours: row.get("total_watch_hours"),
+        live_status: row.get("live_status"),
+        current_broadcast_id: row.get("current_broadcast_id"),
+    })
+}
+
+fn creator_profile_from_postgres_row(row: &PgRow) -> AppResult<CreatorProfile> {
+    Ok(CreatorProfile {
+        id: row.get("id"),
+        user_id: row.get("user_id"),
+        handle: row.get("handle"),
+        display_name: row.get("display_name"),
+        avatar: row.get("avatar"),
+        banner: row.get("banner"),
+        tagline: row.get("tagline"),
+        bio: row.get("bio"),
+        partner_status: row.get("partner_status"),
+        joined_at: row.get("joined_at"),
+        stream_key: row.get("stream_key"),
+        rtmp_url: row.get("rtmp_url"),
+        default_category: row.get("default_category"),
+        default_tags: serde_json::from_str(&row.get::<String, _>("default_tags_json"))?,
+        followers: row.get("followers"),
+        subscribers: row.get("subscribers"),
+        monthly_viewers: row.get("monthly_viewers"),
+        total_watch_hours: row.get("total_watch_hours"),
+        live_status: row.get("live_status"),
+        current_broadcast_id: row.get("current_broadcast_id"),
     })
 }
 

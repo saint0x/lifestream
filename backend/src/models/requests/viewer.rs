@@ -1,5 +1,13 @@
 use super::*;
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateCreatorApiKeyRequest {
+    pub name: String,
+    pub scopes: Option<Vec<String>>,
+    pub expires_in_days: Option<i64>,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatInput {

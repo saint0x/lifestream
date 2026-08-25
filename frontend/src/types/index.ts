@@ -436,6 +436,23 @@ export interface UserSettingsBundle {
   readonly language: LanguageSettings;
 }
 
+export interface CreatorApiKey {
+  readonly id: ID;
+  readonly name: string;
+  readonly keyPrefix: string;
+  readonly accessToken: string;
+  readonly scopes: ReadonlyArray<string>;
+  readonly createdAt: string;
+  readonly lastUsedAt?: string | null;
+  readonly expiresAt?: string | null;
+  readonly revokedAt?: string | null;
+}
+
+export interface CreatorApiKeyTokenResponse {
+  readonly apiKey: CreatorApiKey;
+  readonly accessToken: string;
+}
+
 export interface BillingPlan {
   readonly planName: string;
   readonly monthlyPrice: number;

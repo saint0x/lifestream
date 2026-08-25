@@ -49,11 +49,12 @@ use crate::{
         CollaborationSocketPresenceReconciliationReport, ConnectedAccount, ContentPurchase,
         ContentPurchaseReconciliationReport, ContinueWatchingEntry,
         CreateCollaborationInviteRequest, CreateCollaborationSessionRequest,
-        CreateCreatorEnforcementActionRequest, CreateCreatorModeratorRequest,
-        CreateCreatorSeriesRequest, CreateCreatorSubscriberTierRequest,
-        CreateLiveModerationActionRequest, CreateSessionRequest, CreateUploadJobRequest,
-        CreatorAdHubResponse, CreatorAnalyticsSummary, CreatorAppState, CreatorCatalogEpisode,
-        CreatorCatalogFilm, CreatorCatalogSeason, CreatorCatalogSeries,
+        CreateCreatorApiKeyRequest, CreateCreatorEnforcementActionRequest,
+        CreateCreatorModeratorRequest, CreateCreatorSeriesRequest,
+        CreateCreatorSubscriberTierRequest, CreateLiveModerationActionRequest,
+        CreateSessionRequest, CreateUploadJobRequest, CreatorAdHubResponse,
+        CreatorAnalyticsSummary, CreatorApiKey, CreatorApiKeyTokenResponse, CreatorAppState,
+        CreatorCatalogEpisode, CreatorCatalogFilm, CreatorCatalogSeason, CreatorCatalogSeries,
         CreatorCollaborationControlResponse, CreatorContentQuery, CreatorContentResponse,
         CreatorContentSummary, CreatorDashboard, CreatorEnforcementAction,
         CreatorEnforcementReconciliationAction, CreatorEnforcementReconciliationReport,
@@ -111,6 +112,7 @@ mod collaboration_events;
 mod collabs;
 mod control;
 mod creator;
+mod creator_api;
 mod dashboard;
 mod discovery;
 mod ingest;

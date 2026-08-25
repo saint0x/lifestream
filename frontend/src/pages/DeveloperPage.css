@@ -1,0 +1,160 @@
+.ls-dev {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 34px 32px 80px;
+}
+
+.ls-dev__head {
+  padding-bottom: 26px;
+}
+
+.ls-dev__kicker {
+  margin-bottom: 16px;
+}
+
+.ls-dev__title {
+  margin: 0;
+  font-size: clamp(34px, 5vw, 64px);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.ls-dev__sub {
+  margin: 14px 0 0;
+  max-width: 620px;
+  color: var(--c-text-dim);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.ls-dev__panel {
+  border-top: 1px solid var(--c-border);
+  padding: 24px 0;
+}
+
+.ls-dev__panel-head,
+.ls-dev__create,
+.ls-dev__key-main,
+.ls-dev__key-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ls-dev__panel-head,
+.ls-dev__key-main {
+  justify-content: space-between;
+}
+
+.ls-dev__panel-head h2,
+.ls-dev__key h3 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0;
+}
+
+.ls-dev__eyebrow {
+  margin-bottom: 6px;
+  color: var(--c-text-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.ls-dev__create {
+  margin-top: 18px;
+  max-width: 620px;
+}
+
+.ls-dev__create .ls-input {
+  flex: 1;
+}
+
+.ls-dev__base {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  color: var(--c-text-faint);
+  font-size: 11px;
+}
+
+.ls-dev__base code,
+.ls-dev__token {
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+}
+
+.ls-dev__base code {
+  padding: 6px 8px;
+}
+
+.ls-dev__keys {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.ls-dev__key {
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  border-radius: var(--r-md);
+  padding: 16px;
+}
+
+.ls-dev__key p {
+  margin: 6px 0 0;
+  color: var(--c-text-faint);
+  font-size: 11px;
+}
+
+.ls-dev__token {
+  display: block;
+  margin-top: 14px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.ls-dev__scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.ls-dev__scopes span {
+  padding: 5px 7px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  color: var(--c-text-dim);
+  font-size: 11px;
+}
+
+.ls-dev__empty,
+.ls-dev__status {
+  margin-top: 18px;
+  color: var(--c-text-dim);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .ls-dev {
+    padding: 24px 18px 64px;
+  }
+
+  .ls-dev__panel-head,
+  .ls-dev__create,
+  .ls-dev__key-main,
+  .ls-dev__base {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ls-dev__key-actions {
+    justify-content: flex-start;
+  }
+}

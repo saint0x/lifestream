@@ -2,6 +2,27 @@ use super::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CreatorApiKey {
+    pub id: Id,
+    pub name: String,
+    pub key_prefix: String,
+    pub access_token: String,
+    pub scopes: Vec<String>,
+    pub created_at: String,
+    pub last_used_at: Option<String>,
+    pub expires_at: Option<String>,
+    pub revoked_at: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreatorApiKeyTokenResponse {
+    pub api_key: CreatorApiKey,
+    pub access_token: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ConnectedAccount {
     pub id: Id,
     pub provider: String,

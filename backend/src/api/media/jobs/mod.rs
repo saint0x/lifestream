@@ -5,15 +5,16 @@ mod lifecycle;
 mod publish;
 
 pub(crate) use ingest::{
-    append_upload_chunk, complete_upload_ingest, get_upload_ingest_session,
+    append_upload_chunk, complete_upload_ingest, get_creator_upload_job, get_upload_ingest_session,
     start_upload_ingest_session,
 };
 pub(crate) use lifecycle::{
-    create_upload_job, list_creator_upload_jobs, list_upload_jobs, update_upload_job,
+    create_creator_upload_job, create_upload_job, list_creator_upload_jobs, list_upload_jobs,
+    update_creator_upload_job, update_upload_job,
 };
 pub(crate) use publish::{
-    get_media_asset_for_upload_job, list_media_assets, publish_upload_job,
-    retry_upload_job_processing,
+    get_creator_media_asset_for_upload_job, get_media_asset_for_upload_job,
+    list_creator_media_assets, list_media_assets, publish_upload_job, retry_upload_job_processing,
 };
 
 pub(crate) fn routes() -> Router<SharedState> {

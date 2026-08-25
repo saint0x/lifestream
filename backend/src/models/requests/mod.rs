@@ -34,7 +34,7 @@ pub use uploads::{
     UpdateUploadRequest,
 };
 pub use viewer::{
-    ChatInput, CreateSessionRequest, CreatorContentQuery, NullablePatch,
-    UpdatePersonProfileLinkRequest, UpdatePersonProfileRequest, UpdateProfileRequest,
-    UpdateSettingsRequest, ViewerEventInput,
+    ChatInput, CreateCreatorApiKeyRequest, CreateSessionRequest, CreatorContentQuery,
+    NullablePatch, UpdatePersonProfileLinkRequest, UpdatePersonProfileRequest,
+    UpdateProfileRequest, UpdateSettingsRequest, ViewerEventInput,
 };

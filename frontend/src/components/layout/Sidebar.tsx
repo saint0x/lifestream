@@ -11,6 +11,7 @@ import {
   Settings,
   UploadCloud,
   BadgeDollarSign,
+  Code2,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -44,6 +45,7 @@ const studio = [
 ] as const;
 
 const utility = [
+  { to: "/developer", label: "Developer", Icon: Code2 },
   { to: "/settings", label: "Settings", Icon: Settings },
 ] as const;
 

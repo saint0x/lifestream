@@ -7,6 +7,7 @@ pub(super) fn router(state: SharedState) -> Router {
         .merge(me::routes())
         .merge(advertiser::routes())
         .merge(creator::routes())
+        .merge(creator_api::routes())
         .merge(collabs::routes())
         .merge(ingest::routes())
         .merge(media::jobs::routes())
@@ -58,6 +59,7 @@ fn build_cors_layer(state: &AppState) -> CorsLayer {
             header::HeaderName::from_static("x-ingest-token"),
             header::HeaderName::from_static("x-request-id"),
             header::HeaderName::from_static("x-upload-token"),
+            header::HeaderName::from_static("x-vanta-api-key"),
         ])
         .allow_origin(state.cors_allowed_origins.clone())
         .allow_credentials(true)
