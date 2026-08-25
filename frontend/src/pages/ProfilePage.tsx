@@ -401,7 +401,7 @@ export function ProfilePage() {
       setEditing(false);
       setInlineField(null);
       setCopyStatus(null);
-      setStatus("Profile updated.");
+      setStatus(null);
     } catch (err) {
       setStatus(null);
       setError(err instanceof Error ? err.message : "Unable to save profile.");
