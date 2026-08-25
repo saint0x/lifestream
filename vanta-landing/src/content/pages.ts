@@ -166,6 +166,10 @@ export const pages: Record<FunnelAudience, PageContent> = {
         question: "Do I still need to market myself?",
         answer: "Yes. The creators who win make strong work and promote it hard. Vanta gives that effort a place to compound.",
       },
+      {
+        question: "What if Vanta does not have network effects yet?",
+        answer: "Advertisers do not need a crowded platform; one creator with 10,000 consistent viewers is already valuable inventory.",
+      },
     ],
     fields: creatorFields,
     tiles: [],
