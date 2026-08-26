@@ -174,6 +174,10 @@ export const pages: Record<FunnelAudience, PageContent> = {
         question: "What if Vanta does not have network effects yet?",
         answer: "Advertisers do not need a crowded platform; one creator with a hypothetical 10,000 consistent viewers is already valuable inventory.",
       },
+      {
+        question: "Does it need to look like a studio production?",
+        answer: "No. Big production value helps, but exclusive work is valuable when it is strong, consistent, and worth watching. Vanta gives that work a more premium home.",
+      },
     ],
     fields: creatorFields,
     tiles: [],
